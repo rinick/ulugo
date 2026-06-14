@@ -7,6 +7,7 @@ import {
   countMoves,
   createNewGame,
   deleteNode,
+  eraseMarkup,
   formatPoint,
   moveBranch,
   moveBranchToMain,
@@ -95,6 +96,17 @@ describe('sgf-core', () => {
     document = addLabel(document, result.path, 'dp', '1');
 
     expect(serializeSgf(document)).toContain(';B[dd]TR[pq]LB[dp:1])');
+  });
+
+  it('erases markup without removing stones', () => {
+    let result = addMove(createNewGame(), [], 'B', 'dd');
+    let document = addMarkup(result.document, result.path, 'TR', 'dd');
+    document = addLabel(document, result.path, 'dp', '1');
+
+    document = eraseMarkup(document, result.path, 'dd');
+    document = eraseMarkup(document, result.path, 'dp');
+
+    expect(serializeSgf(document)).toContain(';B[dd])');
   });
 
   it('formats display coordinates without I', () => {

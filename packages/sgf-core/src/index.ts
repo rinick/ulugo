@@ -540,6 +540,13 @@ export function erasePoint(document: SgfDocument, path: number[], point: SgfPoin
   });
 }
 
+export function eraseMarkup(document: SgfDocument, path: number[], point: SgfPoint): SgfDocument {
+  return updateNode(document, path, (node) => {
+    removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);
+    removeLabel(node, point);
+  });
+}
+
 export function addMarkup(document: SgfDocument, path: number[], kind: MarkupKind, point: SgfPoint): SgfDocument {
   return updateNode(document, path, (node) => {
     removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);

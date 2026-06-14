@@ -774,7 +774,6 @@ textarea,
 .ulugo-goban .shudan-vertex.shudan-marker_label .shudan-marker {
   font-size: 0.5em;
   font-weight: 700;
-  line-height: 1;
 }
 
 .ulugo-goban .shudan-vertex.shudan-smalllabel .shudan-marker {

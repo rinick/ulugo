@@ -19,7 +19,7 @@ import {
   createNode,
   createNewGame,
   deleteNode,
-  erasePoint,
+  eraseMarkup,
   getComment,
   getBoardSize,
   getGameInfo,
@@ -776,7 +776,7 @@ export function App() {
     }
 
     if (tool === 'erase') {
-      replaceDocument(erasePoint(document, path, point), path, {invalidatePath: path});
+      replaceDocument(eraseMarkup(document, path, point), path, {invalidatePath: path});
       return;
     }
 
