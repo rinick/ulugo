@@ -3,6 +3,7 @@ export type EditorTool =
   | 'pass'
   | 'black'
   | 'white'
+  | 'replace'
   | 'erase'
   | 'alphabet'
   | 'circle'

@@ -1,4 +1,4 @@
-import {LeftOutlined, RightOutlined, DeleteOutlined, SwapOutlined, DoubleLeftOutlined} from '@ant-design/icons';
+import {LeftOutlined, RightOutlined, DeleteOutlined, DoubleLeftOutlined} from '@ant-design/icons';
 import {Button, Space} from 'antd';
 import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {useCallback, useEffect, useMemo, useRef, type ReactNode, type WheelEvent} from 'react';
@@ -20,12 +20,10 @@ const moveTreeNodeSize = 26;
 interface SgfTreePanelProps {
   document: SgfDocument;
   selectedPath: number[];
-  replaceActive: boolean;
   onSelectPath: (path: number[]) => void;
   onMoveToMain: () => void;
   onMoveLeft: () => void;
   onMoveRight: () => void;
-  onReplace: () => void;
   onDelete: () => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
@@ -34,12 +32,10 @@ interface SgfTreePanelProps {
 export function SgfTreePanel({
   document,
   selectedPath,
-  replaceActive,
   onSelectPath,
   onMoveToMain,
   onMoveLeft,
   onMoveRight,
-  onReplace,
   onDelete,
   onPreviousMove,
   onNextMove,
@@ -161,14 +157,6 @@ export function SgfTreePanel({
             disabled={selectedPath.length === 0}
             icon={<RightOutlined />}
             onClick={onMoveRight}
-          />
-          <TreeActionButton
-            title={t('treeActions.replace')}
-            disabled={selectedPath.length === 0}
-            icon={<SwapOutlined />}
-            type={replaceActive ? 'primary' : 'default'}
-            danger
-            onClick={onReplace}
           />
           <TreeActionButton
             title={t('treeActions.delete')}

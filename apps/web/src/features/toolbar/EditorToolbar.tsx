@@ -9,6 +9,7 @@ import {
   ForwardOutlined,
   StepBackwardOutlined,
   StepForwardOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import {Button, Input, Space} from 'antd';
 import type React from 'react';
@@ -21,6 +22,7 @@ interface EditorToolbarProps {
   nextColor: 'B' | 'W';
   canNavigatePrevious: boolean;
   canNavigateNext: boolean;
+  canReplaceMove: boolean;
   showMarkup: boolean;
   labelText: string;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
@@ -42,6 +44,7 @@ export function EditorToolbar({
   nextColor,
   canNavigatePrevious,
   canNavigateNext,
+  canReplaceMove,
   showMarkup,
   labelText,
   shortcutLabels = {},
@@ -88,6 +91,15 @@ export function EditorToolbar({
           current={tool}
           icon={<span className="tool-stone white" />}
           title={withShortcut(t('tools.white'), shortcutLabels.toolWhite)}
+          onToolChange={onToolChange}
+        />
+        <ToolButton
+          tool="replace"
+          current={tool}
+          icon={<SwapOutlined />}
+          title={t('treeActions.replace')}
+          danger
+          disabled={!canReplaceMove}
           onToolChange={onToolChange}
         />
         {showMarkup && (
@@ -246,6 +258,8 @@ function ToolButton({
   current,
   icon,
   title,
+  danger,
+  disabled,
   children,
   onToolChange,
 }: {
@@ -254,6 +268,8 @@ function ToolButton({
   current: EditorTool;
   icon?: React.ReactNode;
   title: string;
+  danger?: boolean;
+  disabled?: boolean;
   children?: React.ReactNode;
   onToolChange: (tool: EditorTool) => void;
 }) {
@@ -262,6 +278,8 @@ function ToolButton({
       className={className}
       size="middle"
       type={tool === current ? 'primary' : 'default'}
+      danger={danger}
+      disabled={disabled}
       icon={icon}
       title={title}
       onClick={() => onToolChange(tool)}

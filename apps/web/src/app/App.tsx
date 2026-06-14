@@ -12,6 +12,8 @@ import {
   addLabel,
   addMarkup,
   addMove,
+  cloneDocument,
+  createNode,
   createNewGame,
   deleteNode,
   erasePoint,
@@ -22,7 +24,6 @@ import {
   buildTree,
   moveBranch,
   moveBranchToMain,
-  replaceMove,
   samePath,
   serializeSgf,
   updateComment,
@@ -30,6 +31,7 @@ import {
   vertexToPoint,
   type SgfColor,
   type SgfDocument,
+  type SgfNode,
 } from '@ulugo/sgf-core';
 import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
 import {useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent} from 'react';
@@ -94,12 +96,18 @@ interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   invalidatePath?: number[];
   pendingSetupPath?: number[] | null;
+  replaceMoveState?: ReplaceMoveState | null;
 }
 
 interface CurrentFileMetadata {
   name: string;
   electronFilePath?: string;
   googleDriveFileId?: string;
+}
+
+interface ReplaceMoveState {
+  originalPath: number[];
+  replacementPath: number[];
 }
 
 export function App() {
@@ -110,7 +118,7 @@ export function App() {
   const [tool, setTool] = useState<EditorTool>('auto');
   const [labelText, setLabelText] = useState('A');
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
-  const [replaceMode, setReplaceMode] = useState(false);
+  const [replaceMoveState, setReplaceMoveState] = useState<ReplaceMoveState | null>(null);
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [showMarkup, setShowMarkup] = useState(() =>
     readStoredBoolean(showMarkupStorageKey, capabilities.platform === 'web')
@@ -249,7 +257,12 @@ export function App() {
     setDocument(next);
     setPath(normalizedPath);
     setAutoColorOverride(null);
-    setReplaceMode(false);
+    setReplaceMoveState(options.replaceMoveState ?? null);
+    if (options.replaceMoveState != null) {
+      setTool('replace');
+    } else if (tool === 'replace') {
+      setTool('auto');
+    }
     pendingSetupPathRef.current = options.pendingSetupPath ?? null;
     rememberPath(normalizedPath);
   }
@@ -261,7 +274,8 @@ export function App() {
     rememberPath(normalizedPath);
     setPath(normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
-    setReplaceMode(false);
+    setReplaceMoveState(null);
+    if (tool === 'replace') setTool('auto');
   }
 
   function playPlaceStoneSound(): void {
@@ -488,14 +502,32 @@ export function App() {
 
   function handleToolChange(nextTool: EditorTool): void {
     if (!showMarkup && isMarkupTool(nextTool)) return;
+    if (nextTool === 'replace') {
+      if (tool === 'replace') return;
+      const originalNextPath = nextOriginalBranchPath(document, path, branchMemoryRef.current);
+      if (originalNextPath == null) return;
+      setAnalysisModeActive(false);
+      setAutoColorOverride(null);
+      setReplaceMoveState({originalPath: path, replacementPath: path});
+      setTool('replace');
+      return;
+    }
+
+    if (tool === 'replace') {
+      setReplaceMoveState(null);
+      setTool(nextTool);
+      if (nextTool !== 'auto') setAutoColorOverride(null);
+      return;
+    }
+
     if (nextTool !== tool) selectPath(path, {keepAutoColorOverride: nextTool === 'auto'});
-    setReplaceMode(false);
+    setReplaceMoveState(null);
     setTool(nextTool);
     if (nextTool !== 'auto') setAutoColorOverride(null);
   }
 
   function handleAutoToolClick(): void {
-    setReplaceMode(false);
+    setReplaceMoveState(null);
     if (tool !== 'auto') {
       selectPath(path);
       setTool('auto');
@@ -510,6 +542,10 @@ export function App() {
 
   const canNavigatePrevious = path.length > 0;
   const canNavigateNext = getNodeAtPath(document, path).children.length > 0;
+  const canReplaceMove =
+    tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
+      ? nextOriginalBranchPath(document, replaceMoveState.originalPath, branchMemoryRef.current) != null
+      : nextOriginalBranchPath(document, path, branchMemoryRef.current) != null;
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -613,9 +649,17 @@ export function App() {
           commentsPanelRef.current?.toggleComments();
           break;
         case 'toggleAnalysisMode':
+          if (tool === 'replace') {
+            setReplaceMoveState(null);
+            setTool('auto');
+          }
           toggleAnalysisMode();
           break;
         case 'toggleDeepAnalysisMode':
+          if (tool === 'replace') {
+            setReplaceMoveState(null);
+            setTool('auto');
+          }
           toggleDeepAnalysisMode();
           break;
       }
@@ -639,12 +683,18 @@ export function App() {
     navigatePrevious,
     path,
     position.nextColor,
+    tool,
     toggleDeepAnalysisMode,
     toggleAnalysisMode,
     updateAnalysisSettings,
   ]);
 
   function handleAnalysisButtonClick(event: MouseEvent<HTMLElement>): void {
+    if (tool === 'replace') {
+      setReplaceMoveState(null);
+      setTool('auto');
+    }
+
     if (event.shiftKey) {
       toggleDeepAnalysisMode();
     } else {
@@ -663,15 +713,19 @@ export function App() {
       return;
     }
 
-    if (replaceMode) {
-      const current = getNodeAtPath(document, path);
-      const color: SgfColor | null = current.data.B != null ? 'B' : current.data.W != null ? 'W' : null;
-      if (color == null) return;
-      const parentPosition = deriveBoardPosition(document, path.slice(0, -1));
-      if (!isLegalMove(parentPosition, color, point, gameInfo.RU)) return;
+    if (tool === 'replace') {
+      const result = replaceNextMoveBranch({
+        document,
+        path,
+        point,
+        rules: gameInfo.RU,
+        branchMemory: branchMemoryRef.current,
+        state: replaceMoveState,
+      });
+      if (result == null) return;
 
-      const result = replaceMove(document, path, point);
-      replaceDocument(result.document, result.path, {invalidatePath: result.path});
+      replaceDocument(result.document, result.path, {invalidatePath: result.path, replaceMoveState: result.state});
+      playPlaceStoneSound();
       return;
     }
 
@@ -763,9 +817,18 @@ export function App() {
   }
 
   function handlePass(): void {
-    if (replaceMode) {
-      const result = replaceMove(document, path, '');
-      replaceDocument(result.document, result.path, {invalidatePath: result.path});
+    if (tool === 'replace') {
+      const result = replaceNextMoveBranch({
+        document,
+        path,
+        point: '',
+        rules: gameInfo.RU,
+        branchMemory: branchMemoryRef.current,
+        state: replaceMoveState,
+      });
+      if (result == null) return;
+
+      replaceDocument(result.document, result.path, {invalidatePath: result.path, replaceMoveState: result.state});
       return;
     }
 
@@ -925,6 +988,7 @@ export function App() {
             nextColor={nextAutoColor}
             canNavigatePrevious={canNavigatePrevious}
             canNavigateNext={canNavigateNext}
+            canReplaceMove={canReplaceMove}
             showMarkup={showMarkup}
             labelText={labelText}
             shortcutLabels={shortcutLabels}
@@ -1099,14 +1163,12 @@ export function App() {
             <SgfTreePanel
               document={document}
               selectedPath={path}
-              replaceActive={replaceMode}
               onSelectPath={(nextPath) => {
                 selectPath(nextPath);
               }}
               onMoveToMain={handleMoveBranchToMain}
               onMoveLeft={handleMoveBranchLeft}
               onMoveRight={handleMoveBranchRight}
-              onReplace={() => setReplaceMode(true)}
               onDelete={handleDeleteNode}
               onPreviousMove={() => navigatePrevious()}
               onNextMove={() => navigateNext()}
@@ -1164,6 +1226,103 @@ export function App() {
       />
     </ConfigProvider>
   );
+}
+
+function replaceNextMoveBranch({
+  document,
+  path,
+  point,
+  rules,
+  branchMemory,
+  state,
+}: {
+  document: SgfDocument;
+  path: number[];
+  point: string;
+  rules?: string;
+  branchMemory: Map<string, number>;
+  state: ReplaceMoveState | null;
+}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+  if (state == null || !samePath(path, state.replacementPath)) return null;
+
+  const originalNextPath = nextOriginalBranchPath(document, state.originalPath, branchMemory);
+  if (originalNextPath == null) return null;
+
+  const originalMove = nodeMove(getNodeAtPath(document, originalNextPath));
+  if (originalMove == null) return null;
+
+  const position = deriveBoardPosition(document, path);
+  if (!isLegalMove(position, originalMove.color, point, rules)) return null;
+
+  const next = cloneDocument(document);
+  const parent = getNodeAtPath(next, path);
+  const replacesOriginalBranch = samePath(path, state.originalPath);
+  if (!replacesOriginalBranch) parent.children = [];
+
+  const child = createNode({[originalMove.color]: [point]});
+  const insertIndex = replacesOriginalBranch ? originalNextPath[originalNextPath.length - 1] : 0;
+  parent.children.splice(insertIndex, 0, child);
+  const nextPath = [...path, insertIndex];
+  const nextOriginalPath = replacesOriginalBranch ? [...path, insertIndex + 1] : originalNextPath;
+
+  copyOriginalContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
+
+  return {
+    document: next,
+    path: nextPath,
+    state: {originalPath: nextOriginalPath, replacementPath: nextPath},
+  };
+}
+
+function copyOriginalContinuation(
+  targetDocument: SgfDocument,
+  targetPath: number[],
+  sourceDocument: SgfDocument,
+  sourcePath: number[],
+  rules: string | undefined,
+  branchMemory: Map<string, number>
+): void {
+  let currentTargetPath = targetPath;
+  let currentSourcePath = sourcePath;
+
+  while (true) {
+    const nextSourcePath = nextOriginalBranchPath(sourceDocument, currentSourcePath, branchMemory);
+    if (nextSourcePath == null) return;
+
+    const sourceNode = getNodeAtPath(sourceDocument, nextSourcePath);
+    const move = nodeMove(sourceNode);
+    if (move == null) return;
+
+    const position = deriveBoardPosition(targetDocument, currentTargetPath);
+    if (!isLegalMove(position, move.color, move.point, rules)) return;
+
+    const targetParent = getNodeAtPath(targetDocument, currentTargetPath);
+    targetParent.children.push(createNode(cloneNodeData(sourceNode)));
+    currentTargetPath = [...currentTargetPath, targetParent.children.length - 1];
+    currentSourcePath = nextSourcePath;
+  }
+}
+
+function nextOriginalBranchPath(
+  document: SgfDocument,
+  path: number[],
+  branchMemory: Map<string, number>
+): number[] | null {
+  const node = getNodeAtPath(document, path);
+  if (node.children.length === 0) return null;
+
+  const remembered = branchMemory.get(pathKey(path)) ?? 0;
+  const childIndex = node.children[remembered] == null ? 0 : remembered;
+  return [...path, childIndex];
+}
+
+function nodeMove(node: SgfNode): {color: SgfColor; point: string} | null {
+  const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
+  return color == null ? null : {color, point: node.data[color]?.[0] ?? ''};
+}
+
+function cloneNodeData(node: SgfNode): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(node.data).map(([key, values]) => [key, [...values]]));
 }
 
 function hasDraggedFiles(dataTransfer: DataTransfer): boolean {
