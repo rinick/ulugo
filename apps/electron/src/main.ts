@@ -18,7 +18,7 @@ interface KataGoSettings {
 
 interface AnalysisSettings {
   moveDisplay: 'none' | 'score' | 'winrate' | 'absScore';
-  topMoveDisplay: 'dot' | 'number' | 'none';
+  stoneOverlay: 'dot' | 'number' | 'none';
   maxMoves: 1 | 5 | 20 | 'all';
   minVisits: number;
   showNextMove: boolean;
@@ -40,7 +40,7 @@ const defaultKataGoSettings: KataGoSettings = {
 
 const defaultAnalysisSettings: AnalysisSettings = {
   moveDisplay: 'score',
-  topMoveDisplay: 'dot',
+  stoneOverlay: 'dot',
   maxMoves: 5,
   minVisits: 50,
   showNextMove: true,
@@ -306,11 +306,30 @@ function registerIpc(): void {
     );
   });
   ipcMain.handle('ulugo:analysis:get-settings', async () =>
-    readJson('analysis-settings.json', defaultAnalysisSettings)
+    readAnalysisSettings()
   );
   ipcMain.handle('ulugo:analysis:save-settings', async (_event, settings: AnalysisSettings) =>
-    writeJson('analysis-settings.json', {...defaultAnalysisSettings, ...settings})
+    writeJson('analysis-settings.json', normalizeAnalysisSettings(settings))
   );
+}
+
+async function readAnalysisSettings(): Promise<AnalysisSettings> {
+  return normalizeAnalysisSettings(await readJson('analysis-settings.json', defaultAnalysisSettings));
+}
+
+function normalizeAnalysisSettings(
+  settings: Partial<AnalysisSettings> & {
+    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+  }
+): AnalysisSettings {
+  const {topMoveDisplay, ...storedSettings} = settings;
+  const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
+  return {
+    ...defaultAnalysisSettings,
+    ...storedSettings,
+    stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+  };
 }
 
 async function readJson<T>(name: string, fallback: T): Promise<T> {

@@ -527,7 +527,17 @@ function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
   try {
     const value = localStorage.getItem(analysisSettingsStorageKey);
     if (value == null) return defaults;
-    const settings = {...defaults, ...JSON.parse(value)};
+    const stored = JSON.parse(value) as Partial<AnalysisSettings> & {
+      stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+      topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    };
+    const {topMoveDisplay, ...storedSettings} = stored;
+    const stoneOverlay = stored.stoneOverlay ?? topMoveDisplay ?? defaults.stoneOverlay;
+    const settings = {
+      ...defaults,
+      ...storedSettings,
+      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+    };
     if (!enabled && settings.boardBackground === 'auto') return {...settings, boardBackground: 'golden'};
     return settings;
   } catch {

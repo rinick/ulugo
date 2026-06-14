@@ -137,7 +137,6 @@ function Vertex(props: VertexProps) {
       }))
     ),
 
-    !sign && markerMarkup(),
     !sign &&
       !!ghostStone &&
       h('div', {
@@ -173,9 +172,7 @@ function Vertex(props: VertexProps) {
             style: absoluteStyle(),
           },
           sign
-        ),
-
-      !!sign && markerMarkup()
+        )
     ),
 
     !!paint &&
@@ -215,6 +212,8 @@ function Vertex(props: VertexProps) {
             analysisOverlay.dotSize == null ? undefined : `${-analysisOverlay.dotSize / 2}em`,
         } as CSSProperties,
       }),
+
+    markerMarkup(),
 
     !!selected &&
       h('div', {

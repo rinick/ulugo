@@ -79,9 +79,9 @@ export function GoBoard({
           const point = position.points.find((item) => item.x === x && item.y === y);
           if (point == null) return {};
           if (showMarkup && point.label != null) return {type: 'label', label: point.label};
+          if (showMarkup && point.markup != null) return {type: markerTypes[point.markup]};
           if (shouldShowMoveNumber(point.moveNumber, point.stone != null, position.moveNumber, moveNumberLimit))
             return {type: 'label', label: String(point.moveNumber)};
-          if (showMarkup && point.markup != null) return {type: markerTypes[point.markup]};
           return {};
         })
       ),
@@ -207,7 +207,7 @@ function buildAnalysisOverlayMap(
   stoneScoreDeltas: Map<string, number>
 ): Array<Array<AnalysisOverlay | null>> | undefined {
   const result = emptyMap<AnalysisOverlay | null>(size, null);
-  const topMoveDisplay = settings.topMoveDisplay;
+  const stoneOverlay = settings.stoneOverlay;
   let hasAnalysisOverlay = false;
 
   if (settings.showTopMoves && analysis?.moveInfos != null) {
@@ -244,7 +244,7 @@ function buildAnalysisOverlayMap(
     }
   }
 
-  if (topMoveDisplay === 'dot') {
+  if (stoneOverlay === 'dot') {
     for (const point of points) {
       const scoreDelta = stoneScoreDeltas.get(point.point);
       if (

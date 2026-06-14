@@ -138,7 +138,6 @@ export function SgfTreePanel({
   return (
     <section className="side-panel tree-panel">
       <div className="tree-panel-header">
-        <h2>{t('panels.tree')}</h2>
         <Space.Compact>
           <TreeActionButton
             title={t('treeActions.moveToMain')}

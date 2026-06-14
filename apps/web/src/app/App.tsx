@@ -1,7 +1,10 @@
 import {
+  CloseOutlined,
   FileAddOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
+  NumberOutlined,
+  CheckCircleFilled,
   SaveOutlined,
   SettingOutlined,
   ThunderboltOutlined,
@@ -213,7 +216,7 @@ export function App() {
     startFailedMessage: t('analysis.startFailed'),
   });
   const stoneOverlayDisplay =
-    !capabilities.katago && analysisSettings.topMoveDisplay === 'dot' ? 'number' : analysisSettings.topMoveDisplay;
+    !capabilities.katago && analysisSettings.stoneOverlay === 'dot' ? 'number' : analysisSettings.stoneOverlay;
   const boardMoveNumberLimit = stoneOverlayDisplay === 'number' ? analysisSettings.maxMoves : 0;
   const boardBackground = resolveBoardBackground(
     analysisSettings.boardBackground,
@@ -234,9 +237,9 @@ export function App() {
   ];
 
   useEffect(() => {
-    if (capabilities.katago || analysisSettings.topMoveDisplay !== 'dot') return;
-    updateAnalysisSettings({topMoveDisplay: 'number', maxMoves: 'all'});
-  }, [analysisSettings.topMoveDisplay, capabilities.katago, updateAnalysisSettings]);
+    if (capabilities.katago || analysisSettings.stoneOverlay !== 'dot') return;
+    updateAnalysisSettings({stoneOverlay: 'number', maxMoves: 'all'});
+  }, [analysisSettings.stoneOverlay, capabilities.katago, updateAnalysisSettings]);
 
   useEffect(() => {
     if (autoBoardBackgroundReady || !capabilities.katago || !analysisSettings.showTopMoves || !kataGoInitialized)
@@ -504,8 +507,7 @@ export function App() {
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
-      const originalNextPath = nextOriginalBranchPath(document, path, branchMemoryRef.current);
-      if (originalNextPath == null) return;
+      if (!hasReplaceableContinuation(document, path, branchMemoryRef.current)) return;
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
       setReplaceMoveState({originalPath: path, replacementPath: path});
@@ -544,8 +546,8 @@ export function App() {
   const canNavigateNext = getNodeAtPath(document, path).children.length > 0;
   const canReplaceMove =
     tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
-      ? nextOriginalBranchPath(document, replaceMoveState.originalPath, branchMemoryRef.current) != null
-      : nextOriginalBranchPath(document, path, branchMemoryRef.current) != null;
+      ? hasReplaceableContinuation(document, replaceMoveState.originalPath, branchMemoryRef.current)
+      : hasReplaceableContinuation(document, path, branchMemoryRef.current);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -628,10 +630,10 @@ export function App() {
           updateAnalysisSettings({showTopMoves: !analysisSettings.showTopMoves});
           break;
         case 'toggleDisplayDot':
-          updateAnalysisSettings({topMoveDisplay: analysisSettings.topMoveDisplay === 'dot' ? 'none' : 'dot'});
+          updateAnalysisSettings({stoneOverlay: analysisSettings.stoneOverlay === 'dot' ? 'none' : 'dot'});
           break;
         case 'toggleDisplayNumber':
-          updateAnalysisSettings({topMoveDisplay: analysisSettings.topMoveDisplay === 'number' ? 'none' : 'number'});
+          updateAnalysisSettings({stoneOverlay: analysisSettings.stoneOverlay === 'number' ? 'none' : 'number'});
           break;
         case 'toggleTerritory':
           updateAnalysisSettings({showExpectedTerritory: !analysisSettings.showExpectedTerritory});
@@ -671,7 +673,7 @@ export function App() {
     analysisSettings.showExpectedTerritory,
     analysisSettings.showNextMove,
     analysisSettings.showTopMoves,
-    analysisSettings.topMoveDisplay,
+    analysisSettings.stoneOverlay,
     boardSize,
     capabilities.katago,
     currentAnalysis,
@@ -1004,6 +1006,30 @@ export function App() {
             onLast={navigateToLast}
             extraEnd={
               <Space className="analysis-toolbar-options">
+                <span>{t('analysis.stoneOverlay')}</span>
+                <Segmented
+                  size="medium"
+                  shape="round"
+                  value={stoneOverlayDisplay}
+                  onChange={(value) =>
+                    updateAnalysisSettings({stoneOverlay: value as AnalysisSettings['stoneOverlay']})
+                  }
+                  options={
+                    capabilities.katago
+                      ? [
+                          {value: 'dot', icon: <CheckCircleFilled />, title: t('analysis.dot')},
+                          {value: 'number', icon: <NumberOutlined />, title: t('analysis.moveNumber')},
+                          {value: 'none', icon: <CloseOutlined />, title: t('analysis.none')},
+                        ]
+                      : [
+                          {value: 'number', icon: <NumberOutlined />, title: t('analysis.moveNumber')},
+                          {value: 'none', icon: <CloseOutlined />, title: t('analysis.none')},
+                        ]
+                  }
+                />
+                <Checkbox checked={showMarkup} onChange={(event) => setShowMarkup(event.target.checked)}>
+                  {t('settings.showMarkup')}
+                </Checkbox>
                 <Checkbox
                   checked={analysisSettings.showNextMove}
                   onChange={(event) => updateAnalysisSettings({showNextMove: event.target.checked})}
@@ -1020,25 +1046,7 @@ export function App() {
                     </Checkbox>
                   </>
                 ) : null}
-                <Segmented
-                  size="small"
-                  value={stoneOverlayDisplay}
-                  onChange={(value) =>
-                    updateAnalysisSettings({topMoveDisplay: value as AnalysisSettings['topMoveDisplay']})
-                  }
-                  options={
-                    capabilities.katago
-                      ? [
-                          {value: 'dot', label: t('analysis.dot')},
-                          {value: 'number', label: t('analysis.number')},
-                          {value: 'none', label: t('analysis.none')},
-                        ]
-                      : [
-                          {value: 'number', label: t('analysis.number')},
-                          {value: 'none', label: t('analysis.none')},
-                        ]
-                  }
-                />
+
                 {capabilities.katago ? (
                   <Checkbox
                     checked={analysisSettings.showExpectedTerritory}
@@ -1197,14 +1205,12 @@ export function App() {
         settings={analysisSettings}
         language={currentLanguage}
         showCoordinates={showCoordinates}
-        showMarkup={showMarkup}
         playStoneSound={playStoneSound}
         showKataGoAnalysisSettings={capabilities.katago}
         onCancel={() => setSettingsOpen(false)}
         onAnalysisSettingsChange={updateAnalysisSettings}
         onLanguageChange={handleLanguageChange}
         onShowCoordinatesChange={setShowCoordinates}
-        onShowMarkupChange={setShowMarkup}
         onPlayStoneSoundChange={setPlayStoneSound}
         onKeyboardShortcutsClick={openKeyboardShortcuts}
       />
@@ -1314,6 +1320,11 @@ function nextOriginalBranchPath(
   const remembered = branchMemory.get(pathKey(path)) ?? 0;
   const childIndex = node.children[remembered] == null ? 0 : remembered;
   return [...path, childIndex];
+}
+
+function hasReplaceableContinuation(document: SgfDocument, path: number[], branchMemory: Map<string, number>): boolean {
+  const nextPath = nextOriginalBranchPath(document, path, branchMemory);
+  return nextPath != null && nextOriginalBranchPath(document, nextPath, branchMemory) != null;
 }
 
 function nodeMove(node: SgfNode): {color: SgfColor; point: string} | null {

@@ -173,6 +173,7 @@
   stroke: var(--shudan-board-foreground-color);
   stroke-width: 0.07em;
   pointer-events: none;
+  z-index: 2;
 }
 .shudan-vertex.shudan-sign_1 .shudan-marker,
 .shudan-vertex.shudan-sign_-1 .shudan-marker {

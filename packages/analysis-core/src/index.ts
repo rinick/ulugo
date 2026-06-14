@@ -1,5 +1,5 @@
 export type AnalysisDisplayMode = 'none' | 'score' | 'winrate' | 'absScore';
-export type AnalysisTopMoveDisplay = 'dot' | 'number' | 'none';
+export type AnalysisStoneOverlay = 'dot' | 'number' | 'none';
 export type AnalysisMoveLimit = 1 | 5 | 20 | 'all';
 export type BoardBackground = 'auto' | 'golden' | 'natural' | 'flat';
 
@@ -35,7 +35,7 @@ export interface KataGoAnalysisResult {
 
 export interface AnalysisSettings {
   moveDisplay: AnalysisDisplayMode;
-  topMoveDisplay: AnalysisTopMoveDisplay;
+  stoneOverlay: AnalysisStoneOverlay;
   maxMoves: AnalysisMoveLimit;
   minVisits: number;
   showNextMove: boolean;
@@ -47,7 +47,7 @@ export interface AnalysisSettings {
 
 export const defaultAnalysisSettings: AnalysisSettings = {
   moveDisplay: 'score',
-  topMoveDisplay: 'dot',
+  stoneOverlay: 'dot',
   maxMoves: 5,
   minVisits: 50,
   showNextMove: true,

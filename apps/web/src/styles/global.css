@@ -424,9 +424,8 @@ textarea,
   border-bottom: 1px solid #f0f0f0;
   background: #ffffff;
 }
-
-.tree-panel-header h2 {
-  margin: 0;
+.tree-panel-header .ant-space-compact {
+  margin-left: auto;
 }
 
 .tree-scroll {

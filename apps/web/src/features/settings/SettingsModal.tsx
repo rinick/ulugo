@@ -9,14 +9,12 @@ interface SettingsModalProps {
   settings: AnalysisSettings;
   language: AppLanguage;
   showCoordinates: boolean;
-  showMarkup: boolean;
   playStoneSound: boolean;
   showKataGoAnalysisSettings?: boolean;
   onCancel: () => void;
   onAnalysisSettingsChange: (settings: AnalysisSettings) => void;
   onLanguageChange: (language: AppLanguage) => void;
   onShowCoordinatesChange: (showCoordinates: boolean) => void;
-  onShowMarkupChange: (showMarkup: boolean) => void;
   onPlayStoneSoundChange: (playStoneSound: boolean) => void;
   onKeyboardShortcutsClick: () => void;
 }
@@ -26,14 +24,12 @@ export function SettingsModal({
   settings,
   language,
   showCoordinates,
-  showMarkup,
   playStoneSound,
   showKataGoAnalysisSettings = false,
   onCancel,
   onAnalysisSettingsChange,
   onLanguageChange,
   onShowCoordinatesChange,
-  onShowMarkupChange,
   onPlayStoneSoundChange,
   onKeyboardShortcutsClick,
 }: SettingsModalProps) {
@@ -107,12 +103,6 @@ export function SettingsModal({
         </Form.Item>
         <Form.Item>
           <div className="app-settings-row">
-            <span>{t('settings.showMarkup')}</span>
-            <Switch size="small" checked={showMarkup} onChange={onShowMarkupChange} />
-          </div>
-        </Form.Item>
-        <Form.Item>
-          <div className="app-settings-row">
             <span>{t('settings.playStoneSound')}</span>
             <Switch size="small" checked={playStoneSound} onChange={onPlayStoneSoundChange} />
           </div>
@@ -164,7 +154,7 @@ export function SettingsModal({
             </Form.Item>
           </>
         ) : null}
-        <Form.Item label={t('analysis.moveNumberCount')}>
+        <Form.Item label={t('analysis.stoneOverlayCount')}>
           <Select
             size="small"
             value={settings.maxMoves}
