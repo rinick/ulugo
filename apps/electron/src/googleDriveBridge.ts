@@ -284,7 +284,7 @@ async function run() {
     setStatus('Opening from Google Drive...');
     const response = await driveFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.id) + '?alt=media&supportsAllDrives=true', token);
     await writeSgf({ content: await response.text(), fileId: file.id, fileName: file.name });
-    finish('File opened. Return to Ulugo. This tab will close shortly.');
+    finish('File opened. Return to Ulugo. You can close this tab.');
     return;
   }
 
@@ -294,7 +294,7 @@ async function run() {
     ? await createGoogleDriveFile(token, sgf.content, sgf.fileName)
     : await updateGoogleDriveFile(token, sgf.fileId, sgf.content, sgf.fileName);
   await writeSgf(result);
-  finish('File saved. Return to Ulugo. This tab will close shortly.');
+  finish('File saved. Return to Ulugo. You can close this tab.');
 }
 
 async function authorizeGoogleDrive() {
@@ -460,7 +460,7 @@ async function writeSgf(payload) {
 
 async function reportCancel() {
   await fetch('/api/cancel?token=' + encodeURIComponent(BRIDGE_TOKEN), { method: 'POST' }).catch(function() {});
-  finish('Google Drive operation canceled. Return to Ulugo. This tab will close shortly.');
+  finish('Google Drive operation canceled. Return to Ulugo. You can close this tab.');
 }
 
 async function reportError(error) {
@@ -470,7 +470,7 @@ async function reportError(error) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: message })
   }).catch(function() {});
-  finish('Google Drive operation failed. Return to Ulugo. This tab will close shortly.');
+  finish('Google Drive operation failed. Return to Ulugo. You can close this tab.');
 }
 
 function setStatus(message) {
@@ -479,7 +479,6 @@ function setStatus(message) {
 
 function finish(message) {
   setStatus(message);
-  setTimeout(function() { window.close(); }, 3000);
 }
   </script>
 </body>

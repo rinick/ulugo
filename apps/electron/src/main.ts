@@ -246,11 +246,18 @@ function registerIpc(): void {
     }
   );
 
-  ipcMain.handle('ulugo:google-drive:open-sgf', () => openGoogleDriveSgf());
+  ipcMain.handle('ulugo:google-drive:open-sgf', async (event) => {
+    const result = await openGoogleDriveSgf();
+    if (result != null) bringSenderWindowToFront(event.sender);
+    return result;
+  });
   ipcMain.handle(
     'ulugo:google-drive:save-sgf',
-    (_event, request: {content: string; fileName: string; fileId?: string | null}) =>
-      saveGoogleDriveSgf(request.content, request.fileName, request.fileId)
+    async (event, request: {content: string; fileName: string; fileId?: string | null}) => {
+      const result = await saveGoogleDriveSgf(request.content, request.fileName, request.fileId);
+      if (result != null) bringSenderWindowToFront(event.sender);
+      return result;
+    }
   );
   ipcMain.handle('ulugo:google-drive:cancel', () => cancelGoogleDriveBridge());
 
@@ -305,12 +312,18 @@ function registerIpc(): void {
       Array.isArray(queryIds) ? queryIds.filter((queryId): queryId is string => typeof queryId === 'string') : undefined
     );
   });
-  ipcMain.handle('ulugo:analysis:get-settings', async () =>
-    readAnalysisSettings()
-  );
+  ipcMain.handle('ulugo:analysis:get-settings', async () => readAnalysisSettings());
   ipcMain.handle('ulugo:analysis:save-settings', async (_event, settings: AnalysisSettings) =>
     writeJson('analysis-settings.json', normalizeAnalysisSettings(settings))
   );
+}
+
+function bringSenderWindowToFront(sender: WebContents): void {
+  const window = BrowserWindow.fromWebContents(sender);
+  if (window == null || window.isDestroyed()) return;
+  window.show();
+  window.moveTop();
+  window.focus();
 }
 
 async function readAnalysisSettings(): Promise<AnalysisSettings> {
