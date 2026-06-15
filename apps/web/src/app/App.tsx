@@ -1035,13 +1035,13 @@ export function App() {
                   options={
                     capabilities.katago
                       ? [
-                          {value: 'dot', icon: <CheckCircleFilled />, title: t('analysis.dot')},
-                          {value: 'number', icon: <NumberOutlined />, title: t('analysis.moveNumber')},
-                          {value: 'none', icon: <CloseOutlined />, title: t('analysis.none')},
+                          {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis.dot')}},
+                          {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                          {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
                         ]
                       : [
-                          {value: 'number', icon: <NumberOutlined />, title: t('analysis.moveNumber')},
-                          {value: 'none', icon: <CloseOutlined />, title: t('analysis.none')},
+                          {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                          {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
                         ]
                   }
                 />
