@@ -83,7 +83,7 @@ import {
   safeFileName,
   withImportedGameName,
 } from './gameRecordFileUtils';
-import {isModalOpen, isTextInputActive} from './domUtils';
+import {blurNonTextControlFocus, isModalOpen, isPopupOpen, isTextInputActive} from './domUtils';
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
 import {formatConsoleTime} from './katagoConsoleUtils';
 import {getAppFontFamily} from './fonts';
@@ -551,7 +551,7 @@ export function App() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      if (isModalOpen()) return;
+      if (isModalOpen() || isPopupOpen()) return;
 
       const shortcutAction = shortcutActionForEvent(event, keyboardShortcuts);
       if (shortcutAction == null) return;
@@ -684,8 +684,8 @@ export function App() {
       }
     }
 
-    window.document.body.addEventListener('keydown', handleKeyDown);
-    return () => window.document.body.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [
     analysisSettings.showExpectedTerritory,
     analysisSettings.showNextMove,
@@ -911,6 +911,10 @@ export function App() {
     void window.ulugo?.googleDrive.cancel();
   }
 
+  function handleAppClickCapture(): void {
+    window.requestAnimationFrame(blurNonTextControlFocus);
+  }
+
   return (
     <ConfigProvider
       locale={antdLocale}
@@ -944,7 +948,7 @@ export function App() {
       >
         {googleDrivePending === 'open' ? t('googleDrive.openWaiting') : t('googleDrive.saveWaiting')}
       </Modal>
-      <Layout className="app-shell">
+      <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         <Header className="app-header">
           <div className="menu-row">
             <div className="app-title">{appTitle}</div>
