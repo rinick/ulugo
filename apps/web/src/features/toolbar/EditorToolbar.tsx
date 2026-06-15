@@ -67,14 +67,14 @@ export function EditorToolbar({
       <Button
         size="middle"
         icon={<PalmIcon />}
-        title={withShortcut(t('tools.pass'), shortcutLabels.pass)}
+        title={withShortcut(t('shortcuts.actions.pass'), shortcutLabels.pass)}
         onClick={onPass}
       />
       <Space.Compact className="edit-tools">
         <ToolButton
           tool="auto"
           current={tool}
-          title={withShortcut(t('tools.auto'), shortcutLabels.toolAuto)}
+          title={withShortcut(t('shortcuts.actions.toolAuto'), shortcutLabels.toolAuto)}
           onToolChange={onToolChange}
         >
           <AutoPlayIcon nextColor={nextColor} onClick={onAutoToolClick} />
@@ -83,21 +83,21 @@ export function EditorToolbar({
           tool="black"
           current={tool}
           icon={<span className="tool-stone black" />}
-          title={withShortcut(t('tools.black'), shortcutLabels.toolBlack)}
+          title={withShortcut(t('shortcuts.actions.toolBlack'), shortcutLabels.toolBlack)}
           onToolChange={onToolChange}
         />
         <ToolButton
           tool="white"
           current={tool}
           icon={<span className="tool-stone white" />}
-          title={withShortcut(t('tools.white'), shortcutLabels.toolWhite)}
+          title={withShortcut(t('shortcuts.actions.toolWhite'), shortcutLabels.toolWhite)}
           onToolChange={onToolChange}
         />
         <ToolButton
           tool="replace"
           current={tool}
           icon={<SwapOutlined />}
-          title={t('treeActions.replace')}
+          title={withShortcut(t('shortcuts.actions.replaceMove'), shortcutLabels.replaceMove)}
           danger
           disabled={!canReplaceMove}
           onToolChange={onToolChange}
@@ -109,14 +109,14 @@ export function EditorToolbar({
               tool="alphabet"
               current={tool}
               icon={<FontSizeOutlined />}
-              title={withShortcut(t('tools.alphabet'), shortcutLabels.addLabel)}
+              title={withShortcut(t('shortcuts.actions.addLabel'), shortcutLabels.addLabel)}
               onToolChange={onToolChange}
             >
               <Input
                 size="small"
                 className="label-input"
                 value={labelText}
-                aria-label={t('tools.alphabet')}
+                aria-label={t('shortcuts.actions.addLabel')}
                 onFocus={() => onToolChange('alphabet')}
                 onChange={(event) => onLabelTextChange(event.target.value)}
               />
@@ -125,28 +125,28 @@ export function EditorToolbar({
               tool="circle"
               current={tool}
               icon={<CircleMarkerIcon />}
-              title={withShortcut(t('tools.circle'), shortcutLabels.addCircle)}
+              title={withShortcut(t('shortcuts.actions.addCircle'), shortcutLabels.addCircle)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="square"
               current={tool}
               icon={<BorderOutlined />}
-              title={withShortcut(t('tools.square'), shortcutLabels.addSquare)}
+              title={withShortcut(t('shortcuts.actions.addSquare'), shortcutLabels.addSquare)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="triangle"
               current={tool}
               icon={<TriangleMarkerIcon />}
-              title={withShortcut(t('tools.triangle'), shortcutLabels.addTriangle)}
+              title={withShortcut(t('shortcuts.actions.addTriangle'), shortcutLabels.addTriangle)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="cross"
               current={tool}
               icon={<CloseOutlined />}
-              title={withShortcut(t('tools.cross'), shortcutLabels.addCross)}
+              title={withShortcut(t('shortcuts.actions.addCross'), shortcutLabels.addCross)}
               onToolChange={onToolChange}
             />
           </>
@@ -155,7 +155,7 @@ export function EditorToolbar({
           tool="erase"
           current={tool}
           icon={<DeleteOutlined />}
-          title={withShortcut(t('tools.erase'), shortcutLabels.eraseMarkup)}
+          title={withShortcut(t('shortcuts.actions.eraseMarkup'), shortcutLabels.eraseMarkup)}
           onToolChange={onToolChange}
         />
       </Space.Compact>
@@ -173,12 +173,17 @@ export function EditorToolbar({
           onClick={onPrevious10}
         />
         <NavButton
-          title={t('nav.previous')}
+          title={withShortcut(t('shortcuts.actions.previousMove'), shortcutLabels.previousMove)}
           disabled={!canNavigatePrevious}
           icon={<BackwardOutlined />}
           onClick={onPrevious}
         />
-        <NavButton title={t('nav.next')} disabled={!canNavigateNext} icon={<ForwardOutlined />} onClick={onNext} />
+        <NavButton
+          title={withShortcut(t('shortcuts.actions.nextMoveCurrent'), shortcutLabels.nextMoveCurrent)}
+          disabled={!canNavigateNext}
+          icon={<ForwardOutlined />}
+          onClick={onNext}
+        />
         <NavButton
           title={t('nav.next10')}
           disabled={!canNavigateNext}

@@ -3,6 +3,7 @@ import {Button, Space} from 'antd';
 import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {useCallback, useEffect, useMemo, useRef, type ReactNode, type WheelEvent} from 'react';
 import {useTranslation} from 'react-i18next';
+import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
   cornerRadius,
   gutterWidth,
@@ -27,6 +28,7 @@ interface SgfTreePanelProps {
   onDelete: () => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
+  shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
 }
 
 export function SgfTreePanel({
@@ -39,6 +41,7 @@ export function SgfTreePanel({
   onDelete,
   onPreviousMove,
   onNextMove,
+  shortcutLabels = {},
 }: SgfTreePanelProps) {
   const {t} = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -140,25 +143,25 @@ export function SgfTreePanel({
       <div className="tree-panel-header">
         <Space.Compact>
           <TreeActionButton
-            title={t('treeActions.moveToMain')}
+            title={withShortcut(t('shortcuts.actions.moveBranchToMain'), shortcutLabels.moveBranchToMain)}
             disabled={selectedPath.length === 0}
             icon={<DoubleLeftOutlined />}
             onClick={onMoveToMain}
           />
           <TreeActionButton
-            title={t('treeActions.moveLeft')}
+            title={withShortcut(t('shortcuts.actions.moveBranchLeft'), shortcutLabels.moveBranchLeft)}
             disabled={selectedPath.length === 0}
             icon={<LeftOutlined />}
             onClick={onMoveLeft}
           />
           <TreeActionButton
-            title={t('treeActions.moveRight')}
+            title={withShortcut(t('shortcuts.actions.moveBranchRight'), shortcutLabels.moveBranchRight)}
             disabled={selectedPath.length === 0}
             icon={<RightOutlined />}
             onClick={onMoveRight}
           />
           <TreeActionButton
-            title={t('treeActions.delete')}
+            title={withShortcut(t('shortcuts.actions.deleteBranch'), shortcutLabels.deleteBranch)}
             disabled={selectedPath.length === 0}
             icon={<DeleteOutlined />}
             danger
@@ -186,6 +189,10 @@ export function SgfTreePanel({
       </div>
     </section>
   );
+}
+
+function withShortcut(title: string, shortcut: string | undefined): string {
+  return shortcut == null || shortcut === '' ? title : `${title} (${shortcut})`;
 }
 
 function isTreeStoneVisible(panel: HTMLDivElement, row: number): boolean {

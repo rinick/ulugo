@@ -9,3 +9,9 @@ export function isTextInputActive(): boolean {
     return true;
   return element instanceof HTMLElement && element.isContentEditable;
 }
+
+export function isModalOpen(): boolean {
+  return Array.from(window.document.querySelectorAll<HTMLElement>('.ant-modal-root .ant-modal-wrap')).some(
+    (element) => element.getClientRects().length > 0 && window.getComputedStyle(element).visibility !== 'hidden'
+  );
+}

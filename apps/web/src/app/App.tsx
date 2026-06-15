@@ -83,7 +83,7 @@ import {
   safeFileName,
   withImportedGameName,
 } from './gameRecordFileUtils';
-import {isTextInputActive} from './domUtils';
+import {isModalOpen, isTextInputActive} from './domUtils';
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
 import {formatConsoleTime} from './katagoConsoleUtils';
 import {getAppFontFamily} from './fonts';
@@ -551,6 +551,8 @@ export function App() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
+      if (isModalOpen()) return;
+
       const shortcutAction = shortcutActionForEvent(event, keyboardShortcuts);
       if (shortcutAction == null) return;
 
@@ -602,6 +604,9 @@ export function App() {
         case 'toolWhite':
           handleToolChange('white');
           break;
+        case 'replaceMove':
+          if (canReplaceMove) handleToolChange('replace');
+          break;
         case 'addLabel':
           handleToolChange('alphabet');
           break;
@@ -619,6 +624,18 @@ export function App() {
           break;
         case 'eraseMarkup':
           handleToolChange('erase');
+          break;
+        case 'moveBranchToMain':
+          if (path.length > 0) handleMoveBranchToMain();
+          break;
+        case 'moveBranchLeft':
+          if (path.length > 0) handleMoveBranchLeft();
+          break;
+        case 'moveBranchRight':
+          if (path.length > 0) handleMoveBranchRight();
+          break;
+        case 'deleteBranch':
+          if (path.length > 0) handleDeleteNode();
           break;
         case 'toggleShowCoordinates':
           setShowCoordinates((current) => !current);
@@ -675,6 +692,7 @@ export function App() {
     analysisSettings.showTopMoves,
     analysisSettings.stoneOverlay,
     boardSize,
+    canReplaceMove,
     capabilities.katago,
     currentAnalysis,
     document,
@@ -1180,6 +1198,7 @@ export function App() {
               onDelete={handleDeleteNode}
               onPreviousMove={() => navigatePrevious()}
               onNextMove={() => navigateNext()}
+              shortcutLabels={shortcutLabels}
             />
           </aside>
         </Content>

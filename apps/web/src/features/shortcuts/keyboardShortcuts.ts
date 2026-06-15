@@ -19,12 +19,17 @@ export type ShortcutActionId =
   | 'toolAuto'
   | 'toolBlack'
   | 'toolWhite'
+  | 'replaceMove'
   | 'addLabel'
   | 'addCircle'
   | 'addSquare'
   | 'addTriangle'
   | 'addCross'
   | 'eraseMarkup'
+  | 'moveBranchToMain'
+  | 'moveBranchLeft'
+  | 'moveBranchRight'
+  | 'deleteBranch'
   | 'toggleShowCoordinates'
   | 'toggleShowNextMove'
   | 'toggleShowTopMoves'
@@ -89,12 +94,17 @@ export const shortcutActions: ShortcutAction[] = [
   {id: 'toolAuto', labelKey: 'shortcuts.actions.toolAuto', defaultShortcut: shortcut('1')},
   {id: 'toolBlack', labelKey: 'shortcuts.actions.toolBlack', defaultShortcut: shortcut('2')},
   {id: 'toolWhite', labelKey: 'shortcuts.actions.toolWhite', defaultShortcut: shortcut('3')},
+  {id: 'replaceMove', labelKey: 'shortcuts.actions.replaceMove', defaultShortcut: null},
   {id: 'addLabel', labelKey: 'shortcuts.actions.addLabel', defaultShortcut: shortcut('4')},
   {id: 'addCircle', labelKey: 'shortcuts.actions.addCircle', defaultShortcut: shortcut('5')},
   {id: 'addSquare', labelKey: 'shortcuts.actions.addSquare', defaultShortcut: shortcut('6')},
   {id: 'addTriangle', labelKey: 'shortcuts.actions.addTriangle', defaultShortcut: shortcut('7')},
   {id: 'addCross', labelKey: 'shortcuts.actions.addCross', defaultShortcut: shortcut('8')},
   {id: 'eraseMarkup', labelKey: 'shortcuts.actions.eraseMarkup', defaultShortcut: shortcut('9')},
+  {id: 'moveBranchToMain', labelKey: 'shortcuts.actions.moveBranchToMain', defaultShortcut: shortcut('\\')},
+  {id: 'moveBranchLeft', labelKey: 'shortcuts.actions.moveBranchLeft', defaultShortcut: null},
+  {id: 'moveBranchRight', labelKey: 'shortcuts.actions.moveBranchRight', defaultShortcut: null},
+  {id: 'deleteBranch', labelKey: 'shortcuts.actions.deleteBranch', defaultShortcut: shortcut('Delete')},
   {id: 'toggleShowCoordinates', labelKey: 'shortcuts.actions.toggleShowCoordinates', defaultShortcut: shortcut('`')},
   {
     id: 'toggleShowNextMove',
