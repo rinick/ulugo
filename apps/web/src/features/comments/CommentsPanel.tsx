@@ -161,11 +161,7 @@ export const CommentsPanel = forwardRef<CommentsPanelHandle, CommentsPanelProps>
               </Button>
             </>
           ) : null}
-          <Button
-            size="small"
-            type={showComments && !showChart ? 'primary' : 'default'}
-            onClick={toggleComments}
-          >
+          <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={toggleComments}>
             {t('panels.comments')}
           </Button>
         </Space.Compact>
@@ -383,11 +379,7 @@ function AnalysisChart({
             <text className="analysis-chart-label score" x="2" y={negativeHalfScoreY + 4}>
               {`${scoreAxisLabel.bottom}${halfScoreScale}`}
             </text>
-            <text
-              className="analysis-chart-label score"
-              x="2"
-              y={height - padding.bottom + 4}
-            >
+            <text className="analysis-chart-label score" x="2" y={height - padding.bottom + 4}>
               {`${scoreAxisLabel.bottom}${scoreScale}`}
             </text>
           </>
@@ -416,12 +408,7 @@ function AnalysisChart({
           </text>
         ) : null}
         {currentMoveLabel == null ? null : (
-          <text
-            className="analysis-chart-label move current"
-            x={currentMoveLabel.x}
-            y={height - 3}
-            textAnchor="middle"
-          >
+          <text className="analysis-chart-label move current" x={currentMoveLabel.x} y={height - 3} textAnchor="middle">
             {currentMoveLabel.text}
           </text>
         )}
@@ -554,8 +541,8 @@ function AnalysisChartSummaryView({summary}: {summary: AnalysisChartSummary | nu
         <span>{formatWinrate(blackWinrate)}</span>
       </div>
       <div className={`analysis-chart-scorebox ${lossColor}`}>
-        <span>{formatLoss(summary.pointLoss)}</span>
-        <span>{formatWinrate(summary.winrateLoss)}</span>
+        <span>-{formatLoss(summary.pointLoss)}</span>
+        <span>-{formatWinrate(summary.winrateLoss)}</span>
       </div>
       <div className="analysis-chart-scorebox white">
         <span>W {scoreLead == null ? '-' : formatSignedScore(-scoreLead)}</span>

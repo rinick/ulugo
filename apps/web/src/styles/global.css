@@ -576,22 +576,28 @@ textarea,
 }
 
 .analysis-chart-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   align-items: center;
   gap: 8px;
   font-size: 11px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .analysis-chart-scorebox {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-grow: 1;
   gap: 8px;
   min-width: 0;
   padding: 5px 8px;
+  border-radius: 14px;
+}
+
+.analysis-chart-scorebox:first-child,
+.analysis-chart-scorebox:last-child {
+  width: 35%;
+  flex-grow: 0;
   border-radius: 4px;
 }
 
