@@ -17,15 +17,34 @@ interface KataGoSettings {
 }
 
 interface AnalysisSettings {
+  mode: 'review' | 'edit';
   moveDisplay: 'none' | 'score' | 'winrate' | 'absScore';
   stoneOverlay: 'dot' | 'number' | 'none';
   maxMoves: 1 | 5 | 20 | 'all';
   minVisits: number;
+  showMarkup: boolean;
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showScore: boolean;
+  showPointLoss: boolean;
+  showWinrate: boolean;
+  showComments: boolean;
   boardBackground: 'auto' | 'golden' | 'natural' | 'flat';
   autoAnalyze: boolean;
+  modeSettings: Record<'review' | 'edit', AnalysisModeSettings>;
+}
+
+interface AnalysisModeSettings {
+  stoneOverlay: 'dot' | 'number' | 'none';
+  showMarkup: boolean;
+  showNextMove: boolean;
+  showTopMoves: boolean;
+  showExpectedTerritory: boolean;
+  showScore: boolean;
+  showPointLoss: boolean;
+  showWinrate: boolean;
+  showComments: boolean;
 }
 
 const defaultKataGoSettings: KataGoSettings = {
@@ -39,15 +58,45 @@ const defaultKataGoSettings: KataGoSettings = {
 };
 
 const defaultAnalysisSettings: AnalysisSettings = {
+  mode: 'review',
   moveDisplay: 'score',
   stoneOverlay: 'dot',
   maxMoves: 5,
   minVisits: 50,
+  showMarkup: true,
   showNextMove: true,
   showTopMoves: true,
-  showExpectedTerritory: false,
+  showExpectedTerritory: true,
+  showScore: true,
+  showPointLoss: false,
+  showWinrate: true,
+  showComments: false,
   boardBackground: 'auto',
   autoAnalyze: true,
+  modeSettings: {
+    review: {
+      stoneOverlay: 'dot',
+      showMarkup: true,
+      showNextMove: true,
+      showTopMoves: true,
+      showExpectedTerritory: true,
+      showScore: true,
+      showPointLoss: false,
+      showWinrate: true,
+      showComments: false,
+    },
+    edit: {
+      stoneOverlay: 'none',
+      showMarkup: true,
+      showNextMove: false,
+      showTopMoves: false,
+      showExpectedTerritory: false,
+      showScore: false,
+      showPointLoss: false,
+      showWinrate: false,
+      showComments: true,
+    },
+  },
 };
 
 interface DownloadOption {
@@ -338,10 +387,47 @@ function normalizeAnalysisSettings(
 ): AnalysisSettings {
   const {topMoveDisplay, ...storedSettings} = settings;
   const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
+  const mode = settings.mode === 'edit' ? 'edit' : 'review';
+  const activeModeSettings = normalizeAnalysisModeSettings(
+    {
+      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+      showMarkup: settings.showMarkup,
+      showNextMove: settings.showNextMove,
+      showTopMoves: settings.showTopMoves,
+      showExpectedTerritory: settings.showExpectedTerritory,
+      showScore: settings.showScore,
+      showPointLoss: settings.showPointLoss,
+      showWinrate: settings.showWinrate,
+      showComments: settings.showComments,
+    },
+    defaultAnalysisSettings.modeSettings[mode]
+  );
+  const modeSettings = {
+    review: normalizeAnalysisModeSettings(settings.modeSettings?.review, defaultAnalysisSettings.modeSettings.review),
+    edit: normalizeAnalysisModeSettings(settings.modeSettings?.edit, defaultAnalysisSettings.modeSettings.edit),
+    [mode]: activeModeSettings,
+  };
   return {
     ...defaultAnalysisSettings,
     ...storedSettings,
-    stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+    mode,
+    ...activeModeSettings,
+    modeSettings,
+  };
+}
+
+function normalizeAnalysisModeSettings(
+  settings: Partial<AnalysisModeSettings> | undefined,
+  defaults: AnalysisModeSettings
+): AnalysisModeSettings {
+  const stoneOverlay = settings?.stoneOverlay;
+  return {
+    ...defaults,
+    ...settings,
+    stoneOverlay:
+      stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
+        ? stoneOverlay
+        : defaults.stoneOverlay,
   };
 }
 

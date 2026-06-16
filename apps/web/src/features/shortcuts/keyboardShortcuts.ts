@@ -32,7 +32,7 @@ export type ShortcutActionId =
   | 'deleteBranch'
   | 'toggleShowCoordinates'
   | 'toggleShowNextMove'
-  | 'toggleShowTopMoves'
+  | 'toggleReviewEditMode'
   | 'toggleDisplayDot'
   | 'toggleDisplayNumber'
   | 'toggleTerritory'
@@ -112,8 +112,8 @@ export const shortcutActions: ShortcutAction[] = [
     defaultShortcut: shortcut('q'),
   },
   {
-    id: 'toggleShowTopMoves',
-    labelKey: 'shortcuts.actions.toggleShowTopMoves',
+    id: 'toggleReviewEditMode',
+    labelKey: 'shortcuts.actions.toggleReviewEditMode',
     defaultShortcut: shortcut('w'),
     electronOnly: true,
   },
@@ -167,17 +167,27 @@ export function readKeyboardShortcuts(): KeyboardShortcutConfig {
   try {
     const value = localStorage.getItem(keyboardShortcutsStorageKey);
     if (value == null) return defaultKeyboardShortcuts;
-    const stored = JSON.parse(value) as Partial<Record<ShortcutActionId, KeyboardShortcut | null>>;
+    const stored = JSON.parse(value) as Partial<
+      Record<ShortcutActionId | 'toggleShowTopMoves', KeyboardShortcut | null>
+    >;
     return shortcutActions.reduce(
       (config, action) => ({
         ...config,
-        [action.id]: normalizeStoredShortcut(stored[action.id], action),
+        [action.id]: normalizeStoredShortcut(stored[action.id] ?? storedShortcutFallback(stored, action.id), action),
       }),
       {} as KeyboardShortcutConfig
     );
   } catch {
     return defaultKeyboardShortcuts;
   }
+}
+
+function storedShortcutFallback(
+  stored: Partial<Record<ShortcutActionId | 'toggleShowTopMoves', KeyboardShortcut | null>>,
+  actionId: ShortcutActionId
+): KeyboardShortcut | null | undefined {
+  if (actionId === 'toggleReviewEditMode') return stored.toggleShowTopMoves;
+  return undefined;
 }
 
 export function writeKeyboardShortcuts(config: KeyboardShortcutConfig): void {

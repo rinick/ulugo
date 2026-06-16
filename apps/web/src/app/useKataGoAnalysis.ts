@@ -1,5 +1,13 @@
 import {getNodeAtPath, samePath, type SgfDocument} from '@ulugo/sgf-core';
-import {defaultAnalysisSettings, type AnalysisChartPoint, type AnalysisSettings} from '@ulugo/analysis-core';
+import {
+  defaultAnalysisSettings,
+  defaultEditModeSettings,
+  defaultReviewModeSettings,
+  type AnalysisChartPoint,
+  type AnalysisMode,
+  type AnalysisModeSettings,
+  type AnalysisSettings,
+} from '@ulugo/analysis-core';
 import {
   buildKataGoQuery,
   defaultKataGoSettings,
@@ -29,6 +37,18 @@ const deepAnalysisVisits = 10_000_000;
 const maxFastAnalysisQueries = 2;
 const nextFastAnalysisCount = 5;
 const analysisSettingsStorageKey = 'ulugo.analysisSettings';
+const showMarkupStorageKey = 'ulugo.showMarkup';
+const modeSettingKeys = [
+  'stoneOverlay',
+  'showMarkup',
+  'showNextMove',
+  'showTopMoves',
+  'showExpectedTerritory',
+  'showScore',
+  'showPointLoss',
+  'showWinrate',
+  'showComments',
+] as const;
 
 interface UseKataGoAnalysisOptions {
   enabled: boolean;
@@ -202,19 +222,29 @@ export function useKataGoAnalysis({
     [enabled]
   );
 
-  const saveAnalysisSettings = useCallback((settings: AnalysisSettings): void => {
-    writeStoredAnalysisSettings(settings);
-    setAnalysisSettings(settings);
-  }, []);
-
-  const updateAnalysisSettings = useCallback((values: Partial<AnalysisSettings>): void => {
-    setAnalysisSettings((current) => {
-      const next = {...current, ...values};
+  const saveAnalysisSettings = useCallback(
+    (settings: AnalysisSettings): void => {
+      const next = normalizeAnalysisSettings(settings, enabled);
       writeStoredAnalysisSettings(next);
-      if (window.ulugo != null) void window.ulugo.analysis.saveSettings(next);
-      return next;
-    });
-  }, []);
+      setAnalysisSettings(next);
+    },
+    [enabled]
+  );
+
+  const updateAnalysisSettings = useCallback(
+    (values: Partial<AnalysisSettings>): void => {
+      setAnalysisSettings((current) => {
+        const next =
+          values.mode != null && values.mode !== current.mode
+            ? switchAnalysisMode(current, values.mode, enabled)
+            : normalizeAnalysisSettings(updateCurrentModeSettings(current, values), enabled);
+        writeStoredAnalysisSettings(next);
+        if (window.ulugo != null) void window.ulugo.analysis.saveSettings(next);
+        return next;
+      });
+    },
+    [enabled]
+  );
 
   const refreshKataGoSettings = useCallback(async (): Promise<KataGoSettings> => {
     if (!enabled || window.ulugo == null) return defaultKataGoSettings;
@@ -228,7 +258,7 @@ export function useKataGoAnalysis({
     void refreshKataGoSettings();
     window.ulugo.analysis
       .getSettings()
-      .then((settings) => saveAnalysisSettings({...defaultAnalysisSettings, ...settings}))
+      .then((settings) => saveAnalysisSettings(settings))
       .catch(() => undefined);
   }, [enabled, refreshKataGoSettings, saveAnalysisSettings]);
 
@@ -522,26 +552,18 @@ export function useKataGoAnalysis({
 function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
   const defaults: AnalysisSettings = enabled
     ? defaultAnalysisSettings
-    : {...defaultAnalysisSettings, boardBackground: 'golden'};
+    : {...defaultAnalysisSettings, mode: 'edit', ...defaultEditModeSettings, boardBackground: 'golden'};
 
   try {
     const value = localStorage.getItem(analysisSettingsStorageKey);
-    if (value == null) return defaults;
+    if (value == null) return normalizeAnalysisSettings(defaults, enabled);
     const stored = JSON.parse(value) as Partial<AnalysisSettings> & {
       stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
       topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
     };
-    const {topMoveDisplay, ...storedSettings} = stored;
-    const stoneOverlay = stored.stoneOverlay ?? topMoveDisplay ?? defaults.stoneOverlay;
-    const settings = {
-      ...defaults,
-      ...storedSettings,
-      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
-    };
-    if (!enabled && settings.boardBackground === 'auto') return {...settings, boardBackground: 'golden'};
-    return settings;
+    return normalizeAnalysisSettings({...defaults, ...stored}, enabled);
   } catch {
-    return defaults;
+    return normalizeAnalysisSettings(defaults, enabled);
   }
 }
 
@@ -550,6 +572,114 @@ function writeStoredAnalysisSettings(settings: AnalysisSettings): void {
     localStorage.setItem(analysisSettingsStorageKey, JSON.stringify(settings));
   } catch {
     // Ignore storage failures; settings still apply for this session.
+  }
+}
+
+function normalizeAnalysisSettings(
+  settings: Partial<AnalysisSettings> & {
+    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+  },
+  enabled: boolean
+): AnalysisSettings {
+  const storedMode: AnalysisMode = settings.mode === 'edit' ? 'edit' : 'review';
+  const mode: AnalysisMode = enabled ? storedMode : 'edit';
+  const modeDefaults = mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings;
+  const activeSource = mode === storedMode ? settings : (settings.modeSettings?.[mode] ?? {});
+  const stoneOverlay =
+    activeSource.stoneOverlay ??
+    (mode === storedMode ? settings.topMoveDisplay : undefined) ??
+    modeDefaults.stoneOverlay;
+  const showMarkup = activeSource.showMarkup ?? readLegacyShowMarkup() ?? modeDefaults.showMarkup;
+  const activeModeSettings = normalizeModeSettings(
+    {
+      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+      showMarkup,
+      showNextMove: activeSource.showNextMove,
+      showTopMoves: activeSource.showTopMoves,
+      showExpectedTerritory: activeSource.showExpectedTerritory,
+      showScore: activeSource.showScore,
+      showPointLoss: activeSource.showPointLoss,
+      showWinrate: activeSource.showWinrate,
+      showComments: activeSource.showComments,
+    },
+    modeDefaults
+  );
+  const modeSettings = {
+    review: normalizeModeSettings(settings.modeSettings?.review, defaultReviewModeSettings),
+    edit: normalizeModeSettings(settings.modeSettings?.edit, defaultEditModeSettings),
+    [mode]: activeModeSettings,
+  };
+  const normalized = {
+    ...defaultAnalysisSettings,
+    ...settings,
+    mode,
+    ...activeModeSettings,
+    modeSettings,
+  };
+  if (!enabled && normalized.boardBackground === 'auto') return {...normalized, boardBackground: 'golden'};
+  return normalized;
+}
+
+function normalizeModeSettings(
+  settings: Partial<AnalysisModeSettings> | undefined,
+  defaults: AnalysisModeSettings
+): AnalysisModeSettings {
+  const stoneOverlay = settings?.stoneOverlay;
+  return {
+    ...defaults,
+    ...settings,
+    stoneOverlay:
+      stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
+        ? stoneOverlay
+        : defaults.stoneOverlay,
+  };
+}
+
+function updateCurrentModeSettings(settings: AnalysisSettings, values: Partial<AnalysisSettings>): AnalysisSettings {
+  const next = {...settings, ...values};
+  const modeSettings = {...settings.modeSettings};
+  let changedModeSettings = false;
+
+  for (const key of modeSettingKeys) {
+    if (key in values) changedModeSettings = true;
+  }
+
+  if (changedModeSettings) {
+    modeSettings[settings.mode] = normalizeModeSettings(
+      Object.fromEntries(modeSettingKeys.map((key) => [key, next[key]])),
+      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+    );
+  }
+
+  return {...next, modeSettings};
+}
+
+function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMode, enabled: boolean): AnalysisSettings {
+  const modeSettings = {
+    ...settings.modeSettings,
+    [settings.mode]: normalizeModeSettings(
+      Object.fromEntries(modeSettingKeys.map((key) => [key, settings[key]])),
+      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+    ),
+  };
+  return normalizeAnalysisSettings(
+    {
+      ...settings,
+      mode,
+      ...modeSettings[mode],
+      modeSettings,
+    },
+    enabled
+  );
+}
+
+function readLegacyShowMarkup(): boolean | undefined {
+  try {
+    const value = localStorage.getItem(showMarkupStorageKey);
+    return value == null ? undefined : value === 'true';
+  } catch {
+    return undefined;
   }
 }
 

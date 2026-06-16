@@ -1,5 +1,6 @@
 import {
   CloseOutlined,
+  EditOutlined,
   FileAddOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
@@ -7,9 +8,23 @@ import {
   CheckCircleFilled,
   SaveOutlined,
   SettingOutlined,
+  StockOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import {Button, Checkbox, ConfigProvider, Dropdown, Input, Layout, Modal, Segmented, Space, message, theme} from 'antd';
+import {
+  Button,
+  Checkbox,
+  ConfigProvider,
+  Dropdown,
+  Input,
+  Layout,
+  Modal,
+  Radio,
+  Segmented,
+  Space,
+  message,
+  theme,
+} from 'antd';
 import type {MenuProps} from 'antd';
 import {
   addLabel,
@@ -46,7 +61,7 @@ import privacyPolicyUrl from '../../../../policies/privacy-policy.md?url';
 import termsOfServiceUrl from '../../../../policies/terms-of-service.md?url';
 import {GoogleAd} from '../features/ads/GoogleAd';
 import {GoBoard, type BoardVertexClickOptions} from '../features/board/GoBoard';
-import {CommentsPanel, type CommentsPanelHandle} from '../features/comments/CommentsPanel';
+import {CommentsPanel} from '../features/comments/CommentsPanel';
 import {GameInfoModal} from '../features/game-info/GameInfoModal';
 import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
@@ -92,7 +107,6 @@ import {useKataGoAnalysis} from './useKataGoAnalysis';
 
 const {Header, Content} = Layout;
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
-const showMarkupStorageKey = 'ulugo.showMarkup';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 
 interface ReplaceDocumentOptions {
@@ -123,9 +137,6 @@ export function App() {
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
   const [replaceMoveState, setReplaceMoveState] = useState<ReplaceMoveState | null>(null);
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
-  const [showMarkup, setShowMarkup] = useState(() =>
-    readStoredBoolean(showMarkupStorageKey, capabilities.platform === 'web')
-  );
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
   const [gameInfoOpen, setGameInfoOpen] = useState(false);
   const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
@@ -136,7 +147,6 @@ export function App() {
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const commentsPanelRef = useRef<CommentsPanelHandle>(null);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const pendingSetupPathRef = useRef<number[] | null>(null);
@@ -174,16 +184,8 @@ export function App() {
   }, [showCoordinates]);
 
   useEffect(() => {
-    writeStoredBoolean(showMarkupStorageKey, showMarkup);
-  }, [showMarkup]);
-
-  useEffect(() => {
     writeStoredBoolean(playStoneSoundStorageKey, playStoneSound);
   }, [playStoneSound]);
-
-  useEffect(() => {
-    if (!showMarkup && isMarkupTool(tool)) setTool('auto');
-  }, [showMarkup, tool]);
 
   const {
     analysisSettings,
@@ -215,6 +217,7 @@ export function App() {
     pendingSetupPathRef,
     startFailedMessage: t('analysis.startFailed'),
   });
+  const showMarkup = analysisSettings.showMarkup;
   const stoneOverlayDisplay =
     !capabilities.katago && analysisSettings.stoneOverlay === 'dot' ? 'number' : analysisSettings.stoneOverlay;
   const boardMoveNumberLimit = stoneOverlayDisplay === 'number' ? analysisSettings.maxMoves : 0;
@@ -225,6 +228,10 @@ export function App() {
   const appTitle = capabilities.platform === 'electron' ? t('app.electronTitle') : t('app.title');
   const blackPlayerName = gameInfo.PB.trim() === '' ? t('app.black') : gameInfo.PB;
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('app.white') : gameInfo.PW;
+
+  useEffect(() => {
+    if (!showMarkup && isMarkupTool(tool)) setTool('auto');
+  }, [showMarkup, tool]);
 
   const newMenuItems: MenuProps['items'] = boardSizes.map((size) => ({
     key: String(size),
@@ -443,8 +450,19 @@ export function App() {
     const importedDocument = withImportedGameName(parseGameRecord(text, fileName), fileName);
     branchMemoryRef.current.clear();
     setCurrentFile(metadata);
-    setAnalysisModeActive(capabilities.katago && analysisSettings.autoAnalyze);
+    setAnalysisModeActive(capabilities.katago && analysisSettings.mode === 'review' && analysisSettings.autoAnalyze);
     replaceDocument(importedDocument, [], {clearAnalysisCache: true});
+  }
+
+  function handleReviewEditModeChange(mode: AnalysisSettings['mode']): void {
+    if (mode === analysisSettings.mode) return;
+    updateAnalysisSettings({mode});
+    if (!capabilities.katago) return;
+    if (mode === 'edit') {
+      setAnalysisModeActive(false);
+    } else if (analysisSettings.autoAnalyze) {
+      setAnalysisModeActive(true);
+    }
   }
 
   function handleCommentChange(value: string): void {
@@ -643,8 +661,8 @@ export function App() {
         case 'toggleShowNextMove':
           updateAnalysisSettings({showNextMove: !analysisSettings.showNextMove});
           break;
-        case 'toggleShowTopMoves':
-          updateAnalysisSettings({showTopMoves: !analysisSettings.showTopMoves});
+        case 'toggleReviewEditMode':
+          handleReviewEditModeChange(analysisSettings.mode === 'review' ? 'edit' : 'review');
           break;
         case 'toggleDisplayDot':
           updateAnalysisSettings({stoneOverlay: analysisSettings.stoneOverlay === 'dot' ? 'none' : 'dot'});
@@ -656,16 +674,21 @@ export function App() {
           updateAnalysisSettings({showExpectedTerritory: !analysisSettings.showExpectedTerritory});
           break;
         case 'toggleScore':
-          commentsPanelRef.current?.toggleScore();
+          updateAnalysisSettings({showScore: !analysisSettings.showScore, showComments: false});
           break;
         case 'togglePointLoss':
-          commentsPanelRef.current?.togglePointLoss();
+          updateAnalysisSettings({showPointLoss: !analysisSettings.showPointLoss, showComments: false});
           break;
         case 'toggleWinrate':
-          commentsPanelRef.current?.toggleWinrate();
+          updateAnalysisSettings({showWinrate: !analysisSettings.showWinrate, showComments: false});
           break;
         case 'toggleComments':
-          commentsPanelRef.current?.toggleComments();
+          updateAnalysisSettings({
+            showScore: false,
+            showPointLoss: false,
+            showWinrate: false,
+            showComments: true,
+          });
           break;
         case 'toggleAnalysisMode':
           if (tool === 'replace') {
@@ -687,9 +710,15 @@ export function App() {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [
+    analysisSettings.autoAnalyze,
+    analysisSettings.mode,
     analysisSettings.showExpectedTerritory,
+    analysisSettings.showComments,
     analysisSettings.showNextMove,
+    analysisSettings.showPointLoss,
+    analysisSettings.showScore,
     analysisSettings.showTopMoves,
+    analysisSettings.showWinrate,
     analysisSettings.stoneOverlay,
     boardSize,
     canReplaceMove,
@@ -926,6 +955,9 @@ export function App() {
             defaultHoverBorderColor: '#dc8916',
             defaultHoverColor: '#dc8916',
           },
+          Radio: {
+            colorPrimary: '#dc8916',
+          },
         },
         token: {
           colorPrimary: '#f4b458',
@@ -1028,28 +1060,62 @@ export function App() {
             onLast={navigateToLast}
             extraEnd={
               <Space className="analysis-toolbar-options">
-                <span>{t('analysis.stoneOverlay')}</span>
-                <Segmented
-                  size="medium"
-                  shape="round"
-                  value={stoneOverlayDisplay}
-                  onChange={(value) =>
-                    updateAnalysisSettings({stoneOverlay: value as AnalysisSettings['stoneOverlay']})
-                  }
-                  options={
-                    capabilities.katago
-                      ? [
-                          {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis.dot')}},
-                          {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
-                          {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
-                        ]
-                      : [
-                          {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
-                          {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
-                        ]
-                  }
-                />
-                <Checkbox checked={showMarkup} onChange={(event) => setShowMarkup(event.target.checked)}>
+                {capabilities.katago ? (
+                  <span className="analysis-toolbar-option-group">
+                    <span>{t('analysis.mode')}</span>
+                    <Radio.Group
+                      size="medium"
+                      optionType="button"
+                      value={analysisSettings.mode}
+                      onChange={(event) => handleReviewEditModeChange(event.target.value as AnalysisSettings['mode'])}
+                      options={[
+                        {
+                          value: 'review',
+                          label: (
+                            <>
+                              <StockOutlined /> {t('analysis.reviewMode')}
+                            </>
+                          ),
+                        },
+                        {
+                          value: 'edit',
+                          label: (
+                            <>
+                              <EditOutlined /> {t('analysis.editMode')}
+                            </>
+                          ),
+                        },
+                      ]}
+                    />
+                  </span>
+                ) : null}
+                <span className="analysis-toolbar-option-group">
+                  <span>{t('analysis.stoneOverlay')}</span>
+                  <Segmented
+                    size="medium"
+                    shape="round"
+                    value={stoneOverlayDisplay}
+                    onChange={(value) =>
+                      updateAnalysisSettings({stoneOverlay: value as AnalysisSettings['stoneOverlay']})
+                    }
+                    options={
+                      capabilities.katago
+                        ? [
+                            {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis.dot')}},
+                            {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
+                          ]
+                        : [
+                            {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
+                          ]
+                    }
+                  />
+                </span>
+                <Checkbox
+                  checked={analysisSettings.showMarkup}
+                  onChange={(event) => updateAnalysisSettings({showMarkup: event.target.checked})}
+                >
                   {t('settings.showMarkup')}
                 </Checkbox>
                 <Checkbox
@@ -1058,17 +1124,6 @@ export function App() {
                 >
                   {t('analysis.nextMove')}
                 </Checkbox>
-                {capabilities.katago ? (
-                  <>
-                    <Checkbox
-                      checked={analysisSettings.showTopMoves}
-                      onChange={(event) => updateAnalysisSettings({showTopMoves: event.target.checked})}
-                    >
-                      {t('analysis.topMoves')}
-                    </Checkbox>
-                  </>
-                ) : null}
-
                 {capabilities.katago ? (
                   <Checkbox
                     checked={analysisSettings.showExpectedTerritory}
@@ -1173,15 +1228,18 @@ export function App() {
               </span>
             </section>
             <CommentsPanel
-              ref={commentsPanelRef}
               value={getComment(document, path)}
               onChange={handleCommentChange}
               showAnalysisControls={capabilities.katago}
-              analysisActive={analysisMode}
               chartData={analysisChartData}
               moveDisplay={analysisSettings.moveDisplay}
+              showScore={analysisSettings.showScore}
+              showPointLoss={analysisSettings.showPointLoss}
+              showWinrate={analysisSettings.showWinrate}
+              showComments={analysisSettings.showComments}
               selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
               chartSummary={analysisChartSummary}
+              onDisplayChange={updateAnalysisSettings}
               onPreviousMove={() => navigatePrevious()}
               onNextMove={() => navigateNext()}
               onSelectChartMove={(moveNumber) => {

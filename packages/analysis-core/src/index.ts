@@ -2,6 +2,7 @@ export type AnalysisDisplayMode = 'none' | 'score' | 'winrate' | 'absScore';
 export type AnalysisStoneOverlay = 'dot' | 'number' | 'none';
 export type AnalysisMoveLimit = 1 | 5 | 20 | 'all';
 export type BoardBackground = 'auto' | 'golden' | 'natural' | 'flat';
+export type AnalysisMode = 'review' | 'edit';
 
 export interface KataGoRootInfo {
   scoreLead?: number;
@@ -34,27 +35,80 @@ export interface KataGoAnalysisResult {
 }
 
 export interface AnalysisSettings {
+  mode: AnalysisMode;
   moveDisplay: AnalysisDisplayMode;
   stoneOverlay: AnalysisStoneOverlay;
   maxMoves: AnalysisMoveLimit;
   minVisits: number;
+  showMarkup: boolean;
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showScore: boolean;
+  showPointLoss: boolean;
+  showWinrate: boolean;
+  showComments: boolean;
   boardBackground: BoardBackground;
   autoAnalyze: boolean;
+  modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
-export const defaultAnalysisSettings: AnalysisSettings = {
-  moveDisplay: 'score',
+export interface AnalysisModeSettings {
+  stoneOverlay: AnalysisStoneOverlay;
+  showMarkup: boolean;
+  showNextMove: boolean;
+  showTopMoves: boolean;
+  showExpectedTerritory: boolean;
+  showScore: boolean;
+  showPointLoss: boolean;
+  showWinrate: boolean;
+  showComments: boolean;
+}
+
+export const defaultReviewModeSettings: AnalysisModeSettings = {
   stoneOverlay: 'dot',
-  maxMoves: 5,
-  minVisits: 50,
+  showMarkup: true,
   showNextMove: true,
   showTopMoves: true,
+  showExpectedTerritory: true,
+  showScore: true,
+  showPointLoss: false,
+  showWinrate: true,
+  showComments: false,
+};
+
+export const defaultEditModeSettings: AnalysisModeSettings = {
+  stoneOverlay: 'none',
+  showMarkup: true,
+  showNextMove: false,
+  showTopMoves: false,
   showExpectedTerritory: false,
+  showScore: false,
+  showPointLoss: false,
+  showWinrate: false,
+  showComments: true,
+};
+
+export const defaultAnalysisSettings: AnalysisSettings = {
+  mode: 'review',
+  moveDisplay: 'score',
+  stoneOverlay: defaultReviewModeSettings.stoneOverlay,
+  maxMoves: 5,
+  minVisits: 50,
+  showMarkup: defaultReviewModeSettings.showMarkup,
+  showNextMove: defaultReviewModeSettings.showNextMove,
+  showTopMoves: defaultReviewModeSettings.showTopMoves,
+  showExpectedTerritory: defaultReviewModeSettings.showExpectedTerritory,
+  showScore: defaultReviewModeSettings.showScore,
+  showPointLoss: defaultReviewModeSettings.showPointLoss,
+  showWinrate: defaultReviewModeSettings.showWinrate,
+  showComments: defaultReviewModeSettings.showComments,
   boardBackground: 'auto',
   autoAnalyze: true,
+  modeSettings: {
+    review: defaultReviewModeSettings,
+    edit: defaultEditModeSettings,
+  },
 };
 
 export interface AnalysisChartPoint {

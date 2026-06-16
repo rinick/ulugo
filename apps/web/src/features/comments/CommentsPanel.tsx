@@ -1,6 +1,6 @@
 import {Button, Empty, Input, Space} from 'antd';
 import type {TextAreaRef} from 'antd/es/input/TextArea';
-import {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import type {MouseEvent, WheelEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
@@ -9,21 +9,18 @@ interface CommentsPanelProps {
   value: string;
   onChange: (value: string) => void;
   showAnalysisControls?: boolean;
-  analysisActive?: boolean;
   chartData?: AnalysisChartPoint[];
   moveDisplay?: AnalysisSettings['moveDisplay'];
+  showScore: boolean;
+  showPointLoss: boolean;
+  showWinrate: boolean;
+  showComments: boolean;
   selectedMoveNumber?: number | null;
   chartSummary?: AnalysisChartSummary | null;
+  onDisplayChange: (values: Partial<AnalysisSettings>) => void;
   onPreviousMove?: () => void;
   onNextMove?: () => void;
   onSelectChartMove?: (moveNumber: number) => void;
-}
-
-export interface CommentsPanelHandle {
-  toggleScore: () => void;
-  togglePointLoss: () => void;
-  toggleWinrate: () => void;
-  toggleComments: () => void;
 }
 
 interface AnalysisChartSummary {
@@ -59,28 +56,24 @@ interface ScoreLineRun {
   points: PlotPoint[];
 }
 
-export const CommentsPanel = forwardRef<CommentsPanelHandle, CommentsPanelProps>(function CommentsPanel(
-  {
-    value,
-    onChange,
-    showAnalysisControls = false,
-    analysisActive = false,
-    chartData = [],
-    moveDisplay = 'score',
-    selectedMoveNumber = null,
-    chartSummary = null,
-    onPreviousMove,
-    onNextMove,
-    onSelectChartMove,
-  },
-  ref
-) {
+export function CommentsPanel({
+  value,
+  onChange,
+  showAnalysisControls = false,
+  chartData = [],
+  moveDisplay = 'score',
+  showScore,
+  showPointLoss,
+  showWinrate,
+  showComments,
+  selectedMoveNumber = null,
+  chartSummary = null,
+  onDisplayChange,
+  onPreviousMove,
+  onNextMove,
+  onSelectChartMove,
+}: CommentsPanelProps) {
   const {t} = useTranslation();
-  const [showScore, setShowScore] = useState(false);
-  const [showWinrate, setShowWinrate] = useState(false);
-  const [showPointLoss, setShowPointLoss] = useState(false);
-  const [showComments, setShowComments] = useState(true);
-  const previousAnalysisActiveRef = useRef(false);
   const commentInputRef = useRef<TextAreaRef>(null);
   const pendingCommentFocusRef = useRef(false);
   const showChart = showAnalysisControls && (showScore || showWinrate || showPointLoss);
@@ -92,42 +85,15 @@ export const CommentsPanel = forwardRef<CommentsPanelHandle, CommentsPanelProps>
     (showWinrate && winrateData.length > 0) ||
     (showPointLoss && pointLossData.length > 0);
 
-  useEffect(() => {
-    if (analysisActive && !previousAnalysisActiveRef.current && !showScore && !showWinrate && !showPointLoss) {
-      setShowComments(false);
-      setShowScore(true);
-    }
-    previousAnalysisActiveRef.current = analysisActive;
-  }, [analysisActive, showPointLoss, showScore, showWinrate]);
-
-  const showOnlyComments = useCallback(() => {
+  function showOnlyComments(): void {
     pendingCommentFocusRef.current = true;
     if (showComments && !showChart) commentInputRef.current?.focus();
-    setShowScore(false);
-    setShowPointLoss(false);
-    setShowWinrate(false);
-    setShowComments(true);
-  }, [showChart, showComments]);
+    onDisplayChange({showScore: false, showPointLoss: false, showWinrate: false, showComments: true});
+  }
 
-  const toggleComments = useCallback(() => {
-    showOnlyComments();
-  }, [showOnlyComments]);
-
-  const toggleChart = useCallback((setter: (updater: (current: boolean) => boolean) => void) => {
-    setShowComments(false);
-    setter((current) => !current);
-  }, []);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      toggleScore: () => toggleChart(setShowScore),
-      togglePointLoss: () => toggleChart(setShowPointLoss),
-      toggleWinrate: () => toggleChart(setShowWinrate),
-      toggleComments,
-    }),
-    [toggleChart, toggleComments]
-  );
+  function toggleChart(key: 'showScore' | 'showPointLoss' | 'showWinrate', value: boolean): void {
+    onDisplayChange({showComments: false, [key]: !value});
+  }
 
   useEffect(() => {
     if (!pendingCommentFocusRef.current || !showComments || showChart) return;
@@ -142,26 +108,30 @@ export const CommentsPanel = forwardRef<CommentsPanelHandle, CommentsPanelProps>
         <Space.Compact>
           {showAnalysisControls ? (
             <>
-              <Button size="small" type={showScore ? 'primary' : 'default'} onClick={() => toggleChart(setShowScore)}>
+              <Button
+                size="small"
+                type={showScore ? 'primary' : 'default'}
+                onClick={() => toggleChart('showScore', showScore)}
+              >
                 {t('analysis.score')}
               </Button>
               <Button
                 size="small"
                 type={showPointLoss ? 'primary' : 'default'}
-                onClick={() => toggleChart(setShowPointLoss)}
+                onClick={() => toggleChart('showPointLoss', showPointLoss)}
               >
                 {t('analysis.pointLoss')}
               </Button>
               <Button
                 size="small"
                 type={showWinrate ? 'primary' : 'default'}
-                onClick={() => toggleChart(setShowWinrate)}
+                onClick={() => toggleChart('showWinrate', showWinrate)}
               >
                 {t('analysis.winrate')}
               </Button>
             </>
           ) : null}
-          <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={toggleComments}>
+          <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={showOnlyComments}>
             {t('panels.comments')}
           </Button>
         </Space.Compact>
@@ -198,7 +168,7 @@ export const CommentsPanel = forwardRef<CommentsPanelHandle, CommentsPanelProps>
       </div>
     </section>
   );
-});
+}
 
 function AnalysisChart({
   scoreData,

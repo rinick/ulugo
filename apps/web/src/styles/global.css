@@ -131,8 +131,15 @@ textarea,
 
 .analysis-toolbar-options {
   margin-left: auto;
+  gap: 12px;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.analysis-toolbar-option-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .analysis-toolbar-options .ant-checkbox-wrapper {
@@ -305,7 +312,7 @@ textarea,
 }
 
 .katago-console-source.ulugo {
-  color: #2563eb;
+  color: #cf8926;
 }
 
 .katago-console-source.katago {
