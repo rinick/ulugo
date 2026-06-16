@@ -1,15 +1,16 @@
 import {
   CloseOutlined,
   EditOutlined,
+  FieldBinaryOutlined,
   FileAddOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
-  NumberOutlined,
   CheckCircleFilled,
   SaveOutlined,
   SettingOutlined,
   StockOutlined,
   ThunderboltOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -1030,7 +1031,7 @@ export function App() {
                 {t('menu.editGameInfo')}
               </Button>
               {capabilities.katago ? (
-                <Button size="small" icon={<SettingOutlined />} onClick={() => setKataGoSettingsOpen(true)}>
+                <Button size="small" icon={<ToolOutlined />} onClick={() => setKataGoSettingsOpen(true)}>
                   {t('katago.button')}
                 </Button>
               ) : null}
@@ -1102,11 +1103,19 @@ export function App() {
                       capabilities.katago
                         ? [
                             {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis.dot')}},
-                            {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                            {
+                              value: 'number',
+                              icon: <FieldBinaryOutlined />,
+                              tooltip: {title: t('analysis.moveNumber')},
+                            },
                             {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
                           ]
                         : [
-                            {value: 'number', icon: <NumberOutlined />, tooltip: {title: t('analysis.moveNumber')}},
+                            {
+                              value: 'number',
+                              icon: <FieldBinaryOutlined />,
+                              tooltip: {title: t('analysis.moveNumber')},
+                            },
                             {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
                           ]
                     }
