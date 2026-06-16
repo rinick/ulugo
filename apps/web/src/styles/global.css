@@ -142,6 +142,12 @@ textarea,
   gap: 4px;
 }
 
+.analysis-toolbar-option-group > .ant-segmented-shape-round .ant-segmented-item-label {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
 .analysis-toolbar-options .ant-checkbox-wrapper {
   font-size: 12px;
 }

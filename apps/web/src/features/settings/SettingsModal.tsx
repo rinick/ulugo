@@ -59,7 +59,9 @@ export function SettingsModal({
         setMinVisitsDraft(next.minVisits);
         onAnalysisSettingsChange(next);
       })
-      .catch((error: unknown) => message.error(error instanceof Error ? error.message : t('analysis.loadFailed')))
+      .catch((error: unknown) =>
+        message.error(error instanceof Error ? error.message : t('analysisSettingsLoadFailed'))
+      )
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -81,12 +83,12 @@ export function SettingsModal({
   }
 
   return (
-    <Modal title={t('settings.title')} open={open} onCancel={onCancel} footer={null} width={420} destroyOnHidden>
+    <Modal title={t('settings')} open={open} onCancel={onCancel} footer={null} width={420} destroyOnHidden>
       <Button block onClick={onKeyboardShortcutsClick}>
-        {t('shortcuts.button')}
+        {t('keyboardShortcuts')}
       </Button>
       <Form form={form} layout="vertical" disabled={loading} initialValues={defaultAnalysisSettings}>
-        <Form.Item label={t('menu.language')}>
+        <Form.Item label={t('language')}>
           <Select
             size="small"
             value={language}
@@ -97,26 +99,26 @@ export function SettingsModal({
         </Form.Item>
         <Form.Item>
           <div className="app-settings-row">
-            <span>{t('menu.coordinates')}</span>
+            <span>{t('showCoordinates')}</span>
             <Switch size="small" checked={showCoordinates} onChange={onShowCoordinatesChange} />
           </div>
         </Form.Item>
         <Form.Item>
           <div className="app-settings-row">
-            <span>{t('settings.playStoneSound')}</span>
+            <span>{t('playStoneSound')}</span>
             <Switch size="small" checked={playStoneSound} onChange={onPlayStoneSoundChange} />
           </div>
         </Form.Item>
-        <Form.Item label={t('settings.boardBackground')}>
+        <Form.Item label={t('boardBackground')}>
           <Select
             size="small"
             value={settings.boardBackground}
             onChange={(value) => updateSettings({boardBackground: value as AnalysisSettings['boardBackground']})}
             options={[
-              ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('settings.boardBackgroundAuto')}] : []),
-              {value: 'golden', label: t('settings.boardBackgroundGolden')},
-              {value: 'natural', label: t('settings.boardBackgroundNatural')},
-              {value: 'flat', label: t('settings.boardBackgroundFlat')},
+              ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('auto')}] : []),
+              {value: 'golden', label: t('golden')},
+              {value: 'natural', label: t('natural')},
+              {value: 'flat', label: t('flat')},
             ]}
           />
         </Form.Item>
@@ -127,22 +129,22 @@ export function SettingsModal({
                 checked={settings.autoAnalyze}
                 onChange={(event) => updateSettings({autoAnalyze: event.target.checked})}
               >
-                {t('analysis.autoAnalyze')}
+                {t('autoAnalyze')}
               </Checkbox>
             </Form.Item>
-            <Form.Item label={t('analysis.moveDisplay')}>
+            <Form.Item label={t('topMoveOverlay')}>
               <Select
                 size="small"
                 value={settings.moveDisplay}
                 onChange={(value) => updateSettings({moveDisplay: value as AnalysisSettings['moveDisplay']})}
                 options={[
-                  {value: 'score', label: t('analysis.score')},
-                  {value: 'winrate', label: t('analysis.winrate')},
-                  {value: 'absScore', label: t('analysis.absoluteScore')},
+                  {value: 'score', label: t('scoreChange')},
+                  {value: 'winrate', label: t('winRateChange')},
+                  {value: 'absScore', label: t('value')},
                 ]}
               />
             </Form.Item>
-            <Form.Item label={t('analysis.minVisits')}>
+            <Form.Item label={t('minVisitsForTopMoveOverlay')}>
               <InputNumber
                 size="small"
                 min={1}
@@ -154,7 +156,7 @@ export function SettingsModal({
             </Form.Item>
           </>
         ) : null}
-        <Form.Item label={t('analysis.stoneOverlayCount')}>
+        <Form.Item label={t('stoneOverlayCount')}>
           <Select
             size="small"
             value={settings.maxMoves}
@@ -163,7 +165,7 @@ export function SettingsModal({
               {value: 1, label: '1'},
               {value: 5, label: '5'},
               {value: 20, label: '20'},
-              {value: 'all', label: t('moveNumbers.all')},
+              {value: 'all', label: t('all')},
             ]}
           />
         </Form.Item>

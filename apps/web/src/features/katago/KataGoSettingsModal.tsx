@@ -45,7 +45,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
           void applyInstalledPath('model', selectedModelOption.installedPath);
         }
       })
-      .catch((error: unknown) => message.error(error instanceof Error ? error.message : t('katago.loadFailed')))
+      .catch((error: unknown) => message.error(error instanceof Error ? error.message : t('katagoSettingsLoadFailed')))
       .finally(() => setLoading(false));
   }, [form, open, t]);
 
@@ -56,7 +56,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
 
   async function browse(field: keyof KataGoSettings): Promise<void> {
     if (window.ulugo == null) return;
-    const selected = await window.ulugo.selectFile({title: t(`katago.${field}`)});
+    const selected = await window.ulugo.selectFile({title: t(katagoFieldTitleKey(field))});
     if (selected != null) form.setFieldValue(field, selected);
   }
 
@@ -67,7 +67,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       setSaving(true);
       const values = await form.validateFields();
       await window.ulugo.katago.saveSettings({...defaultKataGoSettings, ...values});
-      message.success(t('katago.saved'));
+      message.success(t('katagoSettingsSaved'));
       onCancel();
     } catch (error) {
       if (error instanceof Error) message.error(error.message);
@@ -108,7 +108,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
 
     if (option?.installedPath != null) {
       await applyInstalledPath(kind, option.installedPath);
-      message.success(t(kind === 'katago' ? 'katago.katagoSelected' : 'katago.modelSelected'));
+      message.success(t(kind === 'katago' ? 'katagoSelected' : 'modelSelected'));
       return;
     }
 
@@ -120,9 +120,9 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       const options = await window.ulugo.katago.getDownloadOptions();
       setKataGoOptions(options.katago);
       setModelOptions(options.models);
-      message.success(t(kind === 'katago' ? 'katago.katagoDownloaded' : 'katago.modelDownloaded'));
+      message.success(t(kind === 'katago' ? 'katagoDownloaded' : 'modelDownloaded'));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('katago.downloadFailed'));
+      message.error(error instanceof Error ? error.message : t('downloadFailed'));
     } finally {
       setDownloading(null);
     }
@@ -135,33 +135,33 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       const values = await form.validateFields();
       const settings = await window.ulugo.katago.saveSettings({...defaultKataGoSettings, ...values, configPath: ''});
       form.setFieldsValue(settings);
-      message.success(t('katago.configCreated'));
+      message.success(t('katagoConfigCreated'));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('katago.configFailed'));
+      message.error(error instanceof Error ? error.message : t('katagoConfigFailed'));
     }
   }
 
   return (
     <Modal
-      title={t('katago.title')}
+      title={t('aiConfig')}
       open={open}
       onCancel={onCancel}
       onOk={() => void handleSave()}
-      okText={t('action.save')}
+      okText={t('save')}
       confirmLoading={saving}
       width={720}
       destroyOnHidden
     >
       <Form form={form} layout="vertical" disabled={loading} initialValues={defaultKataGoSettings}>
         <Typography.Text className="settings-help" type="secondary">
-          {t('katago.help')}
+          {t('katagoHelp')}
         </Typography.Text>
-        <PathField name="executablePath" label={t('katago.executablePath')} onBrowse={browse} />
-        <PathField name="modelPath" label={t('katago.modelPath')} onBrowse={browse} />
+        <PathField name="executablePath" label={t('katagoExecutable')} onBrowse={browse} />
+        <PathField name="modelPath" label={t('modelFile')} onBrowse={browse} />
         <PathField
           name="configPath"
-          label={t('katago.configPath')}
-          placeholder={t('katago.configPlaceholder')}
+          label={t('katagoConfig')}
+          placeholder={t('autoCreatedIfEmpty')}
           onBrowse={browse}
           onAuto={() => void handleAutoConfig()}
         />
@@ -175,9 +175,9 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
               onChange={(value) => void handleSelectDownloadOption('katago', value)}
               options={katagoOptions.map((option) => ({
                 value: option.id,
-                label: downloadOptionLabel(option, t('katago.installed')),
+                label: downloadOptionLabel(option, t('installed')),
               }))}
-              placeholder={t('katago.noKataGoDownload')}
+              placeholder={t('noKataGoDownload')}
             />
             <Button
               size="small"
@@ -187,8 +187,8 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
             >
               {downloadButtonText(
                 katagoOptions.find((option) => option.id === selectedKataGo),
-                t('katago.useInstalled'),
-                t('katago.downloadKataGo')
+                t('useInstalled'),
+                t('downloadKataGo')
               )}
             </Button>
           </Space.Compact>
@@ -201,7 +201,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
               onChange={(value) => void handleSelectDownloadOption('model', value)}
               options={modelOptions.map((option) => ({
                 value: option.id,
-                label: downloadOptionLabel(option, t('katago.installed')),
+                label: downloadOptionLabel(option, t('installed')),
               }))}
             />
             <Button
@@ -212,8 +212,8 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
             >
               {downloadButtonText(
                 modelOptions.find((option) => option.id === selectedModel),
-                t('katago.useInstalled'),
-                t('katago.downloadModels')
+                t('useInstalled'),
+                t('downloadModels')
               )}
             </Button>
           </Space.Compact>
@@ -230,17 +230,17 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
             />
           </div>
         ) : null}
-        <Form.Item name="altCommand" label={t('katago.altCommand')}>
+        <Form.Item name="altCommand" label={t('alternativeCommand')}>
           <Input size="small" />
         </Form.Item>
         <div className="katago-settings-grid">
-          <Form.Item name="maxVisits" label={t('katago.maxVisits')}>
+          <Form.Item name="maxVisits" label={t('maxVisits')}>
             <InputNumber size="small" min={1} />
           </Form.Item>
-          <Form.Item name="fastVisits" label={t('katago.fastVisits')}>
+          <Form.Item name="fastVisits" label={t('fastVisits')}>
             <InputNumber size="small" min={1} />
           </Form.Item>
-          <Form.Item name="wideRootNoise" label={t('katago.wideRootNoise')}>
+          <Form.Item name="wideRootNoise" label={t('wideRootNoise')}>
             <InputNumber size="small" min={0} max={1} step={0.01} />
           </Form.Item>
         </div>
@@ -269,6 +269,13 @@ function downloadButtonText(
   return option?.installedPath == null ? downloadText : installedText;
 }
 
+function katagoFieldTitleKey(field: keyof KataGoSettings): string {
+  if (field === 'executablePath') return 'katagoExecutable';
+  if (field === 'modelPath') return 'modelFile';
+  if (field === 'configPath') return 'katagoConfig';
+  return 'alternativeCommand';
+}
+
 function PathField({
   name,
   label,
@@ -289,11 +296,11 @@ function PathField({
       <Space.Compact className="path-field">
         <Input size="small" placeholder={placeholder} />
         <Button size="small" onClick={() => void onBrowse(name)}>
-          {t('action.browse')}
+          {t('browse')}
         </Button>
         {onAuto != null ? (
           <Button size="small" onClick={onAuto}>
-            {t('action.auto')}
+            {t('auto')}
           </Button>
         ) : null}
       </Space.Compact>

@@ -143,25 +143,25 @@ export function SgfTreePanel({
       <div className="tree-panel-header">
         <Space.Compact>
           <TreeActionButton
-            title={withShortcut(t('shortcuts.actions.moveBranchToMain'), shortcutLabels.moveBranchToMain)}
+            title={withShortcut(t('moveBranchToMain'), shortcutLabels.moveBranchToMain)}
             disabled={selectedPath.length === 0}
             icon={<DoubleLeftOutlined />}
             onClick={onMoveToMain}
           />
           <TreeActionButton
-            title={withShortcut(t('shortcuts.actions.moveBranchLeft'), shortcutLabels.moveBranchLeft)}
+            title={withShortcut(t('moveBranchLeft'), shortcutLabels.moveBranchLeft)}
             disabled={selectedPath.length === 0}
             icon={<LeftOutlined />}
             onClick={onMoveLeft}
           />
           <TreeActionButton
-            title={withShortcut(t('shortcuts.actions.moveBranchRight'), shortcutLabels.moveBranchRight)}
+            title={withShortcut(t('moveBranchRight'), shortcutLabels.moveBranchRight)}
             disabled={selectedPath.length === 0}
             icon={<RightOutlined />}
             onClick={onMoveRight}
           />
           <TreeActionButton
-            title={withShortcut(t('shortcuts.actions.deleteBranch'), shortcutLabels.deleteBranch)}
+            title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}
             disabled={selectedPath.length === 0}
             icon={<DeleteOutlined />}
             danger

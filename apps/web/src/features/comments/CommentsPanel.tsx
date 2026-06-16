@@ -113,26 +113,26 @@ export function CommentsPanel({
                 type={showScore ? 'primary' : 'default'}
                 onClick={() => toggleChart('showScore', showScore)}
               >
-                {t('analysis.score')}
+                {t('score')}
               </Button>
               <Button
                 size="small"
                 type={showPointLoss ? 'primary' : 'default'}
                 onClick={() => toggleChart('showPointLoss', showPointLoss)}
               >
-                {t('analysis.pointLoss')}
+                {t('pointLoss')}
               </Button>
               <Button
                 size="small"
                 type={showWinrate ? 'primary' : 'default'}
                 onClick={() => toggleChart('showWinrate', showWinrate)}
               >
-                {t('analysis.winrate')}
+                {t('winRate')}
               </Button>
             </>
           ) : null}
           <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={showOnlyComments}>
-            {t('panels.comments')}
+            {t('comments')}
           </Button>
         </Space.Compact>
       </div>
@@ -152,7 +152,7 @@ export function CommentsPanel({
               onSelectMove={onSelectChartMove}
             />
           ) : (
-            <Empty className="analysis-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('analysis.noData')} />
+            <Empty className="analysis-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('noAnalysisData')} />
           )
         ) : showComments ? (
           <Input.TextArea
@@ -163,7 +163,7 @@ export function CommentsPanel({
             autoSize={false}
           />
         ) : (
-          <Empty className="analysis-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('panels.comments')} />
+          <Empty className="analysis-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('comments')} />
         )}
       </div>
     </section>

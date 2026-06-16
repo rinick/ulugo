@@ -38,24 +38,24 @@ export function GameInfoModal({open, values, onCancel, onSave}: GameInfoModalPro
 
   return (
     <Modal
-      title={t('panels.gameInfo')}
+      title={t('gameInformation')}
       open={open}
       onCancel={onCancel}
       onOk={() => void handleOk()}
-      okText={t('action.ok')}
-      cancelText={t('action.cancel')}
+      okText={t('ok')}
+      cancelText={t('cancel')}
       width={720}
     >
       <Form form={form} layout="vertical" className="game-info-form">
         {gameInfoKeys.map((key) => (
-          <Form.Item key={key} name={key} label={t(`gameInfo.${key}`)} rules={validationRules(key, t)}>
+          <Form.Item key={key} name={key} label={t(key)} rules={validationRules(key, t)}>
             {key === 'RU' ? (
               <Select
                 size="small"
                 allowClear
                 options={ruleOptions.map((option) => ({
                   value: option.value,
-                  label: t(`gameInfo.rules.${option.labelKey}`),
+                  label: t(option.labelKey),
                 }))}
               />
             ) : (
@@ -77,7 +77,7 @@ function validationRules(key: string, t: TFunction): Rule[] {
           const komi = Number(value.trim().replace(',', '.'));
           if (Number.isFinite(komi) && komi >= -150 && komi <= 150 && Number.isInteger(komi * 2)) return;
           throw new Error(
-            t('gameInfo.invalidKomi', {
+            t('invalidKomi', {
               defaultValue: 'Komi must be an integer or half-integer between -150 and 150.',
             })
           );
@@ -94,7 +94,7 @@ function validationRules(key: string, t: TFunction): Rule[] {
           const handicap = Number(value.trim());
           if (Number.isInteger(handicap) && handicap >= 0 && handicap <= 99) return;
           throw new Error(
-            t('gameInfo.invalidHandicap', {
+            t('invalidHandicap', {
               defaultValue: 'Handicap must be a whole number from 0 to 99.',
             })
           );
@@ -109,7 +109,7 @@ function validationRules(key: string, t: TFunction): Rule[] {
         validator: async (_rule, value: unknown) => {
           if (typeof value !== 'string' || value.trim() === '' || ruleKeys.has(ruleKey(value))) return;
           throw new Error(
-            t('gameInfo.invalidRules', {
+            t('invalidRules', {
               defaultValue: 'Choose one of the supported rule sets.',
             })
           );

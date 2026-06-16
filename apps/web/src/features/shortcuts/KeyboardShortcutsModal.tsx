@@ -73,18 +73,18 @@ export function KeyboardShortcutsModal({
 
   return (
     <Modal
-      title={t('shortcuts.title')}
+      title={t('keyboardShortcuts')}
       open={open}
       onCancel={onCancel}
       width={640}
       destroyOnHidden
       footer={
         <div className="keyboard-shortcuts-footer">
-          <Button onClick={() => setDraft(defaultKeyboardShortcuts)}>{t('shortcuts.defaults')}</Button>
+          <Button onClick={() => setDraft(defaultKeyboardShortcuts)}>{t('default')}</Button>
           <Space>
-            <Button onClick={onCancel}>{t('action.cancel')}</Button>
+            <Button onClick={onCancel}>{t('cancel')}</Button>
             <Button type="primary" onClick={() => onApply(draft)}>
-              {t('shortcuts.apply')}
+              {t('apply')}
             </Button>
           </Space>
         </div>
@@ -97,11 +97,11 @@ export function KeyboardShortcutsModal({
             <Space.Compact>
               <Button className="keyboard-shortcuts-key" onClick={() => setRecordingAction(action.id)}>
                 {recordingAction === action.id
-                  ? t('shortcuts.pressShortcut')
-                  : shortcutLabel(draft[action.id]) || t('shortcuts.unassigned')}
+                  ? t('pressShortcut')
+                  : shortcutLabel(draft[action.id]) || t('unassigned')}
               </Button>
               <Button onClick={() => setDraft((current) => assignKeyboardShortcut(current, action.id, null))}>
-                {t('action.clear')}
+                {t('clear')}
               </Button>
             </Space.Compact>
           </div>

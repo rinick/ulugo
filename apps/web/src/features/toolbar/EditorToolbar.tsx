@@ -64,17 +64,12 @@ export function EditorToolbar({
 
   return (
     <div className="editor-toolbar">
-      <Button
-        size="middle"
-        icon={<PalmIcon />}
-        title={withShortcut(t('shortcuts.actions.pass'), shortcutLabels.pass)}
-        onClick={onPass}
-      />
+      <Button size="middle" icon={<PalmIcon />} title={withShortcut(t('pass'), shortcutLabels.pass)} onClick={onPass} />
       <Space.Compact className="edit-tools">
         <ToolButton
           tool="auto"
           current={tool}
-          title={withShortcut(t('shortcuts.actions.toolAuto'), shortcutLabels.toolAuto)}
+          title={withShortcut(t('autoPlay'), shortcutLabels.toolAuto)}
           onToolChange={onToolChange}
         >
           <AutoPlayIcon nextColor={nextColor} onClick={onAutoToolClick} />
@@ -83,21 +78,21 @@ export function EditorToolbar({
           tool="black"
           current={tool}
           icon={<span className="tool-stone black" />}
-          title={withShortcut(t('shortcuts.actions.toolBlack'), shortcutLabels.toolBlack)}
+          title={withShortcut(t('placeBlackStone'), shortcutLabels.toolBlack)}
           onToolChange={onToolChange}
         />
         <ToolButton
           tool="white"
           current={tool}
           icon={<span className="tool-stone white" />}
-          title={withShortcut(t('shortcuts.actions.toolWhite'), shortcutLabels.toolWhite)}
+          title={withShortcut(t('placeWhiteStone'), shortcutLabels.toolWhite)}
           onToolChange={onToolChange}
         />
         <ToolButton
           tool="replace"
           current={tool}
           icon={<SwapOutlined />}
-          title={withShortcut(t('shortcuts.actions.replaceMove'), shortcutLabels.replaceMove)}
+          title={withShortcut(t('replaceMove'), shortcutLabels.replaceMove)}
           danger
           disabled={!canReplaceMove}
           onToolChange={onToolChange}
@@ -109,14 +104,14 @@ export function EditorToolbar({
               tool="alphabet"
               current={tool}
               icon={<FontSizeOutlined />}
-              title={withShortcut(t('shortcuts.actions.addLabel'), shortcutLabels.addLabel)}
+              title={withShortcut(t('addLabel'), shortcutLabels.addLabel)}
               onToolChange={onToolChange}
             >
               <Input
                 size="small"
                 className="label-input"
                 value={labelText}
-                aria-label={t('shortcuts.actions.addLabel')}
+                aria-label={t('addLabel')}
                 onFocus={() => onToolChange('alphabet')}
                 onChange={(event) => onLabelTextChange(event.target.value)}
               />
@@ -125,28 +120,28 @@ export function EditorToolbar({
               tool="circle"
               current={tool}
               icon={<CircleMarkerIcon />}
-              title={withShortcut(t('shortcuts.actions.addCircle'), shortcutLabels.addCircle)}
+              title={withShortcut(t('addCircle'), shortcutLabels.addCircle)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="square"
               current={tool}
               icon={<BorderOutlined />}
-              title={withShortcut(t('shortcuts.actions.addSquare'), shortcutLabels.addSquare)}
+              title={withShortcut(t('addSquare'), shortcutLabels.addSquare)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="triangle"
               current={tool}
               icon={<TriangleMarkerIcon />}
-              title={withShortcut(t('shortcuts.actions.addTriangle'), shortcutLabels.addTriangle)}
+              title={withShortcut(t('addTriangle'), shortcutLabels.addTriangle)}
               onToolChange={onToolChange}
             />
             <ToolButton
               tool="cross"
               current={tool}
               icon={<CloseOutlined />}
-              title={withShortcut(t('shortcuts.actions.addCross'), shortcutLabels.addCross)}
+              title={withShortcut(t('addCross'), shortcutLabels.addCross)}
               onToolChange={onToolChange}
             />
           </>
@@ -155,42 +150,42 @@ export function EditorToolbar({
           tool="erase"
           current={tool}
           icon={<DeleteOutlined />}
-          title={withShortcut(t('shortcuts.actions.eraseMarkup'), shortcutLabels.eraseMarkup)}
+          title={withShortcut(t('eraseMarkup'), shortcutLabels.eraseMarkup)}
           onToolChange={onToolChange}
         />
       </Space.Compact>
       <Space.Compact className="navigation-tools">
         <NavButton
-          title={t('nav.first')}
+          title={t('firstMove')}
           disabled={!canNavigatePrevious}
           icon={<StepBackwardOutlined />}
           onClick={onFirst}
         />
         <NavButton
-          title={t('nav.previous10')}
+          title={t('previous10Moves')}
           disabled={!canNavigatePrevious}
           icon={<FastBackwardOutlined />}
           onClick={onPrevious10}
         />
         <NavButton
-          title={withShortcut(t('shortcuts.actions.previousMove'), shortcutLabels.previousMove)}
+          title={withShortcut(t('previousMove'), shortcutLabels.previousMove)}
           disabled={!canNavigatePrevious}
           icon={<BackwardOutlined />}
           onClick={onPrevious}
         />
         <NavButton
-          title={withShortcut(t('shortcuts.actions.nextMoveCurrent'), shortcutLabels.nextMoveCurrent)}
+          title={withShortcut(t('nextMoveCurrent'), shortcutLabels.nextMoveCurrent)}
           disabled={!canNavigateNext}
           icon={<ForwardOutlined />}
           onClick={onNext}
         />
         <NavButton
-          title={t('nav.next10')}
+          title={t('next10Moves')}
           disabled={!canNavigateNext}
           icon={<FastForwardOutlined />}
           onClick={onNext10}
         />
-        <NavButton title={t('nav.last')} disabled={!canNavigateNext} icon={<StepForwardOutlined />} onClick={onLast} />
+        <NavButton title={t('lastMove')} disabled={!canNavigateNext} icon={<StepForwardOutlined />} onClick={onLast} />
       </Space.Compact>
       {extraEnd}
     </div>

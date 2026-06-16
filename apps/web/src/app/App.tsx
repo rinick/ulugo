@@ -216,7 +216,7 @@ export function App() {
     analysisPaths,
     analysisChartPaths,
     pendingSetupPathRef,
-    startFailedMessage: t('analysis.startFailed'),
+    startFailedMessage: t('analysisStartFailed'),
   });
   const showMarkup = analysisSettings.showMarkup;
   const stoneOverlayDisplay =
@@ -226,9 +226,9 @@ export function App() {
     analysisSettings.boardBackground,
     autoBoardBackgroundReady && analysisSettings.showTopMoves
   );
-  const appTitle = capabilities.platform === 'electron' ? t('app.electronTitle') : t('app.title');
-  const blackPlayerName = gameInfo.PB.trim() === '' ? t('app.black') : gameInfo.PB;
-  const whitePlayerName = gameInfo.PW.trim() === '' ? t('app.white') : gameInfo.PW;
+  const appTitle = capabilities.platform === 'electron' ? t('electronTitle') : t('appTitle');
+  const blackPlayerName = gameInfo.PB.trim() === '' ? t('black') : gameInfo.PB;
+  const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
 
   useEffect(() => {
     if (!showMarkup && isMarkupTool(tool)) setTool('auto');
@@ -236,12 +236,12 @@ export function App() {
 
   const newMenuItems: MenuProps['items'] = boardSizes.map((size) => ({
     key: String(size),
-    label: t(`menu.new${size}`),
+    label: t(`new${size}`),
   }));
-  const openMenuItems: MenuProps['items'] = [{key: 'googleDrive', label: t('menu.openFromGoogleDrive')}];
+  const openMenuItems: MenuProps['items'] = [{key: 'googleDrive', label: t('openFromGoogleDrive')}];
   const saveMenuItems: MenuProps['items'] = [
-    {key: 'saveAs', label: t('menu.saveAs')},
-    {key: 'googleDrive', label: t('menu.saveToGoogleDrive')},
+    {key: 'saveAs', label: t('saveAs')},
+    {key: 'googleDrive', label: t('saveToGoogleDrive')},
   ];
 
   useEffect(() => {
@@ -324,10 +324,10 @@ export function App() {
       capabilities.storage === 'filesystem'
         ? currentSgfFileName(currentFile, gameInfo.GN)
         : await promptSaveFileName({
-            title: t('menu.saveAs'),
+            title: t('saveAs'),
             initialValue: currentSgfFileName(currentFile, gameInfo.GN),
-            okText: t('action.save'),
-            cancelText: t('action.cancel'),
+            okText: t('save'),
+            cancelText: t('cancel'),
           });
     if (fileName == null) return;
 
@@ -347,9 +347,9 @@ export function App() {
       });
       if (result == null) return;
       setCurrentFile({name: result.fileName, googleDriveFileId: result.fileId});
-      message.success(t('menu.savedToGoogleDrive'));
+      message.success(t('savedToGoogleDrive'));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('menu.googleDriveFailed'));
+      message.error(error instanceof Error ? error.message : t('googleDriveFailed'));
     } finally {
       if (showPendingDialog) setGoogleDrivePending(null);
     }
@@ -371,7 +371,7 @@ export function App() {
           setCurrentFile({name: result.fileName, electronFilePath: result.filePath});
         }
       } catch (error) {
-        message.error(error instanceof Error ? error.message : t('menu.exportFailed'));
+        message.error(error instanceof Error ? error.message : t('exportFailed'));
       }
       return;
     }
@@ -396,7 +396,7 @@ export function App() {
           electronFilePath: result.filePath,
         });
       } catch (error) {
-        message.error(error instanceof Error ? error.message : t('menu.importFailed'));
+        message.error(error instanceof Error ? error.message : t('importFailed'));
       }
       return;
     }
@@ -415,7 +415,7 @@ export function App() {
         googleDriveFileId: result.fileId,
       });
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('menu.googleDriveFailed'));
+      message.error(error instanceof Error ? error.message : t('googleDriveFailed'));
     } finally {
       if (showPendingDialog) setGoogleDrivePending(null);
     }
@@ -428,7 +428,7 @@ export function App() {
       const text = await readGameRecordFile(file);
       importSgfText(text, file.name, {name: file.name});
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('menu.importFailed'));
+      message.error(error instanceof Error ? error.message : t('importFailed'));
     } finally {
       if (fileInputRef.current != null) fileInputRef.current.value = '';
     }
@@ -904,10 +904,10 @@ export function App() {
   function handleDeleteNode(): void {
     if (getNodeAtPath(document, path).children.length > 0) {
       Modal.confirm({
-        title: t('treeActions.deleteConfirmTitle'),
-        content: t('treeActions.deleteConfirmContent'),
-        okText: t('action.ok'),
-        cancelText: t('action.cancel'),
+        title: t('deleteBranchConfirmTitle'),
+        content: t('deleteBranchConfirmContent'),
+        okText: t('ok'),
+        cancelText: t('cancel'),
         okButtonProps: {danger: true},
         onOk: () => {
           const result = deleteNode(document, path);
@@ -969,17 +969,17 @@ export function App() {
     >
       <Modal
         open={googleDrivePending != null}
-        title={t('googleDrive.waitingTitle')}
+        title={t('googleDrive')}
         footer={
           <Button size="small" onClick={cancelGoogleDriveOperation}>
-            {t('action.cancel')}
+            {t('cancel')}
           </Button>
         }
         closable={false}
         keyboard={false}
         maskClosable={false}
       >
-        {googleDrivePending === 'open' ? t('googleDrive.openWaiting') : t('googleDrive.saveWaiting')}
+        {googleDrivePending === 'open' ? t('googleDriveOpenWaiting') : t('googleDriveSaveWaiting')}
       </Modal>
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         <Header className="app-header">
@@ -995,7 +995,7 @@ export function App() {
                 }}
                 onClick={() => handleNew(19)}
               >
-                {t('menu.new')}
+                {t('new')}
               </Dropdown.Button>
               <Dropdown.Button
                 size="small"
@@ -1008,7 +1008,7 @@ export function App() {
                 }}
                 onClick={() => void handleImportSgfFromMenu()}
               >
-                {t('menu.importSgf')}
+                {t('open')}
               </Dropdown.Button>
               <Dropdown.Button
                 size="small"
@@ -1025,18 +1025,18 @@ export function App() {
                 }}
                 onClick={() => void handleSaveSgf()}
               >
-                {t('menu.exportSgf')}
+                {t('save')}
               </Dropdown.Button>
               <Button size="small" icon={<InfoCircleOutlined />} onClick={() => setGameInfoOpen(true)}>
-                {t('menu.editGameInfo')}
+                {t('gameInfo')}
               </Button>
               {capabilities.katago ? (
                 <Button size="small" icon={<ToolOutlined />} onClick={() => setKataGoSettingsOpen(true)}>
-                  {t('katago.button')}
+                  {t('aiConfig')}
                 </Button>
               ) : null}
               <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>
-                {t('settings.title')}
+                {t('settings')}
               </Button>
             </Space>
           </div>
@@ -1063,7 +1063,7 @@ export function App() {
               <Space className="analysis-toolbar-options">
                 {capabilities.katago ? (
                   <span className="analysis-toolbar-option-group">
-                    <span>{t('analysis.mode')}</span>
+                    <span>{t('mode')}</span>
                     <Radio.Group
                       size="medium"
                       optionType="button"
@@ -1074,7 +1074,7 @@ export function App() {
                           value: 'review',
                           label: (
                             <>
-                              <StockOutlined /> {t('analysis.reviewMode')}
+                              <StockOutlined /> {t('review')}
                             </>
                           ),
                         },
@@ -1082,7 +1082,7 @@ export function App() {
                           value: 'edit',
                           label: (
                             <>
-                              <EditOutlined /> {t('analysis.editMode')}
+                              <EditOutlined /> {t('edit')}
                             </>
                           ),
                         },
@@ -1091,7 +1091,7 @@ export function App() {
                   </span>
                 ) : null}
                 <span className="analysis-toolbar-option-group">
-                  <span>{t('analysis.stoneOverlay')}</span>
+                  <span>{t('stoneOverlay')}</span>
                   <Segmented
                     size="medium"
                     shape="round"
@@ -1102,21 +1102,25 @@ export function App() {
                     options={
                       capabilities.katago
                         ? [
-                            {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis.dot')}},
+                            {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis')}},
                             {
                               value: 'number',
-                              icon: <FieldBinaryOutlined />,
-                              tooltip: {title: t('analysis.moveNumber')},
+                              label: (
+                                <span style={{fontSize: 16}}>
+                                  <FieldBinaryOutlined />
+                                </span>
+                              ),
+                              tooltip: {title: t('moveNumber')},
                             },
-                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
+                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('none')}},
                           ]
                         : [
                             {
                               value: 'number',
                               icon: <FieldBinaryOutlined />,
-                              tooltip: {title: t('analysis.moveNumber')},
+                              tooltip: {title: t('moveNumber')},
                             },
-                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('analysis.none')}},
+                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('none')}},
                           ]
                     }
                   />
@@ -1125,20 +1129,20 @@ export function App() {
                   checked={analysisSettings.showMarkup}
                   onChange={(event) => updateAnalysisSettings({showMarkup: event.target.checked})}
                 >
-                  {t('settings.showMarkup')}
+                  {t('showMarkup')}
                 </Checkbox>
                 <Checkbox
                   checked={analysisSettings.showNextMove}
                   onChange={(event) => updateAnalysisSettings({showNextMove: event.target.checked})}
                 >
-                  {t('analysis.nextMove')}
+                  {t('nextMove')}
                 </Checkbox>
                 {capabilities.katago ? (
                   <Checkbox
                     checked={analysisSettings.showExpectedTerritory}
                     onChange={(event) => updateAnalysisSettings({showExpectedTerritory: event.target.checked})}
                   >
-                    {t('analysis.expectedTerritory')}
+                    {t('territory')}
                   </Checkbox>
                 ) : null}
               </Space>
@@ -1149,14 +1153,14 @@ export function App() {
           {capabilities.katago ? (
             <aside className="left-panel">
               <div className="katago-console-header">
-                <h2>{t('panels.katagoConsole')}</h2>
+                <h2>{t('katagoConsole')}</h2>
                 <Button size="small" onClick={() => setKataGoConsoleMessages([])}>
-                  {t('action.clear')}
+                  {t('clear')}
                 </Button>
               </div>
               <div className="katago-console-log" ref={kataGoConsoleRef}>
                 {kataGoConsoleMessages.length === 0 ? (
-                  <div className="katago-console-empty">{t('katago.consoleEmpty')}</div>
+                  <div className="katago-console-empty">{t('katagoConsoleEmpty')}</div>
                 ) : (
                   kataGoConsoleMessages.map((item) => (
                     <div key={item.id} className={`katago-console-line ${item.level}`}>
@@ -1216,7 +1220,7 @@ export function App() {
                   .join(' ')}
                 icon={<ThunderboltOutlined />}
                 type={analysisMode ? 'primary' : 'default'}
-                title={t('analysis.button')}
+                title={t('analysis')}
                 onClick={handleAnalysisButtonClick}
               >
                 {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
