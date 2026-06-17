@@ -15,18 +15,18 @@ export interface AnalysisQueryContext {
   path: number[];
   version: number;
   mode: 'fast' | 'live';
-  hiddenMove?: string;
+  mergeMove?: string;
 }
 
 export function hasPendingAnalysisQuery(
   contexts: Map<string, AnalysisQueryContext>,
   mode: AnalysisQueryContext['mode'],
   nodeId?: string,
-  hiddenMove?: string | null
+  mergeMove?: string | null
 ): boolean {
   for (const context of contexts.values()) {
     if (context.mode !== mode) continue;
-    if (hiddenMove !== undefined && (context.hiddenMove ?? null) !== hiddenMove) continue;
+    if (mergeMove !== undefined && (context.mergeMove ?? null) !== mergeMove) continue;
     if (nodeId == null || context.nodeId === nodeId) return true;
   }
   return false;
@@ -43,12 +43,18 @@ export function getAnalysisVisits(result: KataGoAnalysisResult): number {
   return Math.max(result.rootInfo?.visits ?? 0, ...(result.moveInfos ?? []).map((move) => move.visits ?? 0));
 }
 
+export function hiddenPassAnalysisKey(document: SgfDocument, path: number[]): string {
+  return `${nodeKey(document, path)}:pass`;
+}
+
 export function shouldRequestHiddenPassAnalysis(
   document: SgfDocument,
   path: number[],
   cache: Record<string, CachedAnalysis>,
   targetVisits: number
 ): boolean {
+  if (findPassChildPath(document, path) != null) return false;
+
   const analysis = cache[nodeKey(document, path)]?.result;
   if (analysis?.rootInfo == null) return false;
 
@@ -61,9 +67,24 @@ export function shouldCountHiddenPassAnalysis(
   cache: Record<string, CachedAnalysis>,
   targetVisits: number
 ): boolean {
+  const passChildPath = findPassChildPath(document, path);
+  if (passChildPath != null) {
+    const passChild = cache[nodeKey(document, passChildPath)];
+    return (passChild?.visits ?? passChild?.result.rootInfo?.visits ?? 0) < targetVisits;
+  }
+
+  const hiddenPass = cache[hiddenPassAnalysisKey(document, path)];
+  if ((hiddenPass?.visits ?? hiddenPass?.result.rootInfo?.visits ?? 0) >= targetVisits) return false;
+
   const analysis = cache[nodeKey(document, path)]?.result;
   const passMove = analysis?.moveInfos?.find((move) => move.move.toLowerCase() === 'pass');
   return (passMove?.visits ?? 0) < targetVisits;
+}
+
+export function findPassChildPath(document: SgfDocument, path: number[]): number[] | null {
+  const parent = getNodeAtPath(document, path);
+  const index = parent.children.findIndex((child) => child.data.B?.[0] === '' || child.data.W?.[0] === '');
+  return index < 0 ? null : [...path, index];
 }
 
 export function nextColorForPath(document: SgfDocument, path: number[]): SgfColor {
@@ -74,6 +95,8 @@ export function updateAnalysisCache({
   cache,
   document,
   path,
+  nodeId = nodeKey(document, path),
+  mergeMove,
   result,
   visits,
   completed,
@@ -81,11 +104,12 @@ export function updateAnalysisCache({
   cache: Record<string, CachedAnalysis>;
   document: SgfDocument;
   path: number[];
+  nodeId?: string;
+  mergeMove?: string;
   result: KataGoAnalysisResult;
   visits: number;
   completed: boolean;
 }): Record<string, CachedAnalysis> {
-  const nodeId = nodeKey(document, path);
   const existing = cache[nodeId];
   const nextCache = {
     ...cache,
@@ -96,35 +120,48 @@ export function updateAnalysisCache({
     },
   };
 
+  if (mergeMove != null) return updateMoveAnalysis(nextCache, document, path, mergeMove, result);
   return updateParentMoveAnalysis(nextCache, document, path, result);
 }
 
-export function updateHiddenMoveAnalysisCache({
-  cache,
-  document,
-  path,
-  move,
-  result,
-  completed,
-}: {
-  cache: Record<string, CachedAnalysis>;
-  document: SgfDocument;
-  path: number[];
-  move: string;
-  result: KataGoAnalysisResult;
-  completed: boolean;
-}): Record<string, CachedAnalysis> {
-  if (result.rootInfo == null) return cache;
+export function convertHiddenPassAnalysisToRegularPass(
+  cache: Record<string, CachedAnalysis>,
+  document: SgfDocument,
+  passPath: number[]
+): Record<string, CachedAnalysis> {
+  if (passPath.length === 0) return cache;
 
-  const nodeId = nodeKey(document, path);
-  const existing = cache[nodeId];
-  const analysis = existing?.result ?? {id: result.id};
+  const parentPath = passPath.slice(0, -1);
+  const parent = cache[nodeKey(document, parentPath)];
+  const hiddenNodeId = hiddenPassAnalysisKey(document, parentPath);
+  const hidden = cache[hiddenNodeId];
+  const passMove = parent?.result.moveInfos?.find((move) => move.move.toLowerCase() === 'pass');
+  if (passMove == null && hidden == null) return cache;
+
+  const passNodeId = nodeKey(document, passPath);
+  const existing = cache[passNodeId];
+  if (hidden != null && (existing?.visits ?? 0) < hidden.visits) {
+    const {[hiddenNodeId]: _hidden, ...nextCache} = cache;
+    return {
+      ...nextCache,
+      [passNodeId]: hidden,
+    };
+  }
+
+  if (passMove == null) return cache;
+  const passVisits = passMove.visits ?? 0;
+  if ((existing?.visits ?? 0) >= passVisits && existing?.result.moveInfos != null) return cache;
+
+  const {move: _move, ...rootInfo} = passMove;
   return {
     ...cache,
-    [nodeId]: {
-      result: mergeMoveInfoIntoAnalysis(analysis, {move, ...result.rootInfo}),
-      visits: existing?.visits ?? 0,
-      completed: existing?.completed === true || completed,
+    [passNodeId]: {
+      result: {
+        id: `${parent?.result.id ?? passNodeId}:pass`,
+        rootInfo,
+      },
+      visits: 0,
+      completed: false,
     },
   };
 }
@@ -147,12 +184,28 @@ function updateParentMoveAnalysis(
   const parent = cache[parentId];
   if (parent == null) return cache;
 
+  return updateMoveAnalysis(cache, document, parentPath, sgfPointToGtp(point, getBoardSize(document)), result);
+}
+
+function updateMoveAnalysis(
+  cache: Record<string, CachedAnalysis>,
+  document: SgfDocument,
+  path: number[],
+  move: string,
+  result: KataGoAnalysisResult
+): Record<string, CachedAnalysis> {
+  if (result.rootInfo == null) return cache;
+
+  const nodeId = nodeKey(document, path);
+  const analysis = cache[nodeId];
+  if (analysis == null) return cache;
+
   return {
     ...cache,
-    [parentId]: {
-      ...parent,
-      result: mergeMoveInfoIntoAnalysis(parent.result, {
-        move: sgfPointToGtp(point, getBoardSize(document)),
+    [nodeId]: {
+      ...analysis,
+      result: mergeMoveInfoIntoAnalysis(analysis.result, {
+        move,
         ...result.rootInfo,
       }),
     },

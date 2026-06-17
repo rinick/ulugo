@@ -113,6 +113,7 @@ const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   invalidatePath?: number[];
+  convertHiddenPassPath?: number[];
   pendingSetupPath?: number[] | null;
   replaceMoveState?: ReplaceMoveState | null;
 }
@@ -862,7 +863,7 @@ export function App() {
 
     if (!isLegalMove(position, position.nextColor, point, gameInfo.RU)) return;
     const result = addMove(document, path, position.nextColor, point);
-    replaceDocument(result.document, result.path);
+    replaceDocument(result.document, result.path, point === '' ? {convertHiddenPassPath: result.path} : {});
     if (point !== '') playPlaceStoneSound();
   }
 
@@ -878,12 +879,22 @@ export function App() {
       });
       if (result == null) return;
 
-      replaceDocument(result.document, result.path, {invalidatePath: result.path, replaceMoveState: result.state});
+      replaceDocument(result.document, result.path, {
+        invalidatePath: result.path,
+        convertHiddenPassPath: result.path,
+        replaceMoveState: result.state,
+      });
+      return;
+    }
+
+    const existingChildPath = findChildMovePath(document, path, nextAutoColor, '');
+    if (existingChildPath != null) {
+      selectPath(existingChildPath);
       return;
     }
 
     const result = addMove(document, path, nextAutoColor, '');
-    replaceDocument(result.document, result.path);
+    replaceDocument(result.document, result.path, {convertHiddenPassPath: result.path});
   }
 
   function handleMoveBranchToMain(): void {

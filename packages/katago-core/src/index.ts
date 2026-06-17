@@ -20,6 +20,7 @@ export interface KataGoQueryOptions {
   maxVisits?: number;
   priority?: number;
   live?: boolean;
+  overrideSettings?: KataGoAnalysisQuery['overrideSettings'];
 }
 
 export interface KataGoAnalysisQuery {
@@ -47,7 +48,7 @@ export const defaultKataGoSettings: KataGoSettings = {
   configPath: '',
   altCommand: '',
   maxVisits: 800,
-  fastVisits: 100,
+  fastVisits: 20,
   wideRootNoise: 0.04,
 };
 
@@ -173,6 +174,7 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
     includePolicy: true,
     includeOwnership: true,
     reportDuringSearchEvery: options.live ? 0.25 : undefined,
+    overrideSettings: options.overrideSettings,
   };
 }
 
