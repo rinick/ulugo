@@ -1,13 +1,6 @@
 import {getNodeAtPath, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
-  defaultAnalysisSettings,
-  defaultEditModeSettings,
-  defaultReviewModeSettings,
   type AnalysisChartPoint,
-  type AnalysisDisplayMode,
-  type AnalysisMode,
-  type AnalysisModeSettings,
-  type AnalysisMoveDisplay,
   type AnalysisSettings,
 } from '@ulugo/analysis-core';
 import {
@@ -22,7 +15,6 @@ import {
   buildAnalysisChartData,
   buildStoneScoreDeltas,
   convertHiddenPassAnalysisToRegularPass,
-  findPassChildPath,
   getAnalysisVisits,
   getPendingAnalysisQueryIds,
   hasPendingAnalysisQuery,
@@ -30,30 +22,31 @@ import {
   nextColorForPath,
   normalizeWinratePercent,
   shouldCountHiddenPassAnalysis,
-  shouldRequestHiddenPassAnalysis,
   updateAnalysisCache,
   type AnalysisQueryContext,
   type CachedAnalysis,
 } from './appAnalysisUtils';
-import {collectNodeIds, nodeKey, pathKey} from './sgfPathUtils';
+import {collectNodeIds, nodeKey} from './sgfPathUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
+import {
+  buildFastAnalysisJobs,
+  getFastQueryIdsOutsidePaths,
+  getStaleLiveQueryIds,
+  isInvalidatedAnalysisKey,
+  livePassAnalysisRequest,
+  passAnalysisNodeId,
+  type PassAnalysisRequest,
+} from './analysisQueueUtils';
+import {
+  normalizeAnalysisSettings,
+  readStoredAnalysisSettings,
+  switchAnalysisMode,
+  updateCurrentModeSettings,
+  writeStoredAnalysisSettings,
+} from './analysisSettingsStorage';
 
 const deepAnalysisVisits = 10_000_000;
 const maxFastAnalysisQueries = 2;
-const nextFastAnalysisCount = 5;
-const analysisSettingsStorageKey = 'ulugo.analysisSettings';
-const showMarkupStorageKey = 'ulugo.showMarkup';
-const modeSettingKeys = [
-  'stoneOverlay',
-  'showMarkup',
-  'showNextMove',
-  'showTopMoves',
-  'showExpectedTerritory',
-  'showScore',
-  'showPointLoss',
-  'showWinrate',
-  'showComments',
-] as const;
 
 interface UseKataGoAnalysisOptions {
   enabled: boolean;
@@ -71,8 +64,6 @@ interface AnalysisDocumentChangeOptions {
   convertHiddenPassPath?: number[];
 }
 
-type FastAnalysisJob = {path: number[]; hiddenPass: boolean; passAnalysis?: boolean};
-type PassAnalysisRequest = {path: number[]; hiddenPass: boolean; targetVisits: number};
 type RequestAnalysis = (
   requestPath: number[],
   mode: AnalysisQueryContext['mode'],
@@ -427,7 +418,7 @@ export function useKataGoAnalysis({
         analysisQueryContextRef.current,
         'live',
         passAnalysisNodeId(document, passRequest),
-        passRequest.hiddenPass ? 'pass' : null
+        passRequest.passAnalysis === 'hidden' ? 'pass' : null
       );
     if ((!needsMain || mainPending) && (passRequest == null || passPending)) return;
     let cancelled = false;
@@ -438,7 +429,7 @@ export function useKataGoAnalysis({
           analysisQueryContextRef.current,
           needsMain ? liveNodeId : null,
           passRequest == null ? null : passAnalysisNodeId(document, passRequest),
-          passRequest?.hiddenPass ?? false
+          passRequest?.passAnalysis === 'hidden'
         );
         if (liveQueryIds.length > 0) {
           removePendingAnalysisQueries(liveQueryIds);
@@ -449,12 +440,7 @@ export function useKataGoAnalysis({
         await Promise.all([
           needsMain && !mainPending ? requestAnalysis(path, 'live', targetVisits, {live: true}) : Promise.resolve(),
           passRequest != null && !passPending
-            ? passRequest.hiddenPass
-              ? requestHiddenPassAnalysis(document, requestAnalysis, passRequest.path, 'live', passRequest.targetVisits)
-              : requestAnalysis(passRequest.path, 'live', passRequest.targetVisits, {
-                  live: true,
-                  overrideSettings: {wideRootNoise: 0},
-                })
+            ? requestPassAnalysis(document, requestAnalysis, passRequest, 'live', {live: true})
             : Promise.resolve(),
         ]);
       } catch (error: unknown) {
@@ -521,10 +507,14 @@ export function useKataGoAnalysis({
 
       for (const job of jobs) {
         if (availableSlots <= 0 || !analysisModeRef.current || runVersion !== documentVersionRef.current) break;
-        if (job.hiddenPass) {
-          await requestHiddenPassAnalysis(document, requestAnalysis, job.path, 'fast', targetVisits, -100);
-        } else if (job.passAnalysis === true) {
-          await requestAnalysis(job.path, 'fast', targetVisits, {overrideSettings: {wideRootNoise: 0}});
+        if (job.passAnalysis != null) {
+          await requestPassAnalysis(
+            document,
+            requestAnalysis,
+            {path: job.path, passAnalysis: job.passAnalysis, targetVisits},
+            'fast',
+            {priority: job.passAnalysis === 'hidden' ? -100 : undefined}
+          );
         } else {
           await requestAnalysis(job.path, 'fast', targetVisits);
         }
@@ -579,308 +569,28 @@ export function useKataGoAnalysis({
   };
 }
 
-function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
-  const defaults: AnalysisSettings = enabled
-    ? defaultAnalysisSettings
-    : {...defaultAnalysisSettings, mode: 'edit', ...defaultEditModeSettings, boardBackground: 'golden'};
-
-  try {
-    const value = localStorage.getItem(analysisSettingsStorageKey);
-    if (value == null) return normalizeAnalysisSettings(defaults, enabled);
-    const stored = JSON.parse(value) as Partial<AnalysisSettings> & {
-      stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
-      topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    };
-    return normalizeAnalysisSettings({...defaults, ...stored}, enabled);
-  } catch {
-    return normalizeAnalysisSettings(defaults, enabled);
-  }
-}
-
-function writeStoredAnalysisSettings(settings: AnalysisSettings): void {
-  try {
-    localStorage.setItem(analysisSettingsStorageKey, JSON.stringify(settings));
-  } catch {
-    // Ignore storage failures; settings still apply for this session.
-  }
-}
-
-function normalizeAnalysisSettings(
-  settings: Partial<AnalysisSettings> & {
-    moveDisplay?: unknown;
-    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
-  },
-  enabled: boolean
-): AnalysisSettings {
-  const storedMode: AnalysisMode = settings.mode === 'edit' ? 'edit' : 'review';
-  const mode: AnalysisMode = enabled ? storedMode : 'edit';
-  const modeDefaults = mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings;
-  const activeSource = mode === storedMode ? settings : (settings.modeSettings?.[mode] ?? {});
-  const stoneOverlay =
-    activeSource.stoneOverlay ??
-    (mode === storedMode ? settings.topMoveDisplay : undefined) ??
-    modeDefaults.stoneOverlay;
-  const showMarkup = activeSource.showMarkup ?? readLegacyShowMarkup() ?? modeDefaults.showMarkup;
-  const activeModeSettings = normalizeModeSettings(
-    {
-      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
-      showMarkup,
-      showNextMove: activeSource.showNextMove,
-      showTopMoves: activeSource.showTopMoves,
-      showExpectedTerritory: activeSource.showExpectedTerritory,
-      showScore: activeSource.showScore,
-      showPointLoss: activeSource.showPointLoss,
-      showWinrate: activeSource.showWinrate,
-      showComments: activeSource.showComments,
-    },
-    modeDefaults
-  );
-  const modeSettings = {
-    review: normalizeModeSettings(settings.modeSettings?.review, defaultReviewModeSettings),
-    edit: normalizeModeSettings(settings.modeSettings?.edit, defaultEditModeSettings),
-    [mode]: activeModeSettings,
-  };
-  const normalized = {
-    ...defaultAnalysisSettings,
-    ...settings,
-    moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
-    mode,
-    ...activeModeSettings,
-    modeSettings,
-  };
-  if (!enabled && normalized.boardBackground === 'auto') return {...normalized, boardBackground: 'golden'};
-  return normalized;
-}
-
-function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
-  const values = Array.isArray(value) ? value : [value];
-  const normalized = values.flatMap((item): AnalysisDisplayMode[] => {
-    if (item === 'score') return Array.isArray(value) ? ['score'] : ['scoreChange'];
-    if (item === 'winrate') return ['winRateChange'];
-    if (item === 'absScore') return ['value'];
-    if (item === 'scoreChange' || item === 'winRateChange' || item === 'visits' || item === 'value') return [item];
-    return [];
-  });
-  const unique = [...new Set(normalized)].slice(0, 2);
-  return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
-}
-
-function normalizeModeSettings(
-  settings: Partial<AnalysisModeSettings> | undefined,
-  defaults: AnalysisModeSettings
-): AnalysisModeSettings {
-  const stoneOverlay = settings?.stoneOverlay;
-  return {
-    ...defaults,
-    ...settings,
-    stoneOverlay:
-      stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
-        ? stoneOverlay
-        : defaults.stoneOverlay,
-  };
-}
-
-function updateCurrentModeSettings(settings: AnalysisSettings, values: Partial<AnalysisSettings>): AnalysisSettings {
-  const next = {...settings, ...values};
-  const modeSettings = {...settings.modeSettings};
-  let changedModeSettings = false;
-
-  for (const key of modeSettingKeys) {
-    if (key in values) changedModeSettings = true;
-  }
-
-  if (changedModeSettings) {
-    modeSettings[settings.mode] = normalizeModeSettings(
-      Object.fromEntries(modeSettingKeys.map((key) => [key, next[key]])),
-      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
-    );
-  }
-
-  return {...next, modeSettings};
-}
-
-function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMode, enabled: boolean): AnalysisSettings {
-  const modeSettings = {
-    ...settings.modeSettings,
-    [settings.mode]: normalizeModeSettings(
-      Object.fromEntries(modeSettingKeys.map((key) => [key, settings[key]])),
-      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
-    ),
-  };
-  return normalizeAnalysisSettings(
-    {
-      ...settings,
-      mode,
-      ...modeSettings[mode],
-      modeSettings,
-    },
-    enabled
-  );
-}
-
-function readLegacyShowMarkup(): boolean | undefined {
-  try {
-    const value = localStorage.getItem(showMarkupStorageKey);
-    return value == null ? undefined : value === 'true';
-  } catch {
-    return undefined;
-  }
-}
-
-function buildFastAnalysisJobs({
-  analysisPaths,
-  currentPath,
-  valueMode,
-  document,
-  analysisCache,
-  targetVisits,
-  pendingQueries,
-}: {
-  analysisPaths: number[][];
-  currentPath: number[];
-  valueMode: boolean;
-  document: SgfDocument;
-  analysisCache: Record<string, CachedAnalysis>;
-  targetVisits: number;
-  pendingQueries: Map<string, AnalysisQueryContext>;
-}): FastAnalysisJob[] {
-  const currentIndex = analysisPaths.findIndex((movePath) => samePath(movePath, currentPath));
-  const firstNextIndex = currentIndex < 0 ? 0 : currentIndex + 1;
-  const nextPaths = analysisPaths.slice(firstNextIndex, firstNextIndex + nextFastAnalysisCount);
-  const currentPaths = currentIndex < 0 ? [] : [analysisPaths[currentIndex]];
-  const nextKeys = new Set(nextPaths.map(pathKey));
-  const currentKeys = new Set(currentPaths.map(pathKey));
-  const otherPaths = analysisPaths.filter((movePath) => {
-    const key = pathKey(movePath);
-    return !currentKeys.has(key) && !nextKeys.has(key);
-  });
-  const jobs: FastAnalysisJob[] = [];
-  const queued = new Set<string>();
-
-  function addNormalJobs(paths: number[][]): void {
-    for (const movePath of paths) {
-      const nodeId = nodeKey(document, movePath);
-      const cached = analysisCache[nodeId];
-      if (cached != null && cached.visits >= targetVisits) continue;
-      if (hasPendingAnalysisQuery(pendingQueries, 'fast', nodeId, null)) continue;
-      addJob({
-        path: movePath,
-        hiddenPass: false,
-        passAnalysis: isPassMovePath(document, movePath) && !samePath(movePath, currentPath),
-      });
-    }
-  }
-
-  function addHiddenPassJobs(paths: number[][]): void {
-    if (!valueMode) return;
-    for (const movePath of paths) {
-      const passChildPath = findPassChildPath(document, movePath);
-      if (passChildPath != null) {
-        const passNodeId = nodeKey(document, passChildPath);
-        const cached = analysisCache[passNodeId];
-        if ((cached?.visits ?? cached?.result.rootInfo?.visits ?? 0) >= targetVisits) continue;
-        if (hasPendingAnalysisQuery(pendingQueries, 'fast', passNodeId, null)) continue;
-        addJob({path: passChildPath, hiddenPass: false, passAnalysis: true});
-        continue;
-      }
-      if (!shouldRequestHiddenPassAnalysis(document, movePath, analysisCache, targetVisits)) continue;
-      if (hasPendingAnalysisQuery(pendingQueries, 'fast', hiddenPassAnalysisKey(document, movePath), 'pass')) continue;
-      addJob({path: movePath, hiddenPass: true});
-    }
-  }
-
-  function addJob(job: FastAnalysisJob): void {
-    const key = `${pathKey(job.path)}:${job.hiddenPass ? 'pass' : 'normal'}`;
-    if (queued.has(key)) return;
-    queued.add(key);
-    jobs.push(job);
-  }
-
-  addNormalJobs(currentPaths);
-  addHiddenPassJobs(currentPaths);
-  addNormalJobs(nextPaths);
-  addHiddenPassJobs(nextPaths);
-  addNormalJobs(otherPaths);
-  addHiddenPassJobs(otherPaths);
-
-  return jobs;
-}
-
-function requestHiddenPassAnalysis(
+function requestPassAnalysis(
   document: SgfDocument,
   requestAnalysis: RequestAnalysis,
-  path: number[],
+  request: PassAnalysisRequest,
   mode: AnalysisQueryContext['mode'],
-  targetVisits: number,
-  priority?: number
+  options: Pick<AnalysisRequestOptions, 'live' | 'priority'> = {}
 ): Promise<void> {
-  return requestAnalysis(path, mode, targetVisits, {
-    priority,
-    nextMove: {color: nextColorForPath(document, path), point: ''},
-    overrideSettings: {wideRootNoise: 0},
-    cacheNodeId: hiddenPassAnalysisKey(document, path),
-    mergeMove: 'pass',
-  });
+  return requestAnalysis(request.path, mode, request.targetVisits, passAnalysisOptions(document, request, options));
 }
 
-function getFastQueryIdsOutsidePaths(
-  pendingQueries: Map<string, AnalysisQueryContext>,
-  analysisPaths: number[][],
-  document: SgfDocument
-): string[] {
-  const pathKeys = new Set(analysisPaths.map(pathKey));
-  for (const analysisPath of analysisPaths) {
-    const passChildPath = findPassChildPath(document, analysisPath);
-    if (passChildPath != null) pathKeys.add(pathKey(passChildPath));
-  }
-  return [...pendingQueries.entries()]
-    .filter(([, context]) => context.mode === 'fast' && !pathKeys.has(pathKey(context.path)))
-    .map(([queryId]) => queryId);
-}
-
-function livePassAnalysisRequest(
+function passAnalysisOptions(
   document: SgfDocument,
-  path: number[],
-  analysisCache: Record<string, CachedAnalysis>,
-  targetVisits: number
-): PassAnalysisRequest | null {
-  if (!shouldCountHiddenPassAnalysis(document, path, analysisCache, targetVisits)) return null;
+  request: PassAnalysisRequest,
+  options: Pick<AnalysisRequestOptions, 'live' | 'priority'>
+): AnalysisRequestOptions {
+  const requestOptions: AnalysisRequestOptions = {...options, overrideSettings: {wideRootNoise: 0}};
+  if (request.passAnalysis !== 'hidden') return requestOptions;
 
-  const passChildPath = findPassChildPath(document, path);
-  if (passChildPath != null) return {path: passChildPath, hiddenPass: false, targetVisits};
-
-  return {path, hiddenPass: true, targetVisits};
-}
-
-function passAnalysisNodeId(document: SgfDocument, request: PassAnalysisRequest): string {
-  return request.hiddenPass ? hiddenPassAnalysisKey(document, request.path) : nodeKey(document, request.path);
-}
-
-function getStaleLiveQueryIds(
-  pendingQueries: Map<string, AnalysisQueryContext>,
-  mainNodeId: string | null,
-  passNodeId: string | null,
-  passHidden: boolean
-): string[] {
-  return [...pendingQueries.entries()]
-    .filter(([, context]) => {
-      if (context.mode !== 'live') return false;
-      if (mainNodeId != null && context.nodeId === mainNodeId && context.mergeMove == null) return false;
-      if (passNodeId != null && context.nodeId === passNodeId && (context.mergeMove === 'pass') === passHidden)
-        return false;
-      return true;
-    })
-    .map(([queryId]) => queryId);
-}
-
-function isPassMovePath(document: SgfDocument, path: number[]): boolean {
-  if (path.length === 0) return false;
-  const node = getNodeAtPath(document, path);
-  return node.data.B?.[0] === '' || node.data.W?.[0] === '';
-}
-
-function isInvalidatedAnalysisKey(key: string, invalidatedNodeIds: Set<string>): boolean {
-  if (invalidatedNodeIds.has(key)) return true;
-  return key.endsWith(':pass') && invalidatedNodeIds.has(key.slice(0, -5));
+  return {
+    ...requestOptions,
+    nextMove: {color: nextColorForPath(document, request.path), point: ''},
+    cacheNodeId: hiddenPassAnalysisKey(document, request.path),
+    mergeMove: 'pass',
+  };
 }

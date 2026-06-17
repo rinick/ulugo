@@ -1,0 +1,177 @@
+import {
+  defaultAnalysisSettings,
+  defaultEditModeSettings,
+  defaultReviewModeSettings,
+  type AnalysisDisplayMode,
+  type AnalysisMode,
+  type AnalysisModeSettings,
+  type AnalysisMoveDisplay,
+  type AnalysisSettings,
+} from '@ulugo/analysis-core';
+
+const analysisSettingsStorageKey = 'ulugo.analysisSettings';
+const showMarkupStorageKey = 'ulugo.showMarkup';
+
+const modeSettingKeys = [
+  'stoneOverlay',
+  'showMarkup',
+  'showNextMove',
+  'showTopMoves',
+  'showExpectedTerritory',
+  'showScore',
+  'showPointLoss',
+  'showWinrate',
+  'showComments',
+] as const;
+
+export function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
+  const defaults: AnalysisSettings = enabled
+    ? defaultAnalysisSettings
+    : {...defaultAnalysisSettings, mode: 'edit', ...defaultEditModeSettings, boardBackground: 'golden'};
+
+  try {
+    const value = localStorage.getItem(analysisSettingsStorageKey);
+    if (value == null) return normalizeAnalysisSettings(defaults, enabled);
+    const stored = JSON.parse(value) as Partial<AnalysisSettings> & {
+      stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+      topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    };
+    return normalizeAnalysisSettings({...defaults, ...stored}, enabled);
+  } catch {
+    return normalizeAnalysisSettings(defaults, enabled);
+  }
+}
+
+export function writeStoredAnalysisSettings(settings: AnalysisSettings): void {
+  try {
+    localStorage.setItem(analysisSettingsStorageKey, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures; settings still apply for this session.
+  }
+}
+
+export function normalizeAnalysisSettings(
+  settings: Partial<AnalysisSettings> & {
+    moveDisplay?: unknown;
+    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+  },
+  enabled: boolean
+): AnalysisSettings {
+  const storedMode: AnalysisMode = settings.mode === 'edit' ? 'edit' : 'review';
+  const mode: AnalysisMode = enabled ? storedMode : 'edit';
+  const modeDefaults = mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings;
+  const activeSource = mode === storedMode ? settings : (settings.modeSettings?.[mode] ?? {});
+  const stoneOverlay =
+    activeSource.stoneOverlay ??
+    (mode === storedMode ? settings.topMoveDisplay : undefined) ??
+    modeDefaults.stoneOverlay;
+  const showMarkup = activeSource.showMarkup ?? readLegacyShowMarkup() ?? modeDefaults.showMarkup;
+  const activeModeSettings = normalizeModeSettings(
+    {
+      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
+      showMarkup,
+      showNextMove: activeSource.showNextMove,
+      showTopMoves: activeSource.showTopMoves,
+      showExpectedTerritory: activeSource.showExpectedTerritory,
+      showScore: activeSource.showScore,
+      showPointLoss: activeSource.showPointLoss,
+      showWinrate: activeSource.showWinrate,
+      showComments: activeSource.showComments,
+    },
+    modeDefaults
+  );
+  const modeSettings = {
+    review: normalizeModeSettings(settings.modeSettings?.review, defaultReviewModeSettings),
+    edit: normalizeModeSettings(settings.modeSettings?.edit, defaultEditModeSettings),
+    [mode]: activeModeSettings,
+  };
+  const normalized = {
+    ...defaultAnalysisSettings,
+    ...settings,
+    moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
+    mode,
+    ...activeModeSettings,
+    modeSettings,
+  };
+  if (!enabled && normalized.boardBackground === 'auto') return {...normalized, boardBackground: 'golden'};
+  return normalized;
+}
+
+export function updateCurrentModeSettings(
+  settings: AnalysisSettings,
+  values: Partial<AnalysisSettings>
+): AnalysisSettings {
+  const next = {...settings, ...values};
+  const modeSettings = {...settings.modeSettings};
+  let changedModeSettings = false;
+
+  for (const key of modeSettingKeys) {
+    if (key in values) changedModeSettings = true;
+  }
+
+  if (changedModeSettings) {
+    modeSettings[settings.mode] = normalizeModeSettings(
+      Object.fromEntries(modeSettingKeys.map((key) => [key, next[key]])),
+      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+    );
+  }
+
+  return {...next, modeSettings};
+}
+
+export function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMode, enabled: boolean): AnalysisSettings {
+  const modeSettings = {
+    ...settings.modeSettings,
+    [settings.mode]: normalizeModeSettings(
+      Object.fromEntries(modeSettingKeys.map((key) => [key, settings[key]])),
+      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+    ),
+  };
+  return normalizeAnalysisSettings(
+    {
+      ...settings,
+      mode,
+      ...modeSettings[mode],
+      modeSettings,
+    },
+    enabled
+  );
+}
+
+function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
+  const values = Array.isArray(value) ? value : [value];
+  const normalized = values.flatMap((item): AnalysisDisplayMode[] => {
+    if (item === 'score') return Array.isArray(value) ? ['score'] : ['scoreChange'];
+    if (item === 'winrate') return ['winRateChange'];
+    if (item === 'absScore') return ['value'];
+    if (item === 'scoreChange' || item === 'winRateChange' || item === 'visits' || item === 'value') return [item];
+    return [];
+  });
+  const unique = [...new Set(normalized)].slice(0, 2);
+  return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
+}
+
+function normalizeModeSettings(
+  settings: Partial<AnalysisModeSettings> | undefined,
+  defaults: AnalysisModeSettings
+): AnalysisModeSettings {
+  const stoneOverlay = settings?.stoneOverlay;
+  return {
+    ...defaults,
+    ...settings,
+    stoneOverlay:
+      stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
+        ? stoneOverlay
+        : defaults.stoneOverlay,
+  };
+}
+
+function readLegacyShowMarkup(): boolean | undefined {
+  try {
+    const value = localStorage.getItem(showMarkupStorageKey);
+    return value == null ? undefined : value === 'true';
+  } catch {
+    return undefined;
+  }
+}

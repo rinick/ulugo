@@ -1,27 +1,19 @@
 import {
-  CloseOutlined,
-  EditOutlined,
-  FieldBinaryOutlined,
   FileAddOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
-  CheckCircleFilled,
   SaveOutlined,
   SettingOutlined,
-  StockOutlined,
   ThunderboltOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
 import {
   Button,
-  Checkbox,
   ConfigProvider,
   Dropdown,
   Input,
   Layout,
   Modal,
-  Radio,
-  Segmented,
   Space,
   message,
   theme,
@@ -31,8 +23,6 @@ import {
   addLabel,
   addMarkup,
   addMove,
-  cloneDocument,
-  createNode,
   createNewGame,
   deleteNode,
   eraseMarkup,
@@ -47,10 +37,8 @@ import {
   serializeSgf,
   updateComment,
   updateGameInfo,
-  vertexToPoint,
   type SgfColor,
   type SgfDocument,
-  type SgfNode,
 } from '@ulugo/sgf-core';
 import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
 import {useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent} from 'react';
@@ -69,6 +57,7 @@ import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
 import {SgfTreePanel} from '../features/sgf-tree/SgfTreePanel';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
+import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
 import {
   readKeyboardShortcuts,
   shortcutActionForEvent,
@@ -104,6 +93,12 @@ import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './
 import {formatConsoleTime} from './katagoConsoleUtils';
 import {getAppFontFamily} from './fonts';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
+import {
+  gtpMoveToPoint,
+  hasReplaceableContinuation,
+  replaceNextMoveBranch,
+  type ReplaceMoveState,
+} from './replaceMoveUtils';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 
 const {Header, Content} = Layout;
@@ -122,11 +117,6 @@ interface CurrentFileMetadata {
   name: string;
   electronFilePath?: string;
   googleDriveFileId?: string;
-}
-
-interface ReplaceMoveState {
-  originalPath: number[];
-  replacementPath: number[];
 }
 
 export function App() {
@@ -1071,92 +1061,13 @@ export function App() {
             onNext10={() => navigateNext(10)}
             onLast={navigateToLast}
             extraEnd={
-              <Space className="analysis-toolbar-options">
-                {capabilities.katago ? (
-                  <span className="analysis-toolbar-option-group">
-                    <span>{t('mode')}</span>
-                    <Radio.Group
-                      size="medium"
-                      optionType="button"
-                      value={analysisSettings.mode}
-                      onChange={(event) => handleReviewEditModeChange(event.target.value as AnalysisSettings['mode'])}
-                      options={[
-                        {
-                          value: 'review',
-                          label: (
-                            <>
-                              <StockOutlined /> {t('review')}
-                            </>
-                          ),
-                        },
-                        {
-                          value: 'edit',
-                          label: (
-                            <>
-                              <EditOutlined /> {t('edit')}
-                            </>
-                          ),
-                        },
-                      ]}
-                    />
-                  </span>
-                ) : null}
-                <span className="analysis-toolbar-option-group">
-                  <span>{t('stoneOverlay')}</span>
-                  <Segmented
-                    size="medium"
-                    shape="round"
-                    value={stoneOverlayDisplay}
-                    onChange={(value) =>
-                      updateAnalysisSettings({stoneOverlay: value as AnalysisSettings['stoneOverlay']})
-                    }
-                    options={
-                      capabilities.katago
-                        ? [
-                            {value: 'dot', icon: <CheckCircleFilled />, tooltip: {title: t('analysis')}},
-                            {
-                              value: 'number',
-                              label: (
-                                <span style={{fontSize: 16}}>
-                                  <FieldBinaryOutlined />
-                                </span>
-                              ),
-                              tooltip: {title: t('moveNumber')},
-                            },
-                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('none')}},
-                          ]
-                        : [
-                            {
-                              value: 'number',
-                              icon: <FieldBinaryOutlined />,
-                              tooltip: {title: t('moveNumber')},
-                            },
-                            {value: 'none', icon: <CloseOutlined />, tooltip: {title: t('none')}},
-                          ]
-                    }
-                  />
-                </span>
-                <Checkbox
-                  checked={analysisSettings.showMarkup}
-                  onChange={(event) => updateAnalysisSettings({showMarkup: event.target.checked})}
-                >
-                  {t('showMarkup')}
-                </Checkbox>
-                <Checkbox
-                  checked={analysisSettings.showNextMove}
-                  onChange={(event) => updateAnalysisSettings({showNextMove: event.target.checked})}
-                >
-                  {t('nextMove')}
-                </Checkbox>
-                {capabilities.katago ? (
-                  <Checkbox
-                    checked={analysisSettings.showExpectedTerritory}
-                    onChange={(event) => updateAnalysisSettings({showExpectedTerritory: event.target.checked})}
-                  >
-                    {t('territory')}
-                  </Checkbox>
-                ) : null}
-              </Space>
+              <AnalysisToolbarOptions
+                katagoEnabled={capabilities.katago}
+                analysisSettings={analysisSettings}
+                stoneOverlayDisplay={stoneOverlayDisplay}
+                onModeChange={handleReviewEditModeChange}
+                onSettingsChange={updateAnalysisSettings}
+              />
             }
           />
         </Header>
@@ -1339,120 +1250,8 @@ export function App() {
   );
 }
 
-function replaceNextMoveBranch({
-  document,
-  path,
-  point,
-  rules,
-  branchMemory,
-  state,
-}: {
-  document: SgfDocument;
-  path: number[];
-  point: string;
-  rules?: string;
-  branchMemory: Map<string, number>;
-  state: ReplaceMoveState | null;
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
-  if (state == null || !samePath(path, state.replacementPath)) return null;
-
-  const originalNextPath = nextOriginalBranchPath(document, state.originalPath, branchMemory);
-  if (originalNextPath == null) return null;
-
-  const originalMove = nodeMove(getNodeAtPath(document, originalNextPath));
-  if (originalMove == null) return null;
-
-  const position = deriveBoardPosition(document, path);
-  if (!isLegalMove(position, originalMove.color, point, rules)) return null;
-
-  const next = cloneDocument(document);
-  const parent = getNodeAtPath(next, path);
-  const replacesOriginalBranch = samePath(path, state.originalPath);
-  if (!replacesOriginalBranch) parent.children = [];
-
-  const child = createNode({[originalMove.color]: [point]});
-  const insertIndex = replacesOriginalBranch ? originalNextPath[originalNextPath.length - 1] : 0;
-  parent.children.splice(insertIndex, 0, child);
-  const nextPath = [...path, insertIndex];
-  const nextOriginalPath = replacesOriginalBranch ? [...path, insertIndex + 1] : originalNextPath;
-
-  copyOriginalContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
-
-  return {
-    document: next,
-    path: nextPath,
-    state: {originalPath: nextOriginalPath, replacementPath: nextPath},
-  };
-}
-
-function copyOriginalContinuation(
-  targetDocument: SgfDocument,
-  targetPath: number[],
-  sourceDocument: SgfDocument,
-  sourcePath: number[],
-  rules: string | undefined,
-  branchMemory: Map<string, number>
-): void {
-  let currentTargetPath = targetPath;
-  let currentSourcePath = sourcePath;
-
-  while (true) {
-    const nextSourcePath = nextOriginalBranchPath(sourceDocument, currentSourcePath, branchMemory);
-    if (nextSourcePath == null) return;
-
-    const sourceNode = getNodeAtPath(sourceDocument, nextSourcePath);
-    const move = nodeMove(sourceNode);
-    if (move == null) return;
-
-    const position = deriveBoardPosition(targetDocument, currentTargetPath);
-    if (!isLegalMove(position, move.color, move.point, rules)) return;
-
-    const targetParent = getNodeAtPath(targetDocument, currentTargetPath);
-    targetParent.children.push(createNode(cloneNodeData(sourceNode)));
-    currentTargetPath = [...currentTargetPath, targetParent.children.length - 1];
-    currentSourcePath = nextSourcePath;
-  }
-}
-
-function nextOriginalBranchPath(
-  document: SgfDocument,
-  path: number[],
-  branchMemory: Map<string, number>
-): number[] | null {
-  const node = getNodeAtPath(document, path);
-  if (node.children.length === 0) return null;
-
-  const remembered = branchMemory.get(pathKey(path)) ?? 0;
-  const childIndex = node.children[remembered] == null ? 0 : remembered;
-  return [...path, childIndex];
-}
-
-function hasReplaceableContinuation(document: SgfDocument, path: number[], branchMemory: Map<string, number>): boolean {
-  const nextPath = nextOriginalBranchPath(document, path, branchMemory);
-  return nextPath != null && nextOriginalBranchPath(document, nextPath, branchMemory) != null;
-}
-
-function nodeMove(node: SgfNode): {color: SgfColor; point: string} | null {
-  const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-  return color == null ? null : {color, point: node.data[color]?.[0] ?? ''};
-}
-
-function cloneNodeData(node: SgfNode): Record<string, string[]> {
-  return Object.fromEntries(Object.entries(node.data).map(([key, values]) => [key, [...values]]));
-}
-
 function hasDraggedFiles(dataTransfer: DataTransfer): boolean {
   return Array.from(dataTransfer.types).includes('Files');
-}
-
-function gtpMoveToPoint(move: string, size: number): string | null {
-  const match = /^([A-Za-z])(\d+)$/.exec(move);
-  if (match == null) return null;
-
-  const x = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'.indexOf(match[1].toUpperCase());
-  const y = size - Number(match[2]);
-  if (x < 0 || y < 0 || x >= size || y >= size) return null;
-  return vertexToPoint(x, y);
 }
 
 function currentSgfFileName(currentFile: CurrentFileMetadata | null, gameName: string): string {
