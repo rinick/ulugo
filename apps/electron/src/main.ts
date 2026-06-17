@@ -18,7 +18,7 @@ interface KataGoSettings {
 
 interface AnalysisSettings {
   mode: 'review' | 'edit';
-  moveDisplay: 'none' | 'score' | 'winrate' | 'absScore';
+  moveDisplay: AnalysisMoveDisplay;
   stoneOverlay: 'dot' | 'number' | 'none';
   maxMoves: 1 | 5 | 20 | 'all';
   minVisits: number;
@@ -34,6 +34,9 @@ interface AnalysisSettings {
   autoAnalyze: boolean;
   modeSettings: Record<'review' | 'edit', AnalysisModeSettings>;
 }
+
+type AnalysisDisplayMode = 'scoreChange' | 'winRateChange' | 'score' | 'value' | 'visits';
+type AnalysisMoveDisplay = [AnalysisDisplayMode] | [AnalysisDisplayMode, AnalysisDisplayMode];
 
 interface AnalysisModeSettings {
   stoneOverlay: 'dot' | 'number' | 'none';
@@ -59,7 +62,7 @@ const defaultKataGoSettings: KataGoSettings = {
 
 const defaultAnalysisSettings: AnalysisSettings = {
   mode: 'review',
-  moveDisplay: 'score',
+  moveDisplay: ['scoreChange'],
   stoneOverlay: 'dot',
   maxMoves: 5,
   minVisits: 50,
@@ -381,6 +384,7 @@ async function readAnalysisSettings(): Promise<AnalysisSettings> {
 
 function normalizeAnalysisSettings(
   settings: Partial<AnalysisSettings> & {
+    moveDisplay?: unknown;
     stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
     topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
   }
@@ -410,10 +414,24 @@ function normalizeAnalysisSettings(
   return {
     ...defaultAnalysisSettings,
     ...storedSettings,
+    moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
     mode,
     ...activeModeSettings,
     modeSettings,
   };
+}
+
+function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
+  const values = Array.isArray(value) ? value : [value];
+  const normalized = values.flatMap((item): AnalysisDisplayMode[] => {
+    if (item === 'score') return Array.isArray(value) ? ['score'] : ['scoreChange'];
+    if (item === 'winrate') return ['winRateChange'];
+    if (item === 'absScore') return ['value'];
+    if (item === 'scoreChange' || item === 'winRateChange' || item === 'visits' || item === 'value') return [item];
+    return [];
+  });
+  const unique = [...new Set(normalized)].slice(0, 2);
+  return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
 }
 
 function normalizeAnalysisModeSettings(

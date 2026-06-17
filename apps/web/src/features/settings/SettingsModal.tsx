@@ -3,6 +3,7 @@ import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
 import {type AppLanguage, languageOptions} from '../../app/localizationUtils';
+import {Select12} from '../../components/Select12';
 
 interface SettingsModalProps {
   open: boolean;
@@ -133,14 +134,16 @@ export function SettingsModal({
               </Checkbox>
             </Form.Item>
             <Form.Item label={t('topMoveOverlay')}>
-              <Select
+              <Select12
                 size="small"
                 value={settings.moveDisplay}
-                onChange={(value) => updateSettings({moveDisplay: value as AnalysisSettings['moveDisplay']})}
+                onChange={(value) => updateSettings({moveDisplay: value})}
                 options={[
-                  {value: 'score', label: t('scoreChange')},
-                  {value: 'winrate', label: t('winRateChange')},
-                  {value: 'absScore', label: t('value')},
+                  {value: 'scoreChange', label: t('scoreChange')},
+                  {value: 'winRateChange', label: t('winRateChange')},
+                  {value: 'score', label: t('score')},
+                  {value: 'visits', label: t('visits')},
+                  {value: 'value', label: t('value')},
                 ]}
               />
             </Form.Item>

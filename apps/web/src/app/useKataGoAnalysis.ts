@@ -4,8 +4,10 @@ import {
   defaultEditModeSettings,
   defaultReviewModeSettings,
   type AnalysisChartPoint,
+  type AnalysisDisplayMode,
   type AnalysisMode,
   type AnalysisModeSettings,
+  type AnalysisMoveDisplay,
   type AnalysisSettings,
 } from '@ulugo/analysis-core';
 import {
@@ -107,12 +109,11 @@ export function useKataGoAnalysis({
       const cached = analysisCache[nodeId];
       return cached == null || cached.visits < analysisTargetVisits;
     }).length;
-    const hiddenPass =
-      analysisSettings.moveDisplay === 'absScore'
-        ? analysisPaths.filter((movePath) =>
-            shouldCountHiddenPassAnalysis(document, movePath, analysisCache, analysisTargetVisits)
-          ).length
-        : 0;
+    const hiddenPass = analysisSettings.moveDisplay.includes('value')
+      ? analysisPaths.filter((movePath) =>
+          shouldCountHiddenPassAnalysis(document, movePath, analysisCache, analysisTargetVisits)
+        ).length
+      : 0;
     return {normal, hiddenPass};
   }, [
     analysisCache,
@@ -483,7 +484,7 @@ export function useKataGoAnalysis({
       const jobs = buildFastAnalysisJobs({
         analysisPaths,
         currentPath: path,
-        valueMode: analysisSettings.moveDisplay === 'absScore',
+        valueMode: analysisSettings.moveDisplay.includes('value'),
         document,
         analysisCache,
         targetVisits,
@@ -577,6 +578,7 @@ function writeStoredAnalysisSettings(settings: AnalysisSettings): void {
 
 function normalizeAnalysisSettings(
   settings: Partial<AnalysisSettings> & {
+    moveDisplay?: unknown;
     stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
     topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
   },
@@ -613,12 +615,26 @@ function normalizeAnalysisSettings(
   const normalized = {
     ...defaultAnalysisSettings,
     ...settings,
+    moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
     mode,
     ...activeModeSettings,
     modeSettings,
   };
   if (!enabled && normalized.boardBackground === 'auto') return {...normalized, boardBackground: 'golden'};
   return normalized;
+}
+
+function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
+  const values = Array.isArray(value) ? value : [value];
+  const normalized = values.flatMap((item): AnalysisDisplayMode[] => {
+    if (item === 'score') return Array.isArray(value) ? ['score'] : ['scoreChange'];
+    if (item === 'winrate') return ['winRateChange'];
+    if (item === 'absScore') return ['value'];
+    if (item === 'scoreChange' || item === 'winRateChange' || item === 'visits' || item === 'value') return [item];
+    return [];
+  });
+  const unique = [...new Set(normalized)].slice(0, 2);
+  return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
 }
 
 function normalizeModeSettings(

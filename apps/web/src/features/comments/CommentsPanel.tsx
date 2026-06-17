@@ -61,7 +61,7 @@ export function CommentsPanel({
   onChange,
   showAnalysisControls = false,
   chartData = [],
-  moveDisplay = 'score',
+  moveDisplay = ['scoreChange'],
   showScore,
   showPointLoss,
   showWinrate,
@@ -330,7 +330,7 @@ function AnalysisChart({
         ) : null}
 
         {scorePoints.length > 0 ? (
-          <ScoreLine points={scorePoints} useHiddenPassColor={moveDisplay === 'absScore'} />
+          <ScoreLine points={scorePoints} useHiddenPassColor={moveDisplay.includes('value')} />
         ) : null}
 
         {pointLossPoints.length > 0 ? <PointLossLines points={pointLossPoints} /> : null}

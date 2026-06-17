@@ -2,7 +2,7 @@ import {Goban, type AnalysisOverlay, type Marker, type MoveHint, type Vertex} fr
 import {deriveBoardPosition, type BoardPoint} from '@ulugo/go-core';
 import {getNodeAtPath, pointToVertex, type MarkupKind, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
 import {useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
-import type {AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
+import type {AnalysisDisplayMode, AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 
 interface GoBoardProps {
   document: SgfDocument;
@@ -349,18 +349,34 @@ function analysisMoveText(
   analysis: KataGoAnalysisResult,
   nextColor: 'B' | 'W'
 ): string {
-  if (mode === 'none') return '';
+  return mode
+    .map((item) => analysisMoveTextLine(move, item, analysis, nextColor))
+    .filter(Boolean)
+    .join('\n');
+}
 
-  if (mode === 'winrate') {
+function analysisMoveTextLine(
+  move: KataGoMoveInfo,
+  mode: AnalysisDisplayMode,
+  analysis: KataGoAnalysisResult,
+  nextColor: 'B' | 'W'
+): string {
+  if (mode === 'winRateChange') {
     const winrateLost = moveWinrateLost(move, analysis, nextColor);
     return winrateLost == null ? '' : formatPercentDelta(-winrateLost);
   }
 
-  const scoreDelta = moveScoreDelta(move, analysis, nextColor, mode);
-  if (scoreDelta != null) return mode === 'absScore' ? formatValue(scoreDelta) : formatScore(scoreDelta);
+  if (mode === 'score') {
+    const score = moveScoreLead(move);
+    return score == null ? '' : formatScore(score * (nextColor === 'B' ? 1 : -1));
+  }
 
-  if (move.pointsLost != null)
-    return mode === 'absScore' ? formatValue(-move.pointsLost) : formatScore(-move.pointsLost);
+  if (mode === 'visits') return move.visits == null ? '' : formatVisits(move.visits);
+
+  const scoreDelta = moveScoreDelta(move, analysis, nextColor, mode);
+  if (scoreDelta != null) return mode === 'value' ? formatValue(scoreDelta) : formatScore(scoreDelta);
+
+  if (move.pointsLost != null) return mode === 'value' ? formatValue(-move.pointsLost) : formatScore(-move.pointsLost);
 
   return '';
 }
@@ -378,14 +394,14 @@ function moveScoreDelta(
   move: KataGoMoveInfo,
   analysis: KataGoAnalysisResult,
   nextColor: 'B' | 'W',
-  mode: AnalysisSettings['moveDisplay']
+  mode: AnalysisDisplayMode
 ): number | null {
   const score = moveScoreLead(move);
   if (score == null) return null;
 
   const passMove = analysis.moveInfos?.find((item) => item.move.toLowerCase() === 'pass');
   const passScore = passMove == null ? null : moveScoreLead(passMove);
-  if (mode === 'absScore') {
+  if (mode === 'value') {
     if (passScore == null) return null;
     return (score - passScore) * (nextColor === 'B' ? 1 : -1);
   }
@@ -441,6 +457,12 @@ function formatScore(value: number): string {
 function formatValue(value: number): string {
   const normalized = Object.is(value, -0) ? 0 : value;
   return normalized.toFixed(1);
+}
+
+function formatVisits(value: number): string {
+  if (value < 1000) return String(Math.round(value));
+  if (value < 1_000_000) return `${formatPrecision(value / 1000)}k`;
+  return `${formatPrecision(value / 1_000_000)}m`;
 }
 
 function formatPrecision(value: number): string {

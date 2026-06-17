@@ -404,7 +404,7 @@
   overflow: hidden;
   color: white;
   font-size: 0.36em;
-  line-height: 1.26;
+  line-height: 1;
   text-align: center;
   text-overflow: clip;
   text-shadow: 0 0em 0.2em #000000;
@@ -412,6 +412,10 @@
   opacity: 0.9;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.shudan-vertex .shudan-analysis-label_multiline {
+  font-size: 0.32em;
 }
 
 /* Selection */

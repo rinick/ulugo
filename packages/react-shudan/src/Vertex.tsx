@@ -226,7 +226,9 @@ function Vertex(props: VertexProps) {
         'div',
         {
           key: 'analysisLabel',
-          className: 'shudan-analysis-label',
+          className: classnames('shudan-analysis-label', {
+            'shudan-analysis-label_multiline': analysisOverlay.text.toString().includes('\n'),
+          }),
           style: absoluteStyle(),
         },
         analysisOverlay.text && analysisOverlay.text.toString()
