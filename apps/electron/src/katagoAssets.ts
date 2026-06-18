@@ -2,6 +2,15 @@ import {app} from 'electron';
 import extract from 'extract-zip';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {
+  isBs50KataGoBuild,
+  readKataGoVersionCatalog,
+  refreshKataGoVersionCatalog,
+  type KataGoAssetCatalog,
+  type KataGoAvailableAsset,
+} from './katagoVersions';
+
+export type {KataGoAssetCatalog, KataGoAvailableAsset} from './katagoVersions';
 
 export type KataGoAssetKind = 'katago' | 'model';
 
@@ -15,19 +24,6 @@ export interface KataGoAsset {
   path?: string;
 }
 
-export interface KataGoAvailableAsset {
-  id: string;
-  label: string;
-  url: string;
-  notes?: string;
-}
-
-export interface KataGoAssetCatalog {
-  updatedAt: string;
-  katago: KataGoAvailableAsset[];
-  models: KataGoAvailableAsset[];
-}
-
 export interface KataGoDownloadProgress {
   kind: KataGoAssetKind;
   optionId: string;
@@ -37,24 +33,7 @@ export interface KataGoDownloadProgress {
   path?: string;
 }
 
-interface KataGoNetworksResponse {
-  next: string | null;
-  results: KataGoNetwork[];
-}
-
-interface KataGoNetwork {
-  name: string;
-  model_file: string;
-  model_file_bytes?: number | null;
-  network_size?: string | null;
-  is_random?: boolean;
-  log_gamma?: number | null;
-  train_step?: number | null;
-  total_num_data_rows?: number | null;
-}
-
 const catalogFileName = 'available-assets.json';
-const legacyModelOptionIds = new Set(['recommended-18b', 'old-15b', 'old-20b', 'old-30b', 'fat-40b']);
 export function ulugoDataDirectory(): string {
   return path.join(app.getPath('home'), '.ulugo');
 }
@@ -76,25 +55,12 @@ export async function ensureUlugoAssetDirectories(): Promise<void> {
 
 export async function readKataGoAssetCatalog(): Promise<KataGoAssetCatalog> {
   await ensureUlugoAssetDirectories();
-  try {
-    const raw = await fs.readFile(path.join(ulugoDataDirectory(), catalogFileName), 'utf8');
-    return normalizeCatalog(JSON.parse(raw));
-  } catch {
-    const catalog = fallbackCatalog();
-    await writeKataGoAssetCatalog(catalog);
-    return catalog;
-  }
+  return readKataGoVersionCatalog(path.join(ulugoDataDirectory(), catalogFileName), process.platform);
 }
 
 export async function refreshKataGoAssetCatalog(platform = process.platform): Promise<KataGoAssetCatalog> {
-  const [katago, models] = await Promise.all([fetchLatestKataGoBuilds(platform), fetchBestKata1ModelsByPrefix()]);
-  const catalog = {
-    updatedAt: new Date().toISOString(),
-    katago: katago.length > 0 ? katago : fallbackCatalog().katago,
-    models: models.length > 0 ? models : fallbackCatalog().models,
-  };
-  await writeKataGoAssetCatalog(catalog);
-  return catalog;
+  await ensureUlugoAssetDirectories();
+  return refreshKataGoVersionCatalog(path.join(ulugoDataDirectory(), catalogFileName), platform);
 }
 
 export async function listKataGoAssets(catalog: KataGoAssetCatalog): Promise<{
@@ -281,188 +247,6 @@ async function findInstalledPathForOption(
   return files.find((file) => file.startsWith(`${installDirectory}${path.sep}`)) ?? null;
 }
 
-async function fetchLatestKataGoBuilds(platform: string): Promise<KataGoAvailableAsset[]> {
-  const response = await fetch('https://api.github.com/repos/lightvector/KataGo/releases/latest', {
-    headers: {'User-Agent': 'Ulugo'},
-  });
-  if (!response.ok) throw new Error(`Failed to refresh KataGo builds: ${response.status} ${response.statusText}`);
-  const release = (await response.json()) as {
-    tag_name?: string;
-    assets?: Array<{name?: string; browser_download_url?: string}>;
-  };
-  const platformKey = platform === 'win32' ? 'windows-x64' : platform === 'linux' ? 'linux-x64' : 'macos';
-  const assets = release.assets ?? [];
-
-  return assets
-    .filter((asset) => asset.name?.endsWith('.zip') && asset.name.includes(platformKey) && !isBs50KataGoBuild(asset.name))
-    .map((asset) => {
-      const name = asset.name ?? '';
-      return {
-        id: name.replace(/\.zip$/i, ''),
-        label: buildNameFromFileName(name),
-        notes: buildNotesFromFileName(name),
-        url: asset.browser_download_url ?? '',
-      };
-    })
-    .filter((asset) => asset.url !== '');
-}
-
-async function fetchBestKata1ModelsByPrefix(): Promise<KataGoAvailableAsset[]> {
-  const networks = await fetchKata1Networks();
-  const bestByPrefix = new Map<string, KataGoNetwork>();
-
-  for (const network of networks) {
-    const prefix = kata1ModelPrefix(network.name);
-    if (prefix == null) continue;
-
-    const current = bestByPrefix.get(prefix);
-    if (current == null || compareKataGoNetworks(network, current) > 0) bestByPrefix.set(prefix, network);
-  }
-
-  const best = [...bestByPrefix.values()];
-  const strongest = best.reduce<KataGoNetwork | null>(
-    (current, network) => (current == null || compareKataGoNetworks(network, current) > 0 ? network : current),
-    null
-  );
-  const fastest = best.reduce<KataGoNetwork | null>(
-    (current, network) =>
-      current == null ||
-      (network.model_file_bytes ?? Number.MAX_SAFE_INTEGER) < (current.model_file_bytes ?? Number.MAX_SAFE_INTEGER)
-        ? network
-        : current,
-    null
-  );
-
-  return best
-    .map((network) => ({
-      id: `kata1:${network.name}`,
-      label: `${network.name}.bin.gz`,
-      url: network.model_file,
-      notes: network === strongest ? 'strongest' : network === fastest ? 'fastest' : undefined,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-async function fetchKata1Networks(): Promise<KataGoNetwork[]> {
-  const networks: KataGoNetwork[] = [];
-  let url: string | null = 'https://katagotraining.org/api/networks/?page_size=100';
-  let pageCount = 0;
-
-  while (url != null && pageCount < 100) {
-    pageCount += 1;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to refresh KataGo models: ${response.status} ${response.statusText}`);
-
-    const page = (await response.json()) as KataGoNetworksResponse;
-    networks.push(
-      ...page.results.filter((network) => {
-        return (
-          network.name.startsWith('kata1-') &&
-          typeof network.model_file === 'string' &&
-          network.model_file !== '' &&
-          network.is_random !== true
-        );
-      })
-    );
-    url = page.next;
-  }
-
-  return networks;
-}
-
-function kata1ModelPrefix(name: string): string | null {
-  const match = /^(kata1-(?:[a-z0-9]+-)?b\d+c\d+nbt)(?:-|$)/i.exec(name);
-  return match?.[1] ?? null;
-}
-
-function compareKataGoNetworks(first: KataGoNetwork, second: KataGoNetwork): number {
-  return (
-    comparableNumber(first.log_gamma) - comparableNumber(second.log_gamma) ||
-    comparableNumber(first.train_step) - comparableNumber(second.train_step) ||
-    comparableNumber(first.total_num_data_rows) - comparableNumber(second.total_num_data_rows)
-  );
-}
-
-function comparableNumber(value: number | null | undefined): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
-}
-
-function fallbackCatalog(): KataGoAssetCatalog {
-  return {
-    updatedAt: new Date(0).toISOString(),
-    katago: fallbackKataGoBuilds(process.platform),
-    models: [],
-  };
-}
-
-function fallbackKataGoBuilds(platform: string): KataGoAvailableAsset[] {
-  const suffix = platform === 'win32' ? 'windows-x64' : platform === 'linux' ? 'linux-x64' : null;
-  if (suffix == null) return [];
-  return [
-    {
-      id: `katago-v1.16.0-opencl-${suffix}`,
-      label: buildNameFromFileName(`katago-v1.16.0-opencl-${suffix}.zip`),
-      notes: buildNotesFromFileName(`katago-v1.16.0-opencl-${suffix}.zip`),
-      url: `https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-${suffix}.zip`,
-    },
-    {
-      id: `katago-v1.16.0-eigenavx2-${suffix}`,
-      label: buildNameFromFileName(`katago-v1.16.0-eigenavx2-${suffix}.zip`),
-      notes: buildNotesFromFileName(`katago-v1.16.0-eigenavx2-${suffix}.zip`),
-      url: `https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-${suffix}.zip`,
-    },
-    {
-      id: `katago-v1.16.0-eigen-${suffix}`,
-      label: buildNameFromFileName(`katago-v1.16.0-eigen-${suffix}.zip`),
-      notes: buildNotesFromFileName(`katago-v1.16.0-eigen-${suffix}.zip`),
-      url: `https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-${suffix}.zip`,
-    },
-  ];
-}
-
-function normalizeCatalog(value: Partial<KataGoAssetCatalog>): KataGoAssetCatalog {
-  return {
-    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : new Date(0).toISOString(),
-    katago: normalizeAvailableAssets(value.katago)
-      .map(normalizeKataGoBuildOption)
-      .filter((asset) => !isBs50KataGoBuild(kataGoBuildFileName(asset))),
-    models: normalizeAvailableAssets(value.models).filter((asset) => !legacyModelOptionIds.has(asset.id)),
-  };
-}
-
-function normalizeAvailableAssets(value: unknown): KataGoAvailableAsset[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is KataGoAvailableAsset => {
-    return (
-      item != null &&
-      typeof item === 'object' &&
-      typeof (item as KataGoAvailableAsset).id === 'string' &&
-      typeof (item as KataGoAvailableAsset).label === 'string' &&
-      typeof (item as KataGoAvailableAsset).url === 'string'
-    );
-  });
-}
-
-function normalizeKataGoBuildOption(asset: KataGoAvailableAsset): KataGoAvailableAsset {
-  const fileName = kataGoBuildFileName(asset);
-  return {...asset, label: buildNameFromFileName(fileName), notes: buildNotesFromFileName(fileName)};
-}
-
-function kataGoBuildFileName(asset: KataGoAvailableAsset): string {
-  try {
-    const fileName = decodeURIComponent(path.basename(new URL(asset.url).pathname));
-    if (fileName !== '') return fileName;
-  } catch {
-    // Fall back to the persisted id for older or manually edited catalogs.
-  }
-  return `${asset.id}.zip`;
-}
-
-async function writeKataGoAssetCatalog(catalog: KataGoAssetCatalog): Promise<void> {
-  await fs.mkdir(ulugoDataDirectory(), {recursive: true});
-  await fs.writeFile(path.join(ulugoDataDirectory(), catalogFileName), JSON.stringify(catalog, null, 2), 'utf8');
-}
-
 async function downloadFile(url: string, destination: string, onProgress: (percent: number) => void): Promise<void> {
   const response = await fetch(url);
   if (!response.ok || response.body == null)
@@ -563,25 +347,6 @@ async function findFirstFile(directory: string, predicate: (file: string) => boo
 
 async function makeExecutable(filePath: string): Promise<void> {
   if (process.platform !== 'win32') await fs.chmod(filePath, 0o755);
-}
-
-function buildNameFromFileName(fileName: string): string {
-  return fileName.replace(/\.zip$/i, '');
-}
-
-function buildNotesFromFileName(fileName: string): string | undefined {
-  const lower = fileName.toLowerCase();
-
-  if (lower.includes('opencl')) return 'katagoOpenCL';
-  if (lower.includes('eigenavx2')) return 'katagoEigenAvx2';
-  if (lower.includes('eigen')) return 'katagoEigenCpu';
-  if (lower.includes('cuda')) return 'katagoCuda';
-  if (lower.includes('trt')) return 'katagoTensorRT';
-  return undefined;
-}
-
-function isBs50KataGoBuild(value: string): boolean {
-  return value.toLowerCase().includes('bs50');
 }
 
 function sanitizeFileName(value: string): string {
