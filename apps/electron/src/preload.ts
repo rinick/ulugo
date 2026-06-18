@@ -16,7 +16,12 @@ contextBridge.exposeInMainWorld('ulugo', {
   katago: {
     getSettings: () => ipcRenderer.invoke('ulugo:katago:get-settings'),
     saveSettings: (settings: unknown) => ipcRenderer.invoke('ulugo:katago:save-settings', settings),
-    getDownloadOptions: () => ipcRenderer.invoke('ulugo:katago:get-download-options'),
+    getAssets: () => ipcRenderer.invoke('ulugo:katago:get-assets'),
+    refreshAssets: () => ipcRenderer.invoke('ulugo:katago:refresh-assets'),
+    selectAsset: (request: {kind: 'katago' | 'model'; assetId: string}) =>
+      ipcRenderer.invoke('ulugo:katago:select-asset', request),
+    uninstallAsset: (request: {kind: 'katago' | 'model'; assetId: string}) =>
+      ipcRenderer.invoke('ulugo:katago:uninstall-asset', request),
     download: (request: {kind: 'katago' | 'model'; optionId: string}) =>
       ipcRenderer.invoke('ulugo:katago:download', request),
     onDownloadProgress: (callback: (progress: unknown) => void) => {

@@ -1,8 +1,8 @@
 import type {KataGoAnalysisResult, AnalysisSettings} from '@ulugo/analysis-core';
 import type {
   KataGoAnalysisQuery,
+  KataGoAssetInventory,
   KataGoConsoleMessage,
-  KataGoDownloadOption,
   KataGoDownloadProgress,
   KataGoDownloadResult,
   KataGoSettings,
@@ -59,7 +59,10 @@ export interface UlugoElectronApi {
   katago: {
     getSettings: () => Promise<KataGoSettings>;
     saveSettings: (settings: KataGoSettings) => Promise<KataGoSettings>;
-    getDownloadOptions: () => Promise<{katago: KataGoDownloadOption[]; models: KataGoDownloadOption[]}>;
+    getAssets: () => Promise<KataGoAssetInventory>;
+    refreshAssets: () => Promise<KataGoAssetInventory>;
+    selectAsset: (request: {kind: 'katago' | 'model'; assetId: string}) => Promise<KataGoSettings>;
+    uninstallAsset: (request: {kind: 'katago' | 'model'; assetId: string}) => Promise<KataGoAssetInventory>;
     download: (request: {kind: 'katago' | 'model'; optionId: string}) => Promise<KataGoDownloadResult>;
     onDownloadProgress: (callback: (progress: KataGoDownloadProgress) => void) => () => void;
     analyze: (query: KataGoAnalysisQuery) => Promise<void>;

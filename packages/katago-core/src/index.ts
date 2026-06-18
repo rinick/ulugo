@@ -54,11 +54,20 @@ export const defaultKataGoSettings: KataGoSettings = {
 
 export type KataGoDownloadKind = 'katago' | 'model';
 
-export interface KataGoDownloadOption {
+export interface KataGoAsset {
   id: string;
   label: string;
-  url: string;
-  installedPath?: string;
+  installed: boolean;
+  available: boolean;
+  notes?: string;
+  url?: string;
+  path?: string;
+}
+
+export interface KataGoAssetInventory {
+  katago: KataGoAsset[];
+  models: KataGoAsset[];
+  settings: KataGoSettings;
 }
 
 export interface KataGoDownloadProgress {
@@ -81,75 +90,6 @@ export interface KataGoConsoleMessage {
   source: 'ulugo' | 'katago';
   level: 'info' | 'warning' | 'error';
   text: string;
-}
-
-export const modelDownloadOptions: KataGoDownloadOption[] = [
-  {
-    id: 'recommended-18b',
-    label: 'Recommended 18b model',
-    url: 'https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz',
-  },
-  {
-    id: 'old-15b',
-    label: 'Old 15 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.3.2/g170e-b15c192-s1672170752-d466197061.txt.gz',
-  },
-  {
-    id: 'old-20b',
-    label: 'Old 20 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170e-b20c256x2-s5303129600-d1228401921.bin.gz',
-  },
-  {
-    id: 'old-30b',
-    label: 'Old 30 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170-b30c320x2-s4824661760-d1229536699.bin.gz',
-  },
-  {
-    id: 'fat-40b',
-    label: 'Fat 40 block model',
-    url: 'https://d3dndmfyhecmj0.cloudfront.net/g170/neuralnets/g170e-b40c384x2-s2348692992-d1229892979.zip',
-  },
-];
-
-export const katagoDownloadOptionsByPlatform: Record<string, KataGoDownloadOption[]> = {
-  win32: [
-    {
-      id: 'opencl-win',
-      label: 'OpenCL v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-windows-x64.zip',
-    },
-    {
-      id: 'eigen-avx2-win',
-      label: 'Eigen AVX2 (Modern CPUs) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-windows-x64.zip',
-    },
-    {
-      id: 'eigen-win',
-      label: 'Eigen (CPU, Non-optimized) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-windows-x64.zip',
-    },
-  ],
-  linux: [
-    {
-      id: 'opencl-linux',
-      label: 'OpenCL v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-linux-x64.zip',
-    },
-    {
-      id: 'eigen-avx2-linux',
-      label: 'Eigen AVX2 (Modern CPUs) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-linux-x64.zip',
-    },
-    {
-      id: 'eigen-linux',
-      label: 'Eigen (CPU, Non-optimized) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-linux-x64.zip',
-    },
-  ],
-};
-
-export function getKataGoDownloadOptions(platform: string): KataGoDownloadOption[] {
-  return katagoDownloadOptionsByPlatform[platform] ?? [];
 }
 
 export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOptions): KataGoAnalysisQuery {

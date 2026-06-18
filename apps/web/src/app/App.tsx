@@ -7,17 +7,7 @@ import {
   ThunderboltOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
-import {
-  Button,
-  ConfigProvider,
-  Dropdown,
-  Input,
-  Layout,
-  Modal,
-  Space,
-  message,
-  theme,
-} from 'antd';
+import {Button, ConfigProvider, Dropdown, Input, Layout, Modal, Space, message, theme} from 'antd';
 import type {MenuProps} from 'antd';
 import {
   addLabel,
@@ -136,12 +126,14 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
+  const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const pendingSetupPathRef = useRef<number[] | null>(null);
+  const handledAutotuningMessageIdsRef = useRef(new Set<string>());
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
@@ -220,6 +212,14 @@ export function App() {
   const appTitle = capabilities.platform === 'electron' ? t('electronTitle') : t('appTitle');
   const blackPlayerName = gameInfo.PB.trim() === '' ? t('black') : gameInfo.PB;
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
+
+  useEffect(() => {
+    for (const item of kataGoConsoleMessages) {
+      if (handledAutotuningMessageIdsRef.current.has(item.id)) continue;
+      handledAutotuningMessageIdsRef.current.add(item.id);
+      if (item.source === 'katago' && /performing autotuning/i.test(item.text)) setKataGoAutotuningOpen(true);
+    }
+  }, [kataGoConsoleMessages]);
 
   useEffect(() => {
     if (!showMarkup && isMarkupTool(tool)) setTool('auto');
@@ -981,6 +981,20 @@ export function App() {
         maskClosable={false}
       >
         {googleDrivePending === 'open' ? t('googleDriveOpenWaiting') : t('googleDriveSaveWaiting')}
+      </Modal>
+      <Modal
+        open={kataGoAutotuningOpen}
+        title={t('katagoAutotuning')}
+        footer={
+          <Button size="small" type="primary" onClick={() => setKataGoAutotuningOpen(false)}>
+            {t('ok')}
+          </Button>
+        }
+        closable={false}
+        keyboard={false}
+        maskClosable={false}
+      >
+        {t('katagoAutotuningMessage')}
       </Modal>
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         <Header className="app-header">

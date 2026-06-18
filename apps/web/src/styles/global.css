@@ -810,6 +810,13 @@ textarea,
   margin-bottom: 12px;
 }
 
+.katago-settings-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
 .path-field {
   width: 100%;
 }
@@ -836,8 +843,9 @@ textarea,
 
 .katago-settings-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  margin-top: 12px;
 }
 
 .hidden-file-input {
@@ -850,6 +858,7 @@ button.ant-btn.analysis-button {
   bottom: 8px;
   border-radius: 20px;
   transition: background 0.5s;
+  z-index: 10;
 }
 button.ant-btn.analysis-button-active {
   color: white;

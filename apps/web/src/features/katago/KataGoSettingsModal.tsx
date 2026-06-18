@@ -1,12 +1,16 @@
-import {Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Typography, message} from 'antd';
-import {useEffect, useState} from 'react';
+import {Button, Form, InputNumber, Modal, Progress, Space, Table, Typography, message} from 'antd';
+import type {ColumnsType} from 'antd/es/table';
+import {useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {
   defaultKataGoSettings,
-  type KataGoDownloadOption,
+  type KataGoAsset,
+  type KataGoAssetInventory,
   type KataGoDownloadProgress,
   type KataGoSettings,
 } from '@ulugo/katago-core';
+
+type AssetKind = 'katago' | 'model';
 
 interface KataGoSettingsModalProps {
   open: boolean;
@@ -18,55 +22,85 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
   const [form] = Form.useForm<KataGoSettings>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [downloading, setDownloading] = useState<'katago' | 'model' | null>(null);
-  const [katagoOptions, setKataGoOptions] = useState<KataGoDownloadOption[]>([]);
-  const [modelOptions, setModelOptions] = useState<KataGoDownloadOption[]>([]);
-  const [selectedKataGo, setSelectedKataGo] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [installing, setInstalling] = useState<AssetKind | null>(null);
+  const [inventory, setInventory] = useState<KataGoAssetInventory | null>(null);
+  const [installTarget, setInstallTarget] = useState<{kind: AssetKind; assetId: string} | null>(null);
   const [progress, setProgress] = useState<KataGoDownloadProgress | null>(null);
 
   useEffect(() => {
     if (!open || window.ulugo == null) return;
-
-    setLoading(true);
-    Promise.all([window.ulugo.katago.getSettings(), window.ulugo.katago.getDownloadOptions()])
-      .then(([settings, options]) => {
-        form.setFieldsValue(settings);
-        setKataGoOptions(options.katago);
-        setModelOptions(options.models);
-        const selectedKataGoOption = pickDownloadOption(options.katago, settings.executablePath);
-        const selectedModelOption = pickDownloadOption(options.models, settings.modelPath);
-        setSelectedKataGo(selectedKataGoOption?.id ?? null);
-        setSelectedModel(selectedModelOption?.id ?? null);
-        if (settings.executablePath === '' && selectedKataGoOption?.installedPath != null) {
-          void applyInstalledPath('katago', selectedKataGoOption.installedPath);
-        }
-        if (settings.modelPath === '' && selectedModelOption?.installedPath != null) {
-          void applyInstalledPath('model', selectedModelOption.installedPath);
-        }
-      })
-      .catch((error: unknown) => message.error(error instanceof Error ? error.message : t('katagoSettingsLoadFailed')))
-      .finally(() => setLoading(false));
-  }, [form, open, t]);
+    void loadInventory();
+  }, [open]);
 
   useEffect(() => {
     if (!open || window.ulugo == null) return;
     return window.ulugo.katago.onDownloadProgress(setProgress);
   }, [open]);
 
-  async function browse(field: keyof KataGoSettings): Promise<void> {
+  const selectedKataGoId = useMemo(
+    () => inventory?.katago.find((asset) => asset.path === inventory.settings.executablePath)?.id ?? null,
+    [inventory]
+  );
+  const selectedModelId = useMemo(
+    () => inventory?.models.find((asset) => asset.path === inventory.settings.modelPath)?.id ?? null,
+    [inventory]
+  );
+  const selectedKataGoRow =
+    selectedKataGoId ??
+    (installTarget?.kind === 'katago' ? installTarget.assetId : inventory?.katago.find((asset) => asset.available)?.id) ??
+    null;
+  const selectedModelRow =
+    selectedModelId ??
+    (installTarget?.kind === 'model' ? installTarget.assetId : inventory?.models.find((asset) => asset.available)?.id) ??
+    null;
+
+  async function loadInventory(): Promise<void> {
     if (window.ulugo == null) return;
-    const selected = await window.ulugo.selectFile({title: t(katagoFieldTitleKey(field))});
-    if (selected != null) form.setFieldValue(field, selected);
+
+    try {
+      setLoading(true);
+      const nextInventory = await window.ulugo.katago.getAssets();
+      setInventory(nextInventory);
+      form.setFieldsValue(nextInventory.settings);
+      setInstallTarget(defaultInstallTarget(nextInventory));
+    } catch (error: unknown) {
+      message.error(error instanceof Error ? error.message : t('katagoSettingsLoadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRefresh(): Promise<void> {
+    if (window.ulugo == null) return;
+
+    try {
+      setRefreshing(true);
+      const nextInventory = await window.ulugo.katago.refreshAssets();
+      setInventory(nextInventory);
+      form.setFieldsValue(nextInventory.settings);
+      setInstallTarget(defaultInstallTarget(nextInventory));
+      message.success(t('availableVersionsUpdated'));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('availableVersionsUpdateFailed'));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleSave(): Promise<void> {
-    if (window.ulugo == null) return;
+    if (window.ulugo == null || inventory == null) return;
 
     try {
       setSaving(true);
       const values = await form.validateFields();
-      await window.ulugo.katago.saveSettings({...defaultKataGoSettings, ...values});
+      const settings = await window.ulugo.katago.saveSettings({
+        ...inventory.settings,
+        maxVisits: values.maxVisits,
+        fastVisits: values.fastVisits,
+        wideRootNoise: values.wideRootNoise,
+      });
+      setInventory({...inventory, settings});
       message.success(t('katagoSettingsSaved'));
       onCancel();
     } catch (error) {
@@ -76,69 +110,98 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
     }
   }
 
-  async function applyInstalledPath(kind: 'katago' | 'model', installedPath: string): Promise<void> {
-    if (window.ulugo == null) return;
+  async function handleSelect(kind: AssetKind, assetId: string): Promise<void> {
+    if (window.ulugo == null || inventory == null) return;
+    const asset = assetsForKind(inventory, kind).find((item) => item.id === assetId);
+    if (asset == null) return;
 
-    const field = kind === 'katago' ? 'executablePath' : 'modelPath';
-    form.setFieldsValue({[field]: installedPath});
-    const settings = await window.ulugo.katago.saveSettings({
-      ...defaultKataGoSettings,
-      ...form.getFieldsValue(),
-      [field]: installedPath,
-    });
-    form.setFieldsValue(settings);
-  }
-
-  async function handleSelectDownloadOption(kind: 'katago' | 'model', optionId: string): Promise<void> {
-    if (kind === 'katago') {
-      setSelectedKataGo(optionId);
-    } else {
-      setSelectedModel(optionId);
-    }
-
-    const option = (kind === 'katago' ? katagoOptions : modelOptions).find((item) => item.id === optionId);
-    if (option?.installedPath != null) await applyInstalledPath(kind, option.installedPath);
-  }
-
-  async function handleDownload(kind: 'katago' | 'model'): Promise<void> {
-    if (window.ulugo == null) return;
-    const optionId = kind === 'katago' ? selectedKataGo : selectedModel;
-    if (optionId == null) return;
-    const option = (kind === 'katago' ? katagoOptions : modelOptions).find((item) => item.id === optionId);
-
-    if (option?.installedPath != null) {
-      await applyInstalledPath(kind, option.installedPath);
-      message.success(t(kind === 'katago' ? 'katagoSelected' : 'modelSelected'));
+    if (!asset.installed) {
+      setInstallTarget({kind, assetId});
       return;
     }
 
     try {
-      setDownloading(kind);
+      const settings = await window.ulugo.katago.selectAsset({kind, assetId});
+      const nextInventory = await window.ulugo.katago.getAssets();
+      setInventory({...nextInventory, settings});
+      form.setFieldsValue(settings);
+      message.success(t(kind === 'katago' ? 'katagoSelected' : 'modelSelected'));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('katagoSettingsLoadFailed'));
+    }
+  }
+
+  async function handleInstall(kind: AssetKind, assetId: string): Promise<void> {
+    if (window.ulugo == null) return;
+
+    try {
+      setInstalling(kind);
+      setInstallTarget({kind, assetId});
       setProgress(null);
-      const result = await window.ulugo.katago.download({kind, optionId});
+      const result = await window.ulugo.katago.download({kind, optionId: assetId});
+      const nextInventory = await window.ulugo.katago.getAssets();
+      setInventory({...nextInventory, settings: result.settings});
       form.setFieldsValue(result.settings);
-      const options = await window.ulugo.katago.getDownloadOptions();
-      setKataGoOptions(options.katago);
-      setModelOptions(options.models);
       message.success(t(kind === 'katago' ? 'katagoDownloaded' : 'modelDownloaded'));
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('downloadFailed'));
     } finally {
-      setDownloading(null);
+      setInstalling(null);
     }
   }
 
-  async function handleAutoConfig(): Promise<void> {
+  async function handleUninstall(kind: AssetKind, assetId: string): Promise<void> {
     if (window.ulugo == null) return;
 
     try {
-      const values = await form.validateFields();
-      const settings = await window.ulugo.katago.saveSettings({...defaultKataGoSettings, ...values, configPath: ''});
-      form.setFieldsValue(settings);
-      message.success(t('katagoConfigCreated'));
+      const nextInventory = await window.ulugo.katago.uninstallAsset({kind, assetId});
+      setInventory(nextInventory);
+      form.setFieldsValue(nextInventory.settings);
+      setInstallTarget(defaultInstallTarget(nextInventory));
+      message.success(t(kind === 'katago' ? 'katagoUninstalled' : 'modelUninstalled'));
     } catch (error) {
-      message.error(error instanceof Error ? error.message : t('katagoConfigFailed'));
+      message.error(error instanceof Error ? error.message : t('uninstallFailed'));
     }
+  }
+
+  function assetColumns(kind: AssetKind): ColumnsType<KataGoAsset> {
+    return [
+      {
+        title: t('name'),
+        dataIndex: 'label',
+        ellipsis: true,
+      },
+      {
+        title: t('notes'),
+        width: 96,
+        ellipsis: true,
+        render: (_, asset) => (asset.notes == null ? '' : t(asset.notes)),
+      },
+      {
+        title: t('state'),
+        width: 96,
+        render: (_, asset) => assetStatus(asset, t),
+      },
+      {
+        title: t('action'),
+        width: 120,
+        render: (_, asset) =>
+          asset.installed ? (
+            <Button size="small" danger onClick={() => void handleUninstall(kind, asset.id)}>
+              {t('uninstall')}
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              disabled={!asset.available}
+              loading={installing === kind && installTarget?.assetId === asset.id}
+              onClick={() => void handleInstall(kind, asset.id)}
+            >
+              {t('install')}
+            </Button>
+          ),
+      },
+    ];
   }
 
   return (
@@ -149,90 +212,64 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       onOk={() => void handleSave()}
       okText={t('save')}
       confirmLoading={saving}
-      width={720}
+      width={860}
       destroyOnHidden
     >
-      <Form form={form} layout="vertical" disabled={loading} initialValues={defaultKataGoSettings}>
+      <Space className="katago-settings-header">
         <Typography.Text className="settings-help" type="secondary">
           {t('katagoHelp')}
         </Typography.Text>
-        <PathField name="executablePath" label={t('katagoExecutable')} onBrowse={browse} />
-        <PathField name="modelPath" label={t('modelFile')} onBrowse={browse} />
-        <PathField
-          name="configPath"
-          label={t('katagoConfig')}
-          placeholder={t('autoCreatedIfEmpty')}
-          onBrowse={browse}
-          onAuto={() => void handleAutoConfig()}
-        />
-        <div className="katago-download-grid">
-          <Space.Compact className="katago-download-control">
-            <Select
-              size="small"
-              value={selectedKataGo}
-              disabled={katagoOptions.length === 0 || downloading != null}
-              popupMatchSelectWidth={false}
-              onChange={(value) => void handleSelectDownloadOption('katago', value)}
-              options={katagoOptions.map((option) => ({
-                value: option.id,
-                label: downloadOptionLabel(option, t('installed')),
-              }))}
-              placeholder={t('noKataGoDownload')}
-            />
-            <Button
-              size="small"
-              disabled={selectedKataGo == null}
-              loading={downloading === 'katago'}
-              onClick={() => void handleDownload('katago')}
-            >
-              {downloadButtonText(
-                katagoOptions.find((option) => option.id === selectedKataGo),
-                t('useInstalled'),
-                t('downloadKataGo')
-              )}
-            </Button>
-          </Space.Compact>
-          <Space.Compact className="katago-download-control">
-            <Select
-              size="small"
-              value={selectedModel}
-              disabled={modelOptions.length === 0 || downloading != null}
-              popupMatchSelectWidth={false}
-              onChange={(value) => void handleSelectDownloadOption('model', value)}
-              options={modelOptions.map((option) => ({
-                value: option.id,
-                label: downloadOptionLabel(option, t('installed')),
-              }))}
-            />
-            <Button
-              size="small"
-              disabled={selectedModel == null}
-              loading={downloading === 'model'}
-              onClick={() => void handleDownload('model')}
-            >
-              {downloadButtonText(
-                modelOptions.find((option) => option.id === selectedModel),
-                t('useInstalled'),
-                t('downloadModels')
-              )}
-            </Button>
-          </Space.Compact>
+        <Button size="small" loading={refreshing} onClick={() => void handleRefresh()}>
+          {t('refresh')}
+        </Button>
+      </Space>
+
+      <Typography.Title level={5}>{t('katagoInstallations')}</Typography.Title>
+      <Table
+        size="small"
+        loading={loading}
+        rowKey="id"
+        pagination={false}
+        scroll={{y: 300}}
+        columns={assetColumns('katago')}
+        dataSource={inventory?.katago ?? []}
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: selectedKataGoRow != null ? [selectedKataGoRow] : [],
+          onSelect: (asset) => void handleSelect('katago', asset.id),
+        }}
+      />
+
+      <Typography.Title level={5}>{t('katagoModels')}</Typography.Title>
+      <Table
+        size="small"
+        loading={loading}
+        rowKey="id"
+        pagination={false}
+        scroll={{y: 300}}
+        columns={assetColumns('model')}
+        dataSource={inventory?.models ?? []}
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: selectedModelRow != null ? [selectedModelRow] : [],
+          onSelect: (asset) => void handleSelect('model', asset.id),
+        }}
+      />
+
+      {progress != null ? (
+        <div className="katago-download-progress">
+          <Typography.Text type={progress.status === 'error' ? 'danger' : 'secondary'}>
+            {progress.message}
+          </Typography.Text>
+          <Progress
+            size="small"
+            percent={Math.round(progress.percent * 100)}
+            status={progress.status === 'error' ? 'exception' : progress.status === 'complete' ? 'success' : 'active'}
+          />
         </div>
-        {progress != null ? (
-          <div className="katago-download-progress">
-            <Typography.Text type={progress.status === 'error' ? 'danger' : 'secondary'}>
-              {progress.message}
-            </Typography.Text>
-            <Progress
-              size="small"
-              percent={Math.round(progress.percent * 100)}
-              status={progress.status === 'error' ? 'exception' : progress.status === 'complete' ? 'success' : 'active'}
-            />
-          </div>
-        ) : null}
-        <Form.Item name="altCommand" label={t('alternativeCommand')}>
-          <Input size="small" />
-        </Form.Item>
+      ) : null}
+
+      <Form form={form} layout="vertical" disabled={loading} initialValues={defaultKataGoSettings}>
         <div className="katago-settings-grid">
           <Form.Item name="maxVisits" label={t('maxVisits')}>
             <InputNumber size="small" min={1} />
@@ -249,61 +286,18 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
   );
 }
 
-function pickDownloadOption(options: KataGoDownloadOption[], currentPath: string): KataGoDownloadOption | undefined {
-  return (
-    options.find((option) => option.installedPath != null && option.installedPath === currentPath) ??
-    options.find((option) => option.installedPath != null) ??
-    options[0]
-  );
+function defaultInstallTarget(inventory: KataGoAssetInventory): {kind: AssetKind; assetId: string} | null {
+  const katago = inventory.katago.find((asset) => !asset.installed && asset.available);
+  if (katago != null) return {kind: 'katago', assetId: katago.id};
+  const model = inventory.models.find((asset) => !asset.installed && asset.available);
+  return model == null ? null : {kind: 'model', assetId: model.id};
 }
 
-function downloadOptionLabel(option: KataGoDownloadOption, installedLabel: string): string {
-  return option.installedPath == null ? option.label : `${option.label} (${installedLabel})`;
+function assetsForKind(inventory: KataGoAssetInventory, kind: AssetKind): KataGoAsset[] {
+  return kind === 'katago' ? inventory.katago : inventory.models;
 }
 
-function downloadButtonText(
-  option: KataGoDownloadOption | undefined,
-  installedText: string,
-  downloadText: string
-): string {
-  return option?.installedPath == null ? downloadText : installedText;
-}
-
-function katagoFieldTitleKey(field: keyof KataGoSettings): string {
-  if (field === 'executablePath') return 'katagoExecutable';
-  if (field === 'modelPath') return 'modelFile';
-  if (field === 'configPath') return 'katagoConfig';
-  return 'alternativeCommand';
-}
-
-function PathField({
-  name,
-  label,
-  placeholder,
-  onBrowse,
-  onAuto,
-}: {
-  name: keyof KataGoSettings;
-  label: string;
-  placeholder?: string;
-  onBrowse: (field: keyof KataGoSettings) => Promise<void>;
-  onAuto?: () => void;
-}) {
-  const {t} = useTranslation();
-
-  return (
-    <Form.Item name={name} label={label}>
-      <Space.Compact className="path-field">
-        <Input size="small" placeholder={placeholder} />
-        <Button size="small" onClick={() => void onBrowse(name)}>
-          {t('browse')}
-        </Button>
-        {onAuto != null ? (
-          <Button size="small" onClick={onAuto}>
-            {t('auto')}
-          </Button>
-        ) : null}
-      </Space.Compact>
-    </Form.Item>
-  );
+function assetStatus(asset: KataGoAsset, t: (key: string) => string): string {
+  if (asset.installed) return t('installed');
+  return t('available');
 }

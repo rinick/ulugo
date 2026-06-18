@@ -1,10 +1,21 @@
 import {app, BrowserWindow, Menu, dialog, ipcMain, type WebContents} from 'electron';
-import extract from 'extract-zip';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import fs from 'node:fs/promises';
-import fsSync from 'node:fs';
 import path from 'node:path';
 import {cancelGoogleDriveBridge, openGoogleDriveSgf, saveGoogleDriveSgf} from './googleDriveBridge';
+import {
+  downloadKataGoAsset,
+  fileExists,
+  findDefaultKataGoConfig,
+  findInstalledAssetPath,
+  listKataGoAssets,
+  readKataGoAssetCatalog,
+  refreshKataGoAssetCatalog,
+  ulugoDataDirectory,
+  uninstallKataGoAsset,
+  type KataGoAsset,
+  type KataGoAssetKind,
+} from './katagoAssets';
 
 interface KataGoSettings {
   executablePath: string;
@@ -56,7 +67,7 @@ const defaultKataGoSettings: KataGoSettings = {
   configPath: '',
   altCommand: '',
   maxVisits: 800,
-  fastVisits: 100,
+  fastVisits: 20,
   wideRootNoise: 0.04,
 };
 
@@ -102,13 +113,6 @@ const defaultAnalysisSettings: AnalysisSettings = {
   },
 };
 
-interface DownloadOption {
-  id: string;
-  label: string;
-  url: string;
-  installedPath?: string;
-}
-
 interface KataGoAnalysisQuery {
   id: string;
   boardXSize: number;
@@ -137,71 +141,6 @@ const activeKataGoQueryIds = new Set<string>();
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
-
-const modelDownloadOptions: DownloadOption[] = [
-  {
-    id: 'recommended-18b',
-    label: 'Recommended 18b model',
-    url: 'https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz',
-  },
-  {
-    id: 'old-15b',
-    label: 'Old 15 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.3.2/g170e-b15c192-s1672170752-d466197061.txt.gz',
-  },
-  {
-    id: 'old-20b',
-    label: 'Old 20 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170e-b20c256x2-s5303129600-d1228401921.bin.gz',
-  },
-  {
-    id: 'old-30b',
-    label: 'Old 30 block model',
-    url: 'https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170-b30c320x2-s4824661760-d1229536699.bin.gz',
-  },
-  {
-    id: 'fat-40b',
-    label: 'Fat 40 block model',
-    url: 'https://d3dndmfyhecmj0.cloudfront.net/g170/neuralnets/g170e-b40c384x2-s2348692992-d1229892979.zip',
-  },
-];
-
-const katagoDownloadOptionsByPlatform: Record<string, DownloadOption[]> = {
-  win32: [
-    {
-      id: 'opencl-win',
-      label: 'OpenCL v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-windows-x64.zip',
-    },
-    {
-      id: 'eigen-avx2-win',
-      label: 'Eigen AVX2 (Modern CPUs) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-windows-x64.zip',
-    },
-    {
-      id: 'eigen-win',
-      label: 'Eigen (CPU, Non-optimized) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-windows-x64.zip',
-    },
-  ],
-  linux: [
-    {
-      id: 'opencl-linux',
-      label: 'OpenCL v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-linux-x64.zip',
-    },
-    {
-      id: 'eigen-avx2-linux',
-      label: 'Eigen AVX2 (Modern CPUs) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-linux-x64.zip',
-    },
-    {
-      id: 'eigen-linux',
-      label: 'Eigen (CPU, Non-optimized) v1.16.0',
-      url: 'https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-linux-x64.zip',
-    },
-  ],
-};
 
 async function createWindow(): Promise<void> {
   app.setName('Ulugo AI review');
@@ -319,16 +258,45 @@ function registerIpc(): void {
     await writeJson('katago-settings.json', normalized);
     return normalized;
   });
-  ipcMain.handle('ulugo:katago:save-settings', async (_event, settings: KataGoSettings) =>
-    writeJson('katago-settings.json', await normalizeKataGoSettings({...defaultKataGoSettings, ...settings}))
+  ipcMain.handle('ulugo:katago:save-settings', async (_event, settings: KataGoSettings) => {
+    const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+    const next = await normalizeKataGoSettings({...defaultKataGoSettings, ...settings});
+    restartKataGoEngineIfSettingsChanged(previous, next);
+    return writeJson('katago-settings.json', next);
+  });
+  ipcMain.handle('ulugo:katago:get-assets', async () => getKataGoAssetInventory());
+  ipcMain.handle('ulugo:katago:refresh-assets', async (event) => {
+    sendKataGoConsole(event.sender, 'ulugo', 'info', 'Refreshing KataGo and model availability.');
+    await refreshKataGoAssetCatalog();
+    sendKataGoConsole(event.sender, 'ulugo', 'info', 'KataGo availability refreshed.');
+    return getKataGoAssetInventory();
+  });
+  ipcMain.handle('ulugo:katago:select-asset', async (_event, request: {kind: KataGoAssetKind; assetId: string}) =>
+    selectKataGoAsset(request.kind, request.assetId)
   );
-  ipcMain.handle('ulugo:katago:get-download-options', async () => ({
-    katago: await withInstalledPaths('katago', katagoDownloadOptionsByPlatform[process.platform] ?? []),
-    models: await withInstalledPaths('model', modelDownloadOptions),
-  }));
+  ipcMain.handle('ulugo:katago:uninstall-asset', async (event, request: {kind: KataGoAssetKind; assetId: string}) => {
+    const inventory = await getKataGoAssetInventory();
+    const assets = request.kind === 'katago' ? inventory.katago : inventory.models;
+    const asset = assets.find((item) => item.id === request.assetId);
+    if (asset == null || asset.path == null) throw new Error(`Unknown ${request.kind} asset: ${request.assetId}`);
+
+    sendKataGoConsole(event.sender, 'ulugo', 'info', `Uninstalling ${asset.label}.`);
+    await uninstallKataGoAsset(asset, request.kind);
+    const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+    const next = await normalizeKataGoSettings({
+      ...previous,
+      executablePath: request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.executablePath,
+      modelPath: request.kind === 'model' && previous.modelPath === asset.path ? '' : previous.modelPath,
+      configPath: request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.configPath,
+    });
+    restartKataGoEngineIfSettingsChanged(previous, next);
+    await writeJson('katago-settings.json', next);
+    sendKataGoConsole(event.sender, 'ulugo', 'info', `${asset.label} uninstalled.`);
+    return getKataGoAssetInventory();
+  });
   ipcMain.handle('ulugo:katago:download', async (event, request: {kind: 'katago' | 'model'; optionId: string}) => {
-    const options =
-      request.kind === 'katago' ? (katagoDownloadOptionsByPlatform[process.platform] ?? []) : modelDownloadOptions;
+    const catalog = await readKataGoAssetCatalog();
+    const options = request.kind === 'katago' ? catalog.katago : catalog.models;
     const option = options.find((item) => item.id === request.optionId);
     if (option == null) throw new Error(`Unknown download option: ${request.optionId}`);
 
@@ -341,7 +309,7 @@ function registerIpc(): void {
       request.kind === 'katago' ? {...settings, executablePath: result.path} : {...settings, modelPath: result.path},
       path.dirname(result.path)
     );
-    await saveInstalledAsset(request.kind, option.id, result.path);
+    restartKataGoEngineIfSettingsChanged(settings, nextSettings);
     await writeJson('katago-settings.json', nextSettings);
     sendKataGoConsole(event.sender, 'ulugo', 'info', `${option.label} installed at ${result.path}.`);
     return {...result, settings: nextSettings};
@@ -376,6 +344,35 @@ function bringSenderWindowToFront(sender: WebContents): void {
   window.show();
   window.moveTop();
   window.focus();
+}
+
+async function getKataGoAssetInventory(): Promise<{
+  katago: KataGoAsset[];
+  models: KataGoAsset[];
+  settings: KataGoSettings;
+}> {
+  const settings = await normalizeKataGoSettings(await readJson('katago-settings.json', defaultKataGoSettings));
+  await writeJson('katago-settings.json', settings);
+  const catalog = await readKataGoAssetCatalog();
+  const assets = await listKataGoAssets(catalog);
+  return {...assets, settings};
+}
+
+async function selectKataGoAsset(kind: KataGoAssetKind, assetId: string): Promise<KataGoSettings> {
+  const inventory = await getKataGoAssetInventory();
+  const assets = kind === 'katago' ? inventory.katago : inventory.models;
+  const asset = assets.find((item) => item.id === assetId);
+  if (asset == null || asset.path == null) throw new Error(`Selected ${kind} is not installed.`);
+
+  const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+  const next = await normalizeKataGoSettings(
+    kind === 'katago'
+      ? {...previous, executablePath: asset.path, configPath: ''}
+      : {...previous, modelPath: asset.path},
+    path.dirname(asset.path)
+  );
+  restartKataGoEngineIfSettingsChanged(previous, next);
+  return writeJson('katago-settings.json', next);
 }
 
 async function readAnalysisSettings(): Promise<AnalysisSettings> {
@@ -469,51 +466,27 @@ function settingsPath(name: string): string {
 }
 
 async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory?: string): Promise<KataGoSettings> {
-  const executableDirectory = settings.executablePath === '' ? undefined : path.dirname(settings.executablePath);
-  const configPath = await resolveKataGoConfig(settings.configPath, searchDirectory ?? executableDirectory);
-  return {...defaultKataGoSettings, ...settings, configPath};
+  const executablePath = await findInstalledAssetPath('katago', settings.executablePath);
+  const modelPath = await findInstalledAssetPath('model', settings.modelPath);
+  const defaultConfigPath = executablePath === '' ? '' : await findDefaultKataGoConfig(searchDirectory ?? executablePath);
+  const configPath =
+    executablePath === ''
+      ? ''
+      : settings.configPath !== '' &&
+          (await fileExists(settings.configPath)) &&
+          !shouldUseDefaultKataGoConfig(settings.configPath, defaultConfigPath)
+        ? settings.configPath
+        : defaultConfigPath;
+
+  return {...defaultKataGoSettings, ...settings, executablePath, modelPath, configPath};
 }
 
-async function resolveKataGoConfig(configPath: string, searchDirectory?: string): Promise<string> {
-  if (configPath !== '' && (await fileExists(configPath))) return configPath;
-
-  if (searchDirectory != null && searchDirectory !== '' && (await fileExists(searchDirectory))) {
-    const bundledConfig = await findFirstFile(searchDirectory, (file) => {
-      const name = path.basename(file).toLowerCase();
-      return name.endsWith('.cfg') && name.includes('analysis');
-    });
-    if (bundledConfig != null) return bundledConfig;
-  }
-
-  return ensureDefaultKataGoConfig();
-}
-
-async function ensureDefaultKataGoConfig(): Promise<string> {
-  const configPath = path.join(app.getPath('userData'), 'katago', 'ulugo-analysis.cfg');
-  if (await fileExists(configPath)) return configPath;
-
-  await fs.mkdir(path.dirname(configPath), {recursive: true});
-  await fs.writeFile(configPath, defaultKataGoConfigText(), 'utf8');
-  sendKataGoConsole(katagoSender, 'ulugo', 'info', `Created KataGo analysis config at ${configPath}.`);
-  return configPath;
-}
-
-function defaultKataGoConfigText(): string {
-  return [
-    '# Ulugo KataGo analysis config',
-    '# Created automatically. You can edit this file for advanced KataGo tuning.',
-    '',
-    'reportAnalysisWinratesAs = BLACK',
-    'conservativePass = true',
-    'maxVisits = 500',
-    'numAnalysisThreads = 2',
-    'numSearchThreads = 8',
-    'nnMaxBatchSize = 32',
-    'nnCacheSizePowerOfTwo = 20',
-    'nnMutexPoolSizePowerOfTwo = 16',
-    'nnRandomize = true',
-    '',
-  ].join('\n');
+function shouldUseDefaultKataGoConfig(configPath: string, defaultConfigPath: string): boolean {
+  return (
+    defaultConfigPath !== '' &&
+    path.basename(defaultConfigPath) === 'ulugo-analysis.cfg' &&
+    path.basename(configPath) === 'analysis_example.cfg'
+  );
 }
 
 function decodeGameRecordBuffer(buffer: Uint8Array, preferKorean: boolean): string {
@@ -532,21 +505,30 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
   if (katagoProcess != null) return;
 
   if (settings.executablePath === '' || !(await fileExists(settings.executablePath))) {
-    sendKataGoConsole(sender, 'ulugo', 'error', 'KataGo executable is not configured.');
-    throw new Error('KataGo executable is not configured.');
+    const message = 'KataGo cannot start because no installed executable is selected.';
+    sendKataGoConsole(sender, 'ulugo', 'error', message);
+    throw new Error(message);
   }
   if (settings.modelPath === '' || !(await fileExists(settings.modelPath))) {
-    sendKataGoConsole(sender, 'ulugo', 'error', 'KataGo model is not configured.');
-    throw new Error('KataGo model is not configured.');
+    const message = 'KataGo cannot start because no installed model is selected.';
+    sendKataGoConsole(sender, 'ulugo', 'error', message);
+    throw new Error(message);
   }
   if (settings.configPath === '' || !(await fileExists(settings.configPath))) {
-    sendKataGoConsole(sender, 'ulugo', 'error', 'KataGo config is not configured.');
-    throw new Error('KataGo config is not configured.');
+    const message = 'KataGo cannot start because no analysis config is available.';
+    sendKataGoConsole(sender, 'ulugo', 'error', message);
+    throw new Error(message);
   }
 
   const {command, args, options} = kataGoCommand(settings);
   katagoOutputBuffer = '';
   sendKataGoConsole(sender, 'ulugo', 'info', `Starting KataGo: ${command} ${args.join(' ')}`);
+  sendKataGoConsole(
+    sender,
+    'ulugo',
+    'info',
+    `KataGo tuning: maxVisits=${settings.maxVisits}, fastVisits=${settings.fastVisits}, wideRootNoise=${settings.wideRootNoise}.`
+  );
   katagoProcess = spawn(command, args, options);
 
   katagoProcess.stdout.on('data', (chunk: Buffer) => {
@@ -659,6 +641,23 @@ function sendKataGoConsole(
   });
 }
 
+function restartKataGoEngineIfSettingsChanged(previous: KataGoSettings, next: KataGoSettings): void {
+  if (
+    previous.executablePath === next.executablePath &&
+    previous.modelPath === next.modelPath &&
+    previous.configPath === next.configPath &&
+    previous.altCommand === next.altCommand
+  ) {
+    return;
+  }
+
+  if (katagoProcess == null) return;
+  activeKataGoQueryIds.clear();
+  katagoProcess.kill();
+  katagoProcess = null;
+  sendKataGoConsole(katagoSender, 'ulugo', 'info', 'KataGo configuration changed. The engine will restart on demand.');
+}
+
 function kataGoCommand(settings: KataGoSettings): {
   command: string;
   args: string[];
@@ -677,7 +676,7 @@ function kataGoCommand(settings: KataGoSettings): {
       '-config',
       settings.configPath,
       '-override-config',
-      `homeDataDir=${app.getPath('userData')}`,
+      `homeDataDir=${ulugoDataDirectory()}`,
     ],
   };
 }
@@ -751,180 +750,4 @@ async function stopKataGoAnalysis(queryIds?: string[]): Promise<void> {
       }).catch(() => undefined)
     )
   );
-}
-
-async function withInstalledPaths(kind: 'katago' | 'model', options: DownloadOption[]): Promise<DownloadOption[]> {
-  const installed = await readJson<Record<string, string>>('katago-installed-assets.json', {});
-
-  return Promise.all(
-    options.map(async (option) => {
-      const installedPath = await resolveInstalledAsset(kind, option, installed[installedAssetKey(kind, option.id)]);
-      return installedPath == null ? option : {...option, installedPath};
-    })
-  );
-}
-
-async function saveInstalledAsset(kind: 'katago' | 'model', optionId: string, filePath: string): Promise<void> {
-  const installed = await readJson<Record<string, string>>('katago-installed-assets.json', {});
-  installed[installedAssetKey(kind, optionId)] = filePath;
-  await writeJson('katago-installed-assets.json', installed);
-}
-
-function installedAssetKey(kind: 'katago' | 'model', optionId: string): string {
-  return `${kind}:${optionId}`;
-}
-
-async function resolveInstalledAsset(
-  kind: 'katago' | 'model',
-  option: DownloadOption,
-  manifestPath: string | undefined
-): Promise<string | null> {
-  if (manifestPath != null && (await fileExists(manifestPath))) return manifestPath;
-
-  const directory = path.join(app.getPath('userData'), kind === 'katago' ? 'katago' : 'models');
-  if (!(await fileExists(directory))) return null;
-
-  if (kind === 'model') {
-    const fileName = path.basename(new URL(option.url).pathname);
-    const directPath = path.join(directory, fileName);
-    if (await fileExists(directPath)) return directPath;
-  }
-
-  const candidates = (await listFiles(directory)).filter((file) => isInstalledAssetCandidate(kind, file));
-  return candidates.length === 1 ? candidates[0] : null;
-}
-
-function isInstalledAssetCandidate(kind: 'katago' | 'model', file: string): boolean {
-  const name = path.basename(file).toLowerCase();
-  if (kind === 'model') return name.endsWith('.bin.gz') || name.endsWith('.txt.gz');
-  if (!name.startsWith('katago')) return false;
-  if (name.endsWith('.dll') || name.endsWith('.txt') || name.endsWith('.cfg')) return false;
-  return process.platform === 'win32' ? name.endsWith('.exe') : !name.includes('.');
-}
-
-async function downloadKataGoAsset(
-  option: DownloadOption,
-  kind: 'katago' | 'model',
-  onProgress: (progress: {
-    kind: 'katago' | 'model';
-    optionId: string;
-    status: 'starting' | 'downloading' | 'extracting' | 'complete' | 'error';
-    percent: number;
-    message: string;
-    path?: string;
-  }) => void
-): Promise<{path: string}> {
-  const directory = path.join(app.getPath('userData'), kind === 'katago' ? 'katago' : 'models');
-  await fs.mkdir(directory, {recursive: true});
-
-  const fileName = path.basename(new URL(option.url).pathname);
-  const downloadPath = path.join(directory, fileName);
-  const partialPath = `${downloadPath}.part`;
-
-  try {
-    onProgress({kind, optionId: option.id, status: 'starting', percent: 0, message: `Starting ${option.label}`});
-    await downloadFile(option.url, partialPath, (percent) => {
-      onProgress({
-        kind,
-        optionId: option.id,
-        status: 'downloading',
-        percent,
-        message: `Downloading ${option.label}`,
-      });
-    });
-
-    await fs.rename(partialPath, downloadPath);
-    onProgress({kind, optionId: option.id, status: 'extracting', percent: 1, message: `Installing ${option.label}`});
-
-    const installedPath = downloadPath.endsWith('.zip')
-      ? await extractDownloadedAsset(downloadPath, directory, kind)
-      : downloadPath;
-    if (kind === 'katago') await makeExecutable(installedPath);
-
-    onProgress({
-      kind,
-      optionId: option.id,
-      status: 'complete',
-      percent: 1,
-      message: `${option.label} installed`,
-      path: installedPath,
-    });
-    return {path: installedPath};
-  } catch (error) {
-    await fs.rm(partialPath, {force: true}).catch(() => undefined);
-    const message = error instanceof Error ? error.message : `Failed to download ${option.label}`;
-    onProgress({kind, optionId: option.id, status: 'error', percent: 0, message});
-    throw error;
-  }
-}
-
-async function downloadFile(url: string, destination: string, onProgress: (percent: number) => void): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok || response.body == null)
-    throw new Error(`Download failed: ${response.status} ${response.statusText}`);
-
-  const total = Number(response.headers.get('content-length') ?? 0);
-  let received = 0;
-  const file = await fs.open(destination, 'w');
-
-  try {
-    const reader = response.body.getReader();
-    while (true) {
-      const result = await reader.read();
-      if (result.done) break;
-      received += result.value.byteLength;
-      await file.write(Buffer.from(result.value));
-      onProgress(total > 0 ? received / total : 0);
-    }
-  } finally {
-    await file.close();
-  }
-}
-
-async function extractDownloadedAsset(zipPath: string, destination: string, kind: 'katago' | 'model'): Promise<string> {
-  const existingFiles = new Set(await listFiles(destination));
-  await extract(zipPath, {dir: destination});
-  await fs.rm(zipPath, {force: true});
-
-  const extractedFiles = (await listFiles(destination)).filter((file) => !existingFiles.has(file));
-  const files = extractedFiles.length > 0 ? extractedFiles : await listFiles(destination);
-  const installed = files.find((file) => {
-    return isInstalledAssetCandidate(kind, file);
-  });
-
-  if (installed == null) throw new Error(`Could not find installed ${kind} file in downloaded archive.`);
-  return installed;
-}
-
-async function listFiles(directory: string): Promise<string[]> {
-  const entries = await fs.readdir(directory, {withFileTypes: true});
-  const nested = await Promise.all(
-    entries.map((entry) => {
-      const entryPath = path.join(directory, entry.name);
-      return entry.isDirectory() ? listFiles(entryPath) : Promise.resolve([entryPath]);
-    })
-  );
-  return nested.flat();
-}
-
-async function findFirstFile(directory: string, predicate: (file: string) => boolean): Promise<string | null> {
-  for (const file of await listFiles(directory)) {
-    if (predicate(file)) return file;
-  }
-  return null;
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function makeExecutable(filePath: string): Promise<void> {
-  if (process.platform === 'win32') return;
-  const mode = fsSync.statSync(filePath).mode;
-  await fs.chmod(filePath, mode | 0o111);
 }
