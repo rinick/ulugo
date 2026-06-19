@@ -852,13 +852,33 @@ textarea,
   display: none;
 }
 
-button.ant-btn.analysis-button {
+.ant-btn.analysis-button {
   position: absolute;
   right: min(8px, abs(20cqw - 20cqh));
   bottom: min(8px, abs(20cqw - 20cqh));
   border-radius: 20px;
   transition: background 0.5s;
   z-index: 10;
+}
+.ant-btn.desktop-download-button {
+  gap: 0;
+  overflow: hidden;
+}
+.ant-btn.desktop-download-button:hover {
+  gap: 8px;
+}
+.desktop-download-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    max-width 0.3s,
+    opacity 0.2s;
+}
+.ant-btn.desktop-download-button:hover .desktop-download-label {
+  max-width: 320px;
+  opacity: 1;
 }
 button.ant-btn.analysis-button-active {
   color: white;

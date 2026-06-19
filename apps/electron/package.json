@@ -1,6 +1,6 @@
 {
   "name": "@ulugo/electron",
-  "productName": "Ulugo AI review",
+  "productName": "ulugo",
   "description": "Ulugo AI review",
   "version": "0.0.0",
   "private": true,
@@ -10,7 +10,7 @@
     "dev": "tsc -p tsconfig.json && electron dist/main.js",
     "build": "tsc -p tsconfig.json",
     "package:win-x64": "electron-builder --win portable --x64",
-    "package:mac-arm64": "electron-builder --mac dmg --arm64",
+    "package:mac-arm64": "electron-builder --mac zip --arm64",
     "package:linux-x64": "electron-builder --linux AppImage --x64",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -8,6 +8,7 @@ import {
   ToolOutlined,
   LeftSquareOutlined,
   RightSquareOutlined,
+  CloudDownloadOutlined,
 } from '@ant-design/icons';
 import {Button, ConfigProvider, Dropdown, Input, Layout, Modal, Space, message} from 'antd';
 import type {MenuProps} from 'antd';
@@ -1147,7 +1148,17 @@ export function App() {
               >
                 {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                className="analysis-button desktop-download-button"
+                icon={<CloudDownloadOutlined />}
+                href="https://github.com/rinick/ulugo/releases"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="desktop-download-label">{t('downloadDesktopApp')}</span>
+              </Button>
+            )}
             {isElectron && (
               <Button
                 className="left-panel-toggle"

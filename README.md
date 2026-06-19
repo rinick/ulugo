@@ -10,6 +10,7 @@ Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an s
 ## Features
 
 - Review games with KataGo analysis in the Electron app.
+  - Download from [Releases Page](https://github.com/rinick/ulugo/releases)
 - Open, edit, and save SGF game records.
   - Also available as a standalone web app at [ulugo.com](https://ulugo.com).
 

@@ -5,7 +5,7 @@ export const appTheme = {
   components: {
     Button: {
       defaultHoverBorderColor: '#dc8916',
-      defaultHoverColor: '#dc8916',
+      defaultHoverColor: '#a16614',
     },
     Radio: {
       colorPrimary: '#dc8916',
