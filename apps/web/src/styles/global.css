@@ -330,7 +330,7 @@ textarea,
 }
 
 .board-region {
-  container-type: inline-size;
+  container-type: size;
   position: relative;
   display: flex;
   flex: 1 1 420px;
@@ -756,7 +756,7 @@ textarea,
 
 .board-surface::before {
   position: absolute;
-  right: calc(40% + 25cqw);
+  right: calc(25% + 25cqw);
   content: ' ';
   width: 100%;
   height: 100%;
@@ -768,7 +768,7 @@ textarea,
 
 .board-surface::after {
   position: absolute;
-  left: calc(40% + 25cqw);
+  left: calc(25% + 25cqw);
   content: ' ';
   width: 100%;
   height: 100%;
@@ -854,8 +854,8 @@ textarea,
 
 button.ant-btn.analysis-button {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: min(8px, abs(20cqw - 20cqh));
+  bottom: min(8px, abs(20cqw - 20cqh));
   border-radius: 20px;
   transition: background 0.5s;
   z-index: 10;

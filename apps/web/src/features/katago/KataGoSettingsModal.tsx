@@ -295,7 +295,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
           <Form.Item name="maxVisits" label={t('maxVisits')}>
             <InputNumber size="small" min={1} />
           </Form.Item>
-          <Form.Item name="fastVisits" label={t('fastVisits')}>
+          <Form.Item name="fastVisits" label={t('fastVisits')} extra={t('fastVisitsHelp')}>
             <InputNumber size="small" min={1} />
           </Form.Item>
           <Form.Item name="wideRootNoise" label={t('wideRootNoise')}>
