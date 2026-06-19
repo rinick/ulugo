@@ -16,7 +16,7 @@
     "@ulugo/analysis-core": "workspace:*",
     "@ulugo/go-core": "workspace:*",
     "@ulugo/katago-core": "workspace:*",
-    "@ulugo/react-shudan": "workspace:*",
+    "@ulugo/go-board": "workspace:*",
     "@ulugo/sgf-analysis-tree": "workspace:*",
     "@ulugo/sgf-core": "workspace:*",
     "@ulugo/ui-shared": "workspace:*",

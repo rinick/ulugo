@@ -1,5 +1,5 @@
 {
-  "name": "@ulugo/react-shudan",
+  "name": "@ulugo/go-board",
   "version": "1.7.1-ulugo.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "description": "React fork of SabakiHQ/Shudan for ulugo.",
+  "description": "React Go board renderer for Ulugo.",
   "license": "MIT",
   "dependencies": {
     "classnames": "^2.3.1"

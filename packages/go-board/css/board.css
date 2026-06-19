@@ -1,0 +1,486 @@
+.ulugo-board {
+  --ulugo-board-border-width: 0.15em;
+  --ulugo-board-border-color: #ca933a;
+
+  --ulugo-board-background-color: #f1b458;
+  --ulugo-board-foreground-color: #5e2e0c;
+
+  --ulugo-black-background-color: #222;
+  --ulugo-black-foreground-color: #eee;
+
+  --ulugo-white-background-color: #eee;
+  --ulugo-white-foreground-color: #222;
+
+  position: relative;
+  border: var(--ulugo-board-border-width) solid var(--ulugo-board-border-color);
+  color: var(--ulugo-board-foreground-color);
+}
+.ulugo-board:not(.ulugo-coordinates) {
+  padding: 0.25em;
+}
+.ulugo-board-image {
+  background: url('./board.webp') var(--ulugo-board-background-color);
+}
+.ulugo-board-golden {
+  --ulugo-board-border-color: #ca933a;
+  --ulugo-board-background-color: #f1b458;
+}
+.ulugo-board-natural {
+  --ulugo-board-border-color: #b69064;
+  --ulugo-board-background-color: #dcb081;
+  background-image: url('./board-grey.webp');
+}
+.ulugo-board-flat {
+  --ulugo-board-border-color: #cec8c0;
+  --ulugo-board-background-color: #eee8e0;
+  background-image: none;
+}
+
+.ulugo-coordx span,
+.ulugo-coordy span {
+  font-size: 0.6em;
+}
+
+.ulugo-vertex div {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Board gradient */
+
+.ulugo-board::after {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--ulugo-board-border-width));
+  left: calc(-1 * var(--ulugo-board-border-width));
+  bottom: calc(-1 * var(--ulugo-board-border-width));
+  right: calc(-1 * var(--ulugo-board-border-width));
+  background:
+    linear-gradient(to bottom, rgba(234, 220, 192, 0.1), transparent),
+    linear-gradient(to bottom, transparent, rgba(23, 10, 2, 0.05));
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Busy screen */
+
+.ulugo-board.ulugo-busy::after {
+  animation: 2s linear -0.5s ulugo-busy infinite;
+  background-color: rgba(23, 10, 2, 0.1);
+  background-image: linear-gradient(to right, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+  background-size: 19em 100%;
+  background-repeat: no-repeat;
+  pointer-events: all;
+}
+
+@keyframes ulugo-busy {
+  from {
+    background-position: -19em 0;
+  }
+  to {
+    background-position: calc(100% + 19em) 0;
+  }
+}
+
+/* Board grid */
+
+.ulugo-gridline,
+.ulugo-hoshi {
+  fill: var(--ulugo-board-foreground-color);
+}
+
+/* Stone render */
+
+.ulugo-vertex .ulugo-stone {
+  top: 0.04em;
+  left: 0.04em;
+  width: calc(100% - 0.08em);
+  height: calc(100% - 0.08em);
+}
+.ulugo-vertex.ulugo-sign_0 .ulugo-stone {
+  pointer-events: none;
+}
+.ulugo-vertex:not(.ulugo-sign_0) .ulugo-stone::before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: rgba(23, 10, 2, 0.4);
+  box-shadow: 0 0.1em 0.2em rgba(23, 10, 2, 0.4);
+}
+.ulugo-vertex .ulugo-inner {
+  text-indent: -9999rem;
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-dimmed .ulugo-stone {
+  opacity: 0.6;
+}
+.ulugo-stone-image {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+.ulugo-stone-image.ulugo-sign_1 {
+  background-image: url('./stone_1.svg');
+}
+.ulugo-stone-image.ulugo-sign_-1 {
+  background-image: url('./stone_-1.svg');
+}
+
+/* Fuzzy stone placement */
+
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-animate .ulugo-stone {
+  transition: transform 0.2s;
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_1 .ulugo-stone {
+  transform: translate(-0.07em, 0);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_2 .ulugo-stone {
+  transform: translate(0, -0.07em);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_3 .ulugo-stone {
+  transform: translate(0.07em, 0);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_4 .ulugo-stone {
+  transform: translate(0, 0.07em);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_5 .ulugo-stone {
+  transform: translate(-0.04em, -0.04em);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_6 .ulugo-stone {
+  transform: translate(0.04em, -0.04em);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_7 .ulugo-stone {
+  transform: translate(0.04em, 0.04em);
+}
+.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_8 .ulugo-stone {
+  transform: translate(-0.04em, 0.04em);
+}
+
+/* Markers */
+
+.ulugo-vertex .ulugo-marker {
+  left: 0.04em;
+  top: 0.04em;
+  width: calc(100% - 0.08em);
+  height: calc(100% - 0.08em);
+  text-align: center;
+  fill: var(--ulugo-board-background-color);
+  stroke: var(--ulugo-board-foreground-color);
+  stroke-width: 0.07em;
+  pointer-events: none;
+  z-index: 2;
+}
+.ulugo-vertex.ulugo-sign_1 .ulugo-marker,
+.ulugo-vertex.ulugo-sign_-1 .ulugo-marker {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+}
+.ulugo-vertex.ulugo-sign_1 .ulugo-marker {
+  stroke: var(--ulugo-black-foreground-color);
+}
+.ulugo-vertex.ulugo-sign_-1 .ulugo-marker {
+  stroke: var(--ulugo-white-foreground-color);
+}
+
+.ulugo-vertex.ulugo-marker_point .ulugo-marker {
+  stroke: none;
+  fill: var(--ulugo-board-foreground-color);
+}
+.ulugo-vertex.ulugo-marker_point.ulugo-sign_1 .ulugo-marker {
+  fill: var(--ulugo-black-foreground-color);
+}
+.ulugo-vertex.ulugo-marker_point.ulugo-sign_-1 .ulugo-marker {
+  fill: var(--ulugo-white-foreground-color);
+}
+
+.ulugo-vertex.ulugo-marker_loader .ulugo-marker {
+  stroke-dasharray: 1em;
+  animation: 1.5s linear 0s ulugo-rotation infinite;
+}
+
+@keyframes ulugo-rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ulugo-vertex.ulugo-marker_label .ulugo-marker {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  left: 50%;
+  top: 50%;
+  max-width: 1.67em;
+  max-height: 1.67em;
+  overflow: hidden;
+  background: var(--ulugo-board-background-color);
+  color: var(--ulugo-board-foreground-color);
+  font-size: 0.6em;
+  line-height: 1.26;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: pre;
+  transform: translate(-50%, -50%);
+}
+.ulugo-vertex.ulugo-marker_label.ulugo-sign_1 .ulugo-marker {
+  background: transparent;
+  color: var(--ulugo-black-foreground-color);
+}
+.ulugo-vertex.ulugo-marker_label.ulugo-sign_-1 .ulugo-marker {
+  background: transparent;
+  color: var(--ulugo-white-foreground-color);
+}
+.ulugo-vertex.ulugo-smalllabel .ulugo-marker {
+  max-height: 2.7em;
+  max-width: 2.7em;
+  font-size: 0.36em;
+}
+
+/* Ghost stones */
+
+.ulugo-vertex .ulugo-ghost {
+  left: 50%;
+  top: 50%;
+  width: 0.4em;
+  height: 0.4em;
+  opacity: 0.5;
+  transform: translate(calc(-50% + 0.5px), calc(-50% + 0.5px));
+}
+.ulugo-vertex .ulugo-ghost::before {
+  content: '';
+  box-sizing: border-box;
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.4em;
+  height: 0.4em;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.ulugo-vertex.ulugo-ghost_faint .ulugo-ghost {
+  opacity: 0.3;
+}
+.ulugo-vertex.ulugo-sign_0.ulugo-ghost_1 .ulugo-ghost::before,
+.ulugo-vertex.ulugo-sign_0.ulugo-ghost_-1 .ulugo-ghost::before {
+  display: block;
+}
+.ulugo-vertex.ulugo-ghost_1 .ulugo-ghost::before {
+  background: rgba(0, 0, 0, 0.8);
+}
+.ulugo-vertex.ulugo-ghost_-1 .ulugo-ghost::before {
+  background: white;
+}
+.ulugo-vertex.ulugo-ghost_good .ulugo-ghost::before {
+  background: #59a80f;
+}
+.ulugo-vertex.ulugo-ghost_interesting .ulugo-ghost::before {
+  background: #4886d5;
+}
+.ulugo-vertex.ulugo-ghost_doubtful .ulugo-ghost::before {
+  background: #92278f;
+}
+.ulugo-vertex.ulugo-ghost_bad .ulugo-ghost::before {
+  background: #f02311;
+}
+
+/* Paint map */
+
+.ulugo-vertex .ulugo-paint {
+  pointer-events: none;
+  z-index: 2;
+}
+.ulugo-vertex .ulugo-paint::before {
+  content: '';
+  display: block;
+  position: absolute;
+  inset: 40%;
+  opacity: var(--ulugo-paint-opacity);
+  background: transparent;
+}
+.ulugo-vertex.ulugo-paint_1 .ulugo-paint::before {
+  background: var(--ulugo-black-background-color);
+}
+.ulugo-vertex.ulugo-paint_-1 .ulugo-paint::before {
+  background: var(--ulugo-white-background-color);
+}
+
+/* Analysis overlays */
+
+.ulugo-vertex .ulugo-analysis-overlay {
+  top: 50%;
+  left: 50%;
+  margin-left: -0.3em;
+  margin-top: -0.3em;
+  border-radius: 50%;
+  width: 0.6em;
+  height: 0.6em;
+  opacity: 0;
+  pointer-events: none;
+}
+.ulugo-vertex .ulugo-analysis-dot {
+  top: 50%;
+  left: 50%;
+  width: var(--ulugo-analysis-dot-size, 0.5em);
+  height: var(--ulugo-analysis-dot-size, 0.5em);
+  margin-left: var(--ulugo-analysis-dot-offset, -0.25em);
+  margin-top: var(--ulugo-analysis-dot-offset, -0.25em);
+  border-radius: 50%;
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 1;
+}
+.ulugo-vertex.ulugo-analysis-strength_6 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_6 {
+  background: #1e9600;
+  box-shadow: 0 0 0.1em 0.1em #1e9600;
+  opacity: 0.8;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_6 {
+  background: #1e9600;
+}
+.ulugo-vertex.ulugo-analysis-strength_5 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_5 {
+  background: #abde2e;
+  box-shadow: 0 0 0.1em 0.1em #abde2e;
+  opacity: 0.7;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_5 {
+  background: #abde2e;
+}
+.ulugo-vertex.ulugo-analysis-strength_4 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_4 {
+  background: #f2f200;
+  box-shadow: 0 0 0.1em 0.1em #f2f200;
+  opacity: 0.8;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_4 {
+  background: #f2f200;
+}
+.ulugo-vertex.ulugo-analysis-strength_3 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_3 {
+  background: #e6661a;
+  box-shadow: 0 0 0.1em 0.1em #e6661a;
+  opacity: 0.7;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_3 {
+  background: #e6661a;
+}
+.ulugo-vertex.ulugo-analysis-strength_2 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_2 {
+  background: #cc0000;
+  box-shadow: 0 0 0.1em 0.1em #cc0000;
+  opacity: 0.8;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_2 {
+  background: #cc0000;
+}
+.ulugo-vertex.ulugo-analysis-strength_1 .ulugo-analysis-overlay,
+.ulugo-vertex .ulugo-analysis-overlay.ulugo-analysis-strength_1 {
+  background: #72216b;
+  box-shadow: 0 0 0.1em 0.1em #72216b;
+  opacity: 0.7;
+}
+.ulugo-vertex .ulugo-analysis-dot.ulugo-analysis-strength_1 {
+  background: #72216b;
+}
+
+.ulugo-vertex .ulugo-analysis-label {
+  display: inline-block;
+  height: auto;
+  top: 50%;
+  left: 50%;
+  overflow: hidden;
+  color: white;
+  font-size: 0.36em;
+  line-height: 1;
+  text-align: center;
+  text-overflow: clip;
+  text-shadow: 0 0em 0.2em #000000;
+  white-space: pre;
+  opacity: 0.9;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.ulugo-vertex .ulugo-analysis-label_multiline {
+  font-size: 0.32em;
+}
+
+/* Selection */
+
+.ulugo-vertex .ulugo-selection {
+  box-sizing: border-box;
+  top: 0.04em;
+  left: 0.04em;
+  width: calc(100% - 0.08em);
+  height: calc(100% - 0.08em);
+  border: 0.05em solid var(--ulugo-board-foreground-color);
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+}
+.ulugo-vertex.ulugo-sign_1 .ulugo-selection {
+  border-color: var(--ulugo-black-foreground-color);
+}
+.ulugo-vertex.ulugo-sign_-1 .ulugo-selection {
+  border-color: var(--ulugo-white-foreground-color);
+}
+.ulugo-vertex.ulugo-selectedleft .ulugo-selection {
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.ulugo-vertex.ulugo-selectedright .ulugo-selection {
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ulugo-vertex.ulugo-selectedtop .ulugo-selection {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.ulugo-vertex.ulugo-selectedbottom .ulugo-selection {
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Move hints */
+
+.ulugo-vertex .ulugo-movehint {
+  box-sizing: border-box;
+  top: 0.04em;
+  left: 0.04em;
+  width: calc(100% - 0.08em);
+  height: calc(100% - 0.08em);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ulugo-vertex .ulugo-movehint-best {
+  border: 0.075em solid #0878ff;
+}
+.ulugo-vertex .ulugo-movehint-next {
+  border: 0.075em dotted var(--ulugo-board-foreground-color);
+}
+.ulugo-vertex.ulugo-nextmove_main .ulugo-movehint-next {
+  border-style: dashed;
+}
+.ulugo-vertex.ulugo-nextmove-sign_1 .ulugo-movehint-next {
+  border-color: #111;
+}
+.ulugo-vertex.ulugo-nextmove-sign_-1 .ulugo-movehint-next {
+  border-color: #fff;
+}

@@ -19,7 +19,7 @@ export function CoordX({style, xs, coordX = (i) => alpha[i] || alpha[alpha.lengt
   return h(
     'div',
     {
-      className: 'shudan-coordx',
+      className: 'ulugo-coordx',
       style: {
         display: 'flex',
         textAlign: 'center',
@@ -35,7 +35,7 @@ export function CoordY({style, height, ys, coordY = (i) => height - i}: CoordYPr
   return h(
     'div',
     {
-      className: 'shudan-coordy',
+      className: 'ulugo-coordy',
       style: {
         textAlign: 'center',
         ...style,

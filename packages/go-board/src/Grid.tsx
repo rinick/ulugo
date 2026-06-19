@@ -22,7 +22,7 @@ export default function Grid(props: GridProps) {
       h(
         'svg',
         {
-          className: 'shudan-grid',
+          className: 'ulugo-grid',
           style: {
             position: 'absolute',
             top: 0,
@@ -41,7 +41,7 @@ export default function Grid(props: GridProps) {
           return h('rect', {
             key: `h${i}`,
 
-            className: 'shudan-gridline shudan-horizontal',
+            className: 'ulugo-gridline ulugo-horizontal',
             x: fl(x),
             y: fl((2 * i + 1) * halfVertexSize - 0.5),
             width:
@@ -56,7 +56,7 @@ export default function Grid(props: GridProps) {
           return h('rect', {
             key: `v${i}`,
 
-            className: 'shudan-gridline shudan-vertical',
+            className: 'ulugo-gridline ulugo-vertical',
             x: fl((2 * i + 1) * halfVertexSize - 0.5),
             y: fl(y),
             width: 1,
@@ -75,7 +75,7 @@ export default function Grid(props: GridProps) {
           return h('circle', {
             key: [x, y].join('-'),
 
-            className: 'shudan-hoshi',
+            className: 'ulugo-hoshi',
             cx: fl((2 * i + 1) * halfVertexSize - 0.5) + 0.5,
             cy: fl((2 * j + 1) * halfVertexSize - 0.5) + 0.5,
             r: '.08em',

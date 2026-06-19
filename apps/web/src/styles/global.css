@@ -780,22 +780,22 @@ textarea,
   z-index: 0;
 }
 
-.ulugo-goban {
-  --shudan-board-foreground-color: #503819;
-  --shudan-black-background-color: #161a1f;
-  --shudan-black-foreground-color: #f5f7fa;
-  --shudan-white-background-color: #fbfaf4;
-  --shudan-white-foreground-color: #14171a;
+.ulugo-board {
+  --ulugo-board-foreground-color: #503819;
+  --ulugo-black-background-color: #161a1f;
+  --ulugo-black-foreground-color: #f5f7fa;
+  --ulugo-white-background-color: #fbfaf4;
+  --ulugo-white-foreground-color: #14171a;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
   z-index: 1;
 }
 
-.ulugo-goban .shudan-vertex.shudan-marker_label .shudan-marker {
+.ulugo-board .ulugo-vertex.ulugo-marker_label .ulugo-marker {
   font-size: 0.5em;
   font-weight: 700;
 }
 
-.ulugo-goban .shudan-vertex.shudan-smalllabel .shudan-marker {
+.ulugo-board .ulugo-vertex.ulugo-smalllabel .ulugo-marker {
   font-size: 0.4em;
 }
 

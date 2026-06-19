@@ -1,23 +1,23 @@
 import {createElement as h, Component} from 'react';
 import type {CSSProperties, HTMLAttributes} from 'react';
-import Goban, {type GobanProps} from './Goban';
+import Board, {type BoardProps} from './Board';
 
-export type BoundedGobanProps = Omit<GobanProps, 'vertexSize'> & {
+export type BoundedBoardProps = Omit<BoardProps, 'vertexSize'> & {
   maxWidth: number;
   maxHeight: number;
   maxVertexSize?: number;
   onResized?: () => void;
 };
 
-interface BoundedGobanState {
+interface BoundedBoardState {
   vertexSize: number;
   visibility: CSSProperties['visibility'];
 }
 
-export default class BoundedGoban extends Component<BoundedGobanProps, BoundedGobanState> {
+export default class BoundedBoard extends Component<BoundedBoardProps, BoundedBoardState> {
   private element: HTMLElement | null = null;
 
-  constructor(props: BoundedGobanProps) {
+  constructor(props: BoundedBoardProps) {
     super(props);
 
     this.state = {
@@ -30,7 +30,7 @@ export default class BoundedGoban extends Component<BoundedGobanProps, BoundedGo
     this.componentDidUpdate();
   }
 
-  componentDidUpdate(prevProps: Partial<BoundedGobanProps> = {}) {
+  componentDidUpdate(prevProps: Partial<BoundedBoardProps> = {}) {
     let {
       showCoordinates,
       maxWidth,
@@ -74,7 +74,7 @@ export default class BoundedGoban extends Component<BoundedGobanProps, BoundedGo
     let innerRef = innerProps.ref;
     let ref = typeof innerRef === 'function' ? innerRef : () => {};
 
-    return h(Goban, {
+    return h(Board, {
       ...this.props,
 
       innerProps: {

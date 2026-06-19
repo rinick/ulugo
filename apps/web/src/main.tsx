@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
-import '@ulugo/react-shudan/css/goban.css';
+import '@ulugo/go-board/css/board.css';
 import './styles/fonts.css';
 import './styles/global.css';
 import './features/localization/i18n';

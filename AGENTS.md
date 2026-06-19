@@ -14,7 +14,7 @@
 - `apps/electron` wraps the same web UI for desktop and owns Electron-only KataGo integration.
 - `packages/sgf-core` owns SGF document parsing, editing, and serialization behavior.
 - `packages/go-core` owns Go board position derivation and rules-related board state.
-- `packages/react-shudan` is the local React TypeScript fork of Shudan used for board rendering.
+- `packages/go-board` is the local React TypeScript board rendering package.
 - `packages/analysis-core`, `packages/katago-core`, and `packages/sgf-analysis-tree` hold shared analysis, KataGo settings/types, and tree helpers.
 
 ## UI Conventions
@@ -29,7 +29,7 @@
 - KataGo process management and downloads are Electron-only.
 - Analysis data should be cached by SGF node id so fast/live analysis does not recalculate unchanged nodes unnecessarily.
 - Fast analysis should cover existing SGF moves and continue working as new moves are added.
-- Board analysis display should follow KaTrain/Sabaki behavior where practical, while using the Ulugo/Shudan rendering path.
+- Board analysis display should follow KaTrain/Sabaki behavior where practical, while using the Ulugo board rendering path.
 
 ## Commands
 

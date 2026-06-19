@@ -63,9 +63,9 @@ importers:
       '@ulugo/katago-core':
         specifier: workspace:*
         version: link:../../packages/katago-core
-      '@ulugo/react-shudan':
+      '@ulugo/go-board':
         specifier: workspace:*
-        version: link:../../packages/react-shudan
+        version: link:../../packages/go-board
       '@ulugo/sgf-analysis-tree':
         specifier: workspace:*
         version: link:../../packages/sgf-analysis-tree
@@ -151,7 +151,7 @@ importers:
         specifier: ^4.0.14
         version: 4.1.7(@types/node@24.12.4)(vite@7.3.3(@types/node@24.12.4))
 
-  packages/react-shudan:
+  packages/go-board:
     dependencies:
       classnames:
         specifier: ^2.3.1

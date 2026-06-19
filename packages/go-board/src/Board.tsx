@@ -31,7 +31,7 @@ type InnerProps = HTMLAttributes<HTMLElement> & {
   ref?: Ref<HTMLElement>;
 };
 
-export interface GobanProps extends PublicVertexEventHandlers {
+export interface BoardProps extends PublicVertexEventHandlers {
   id?: string;
   class?: string;
   className?: string;
@@ -57,7 +57,7 @@ export interface GobanProps extends PublicVertexEventHandlers {
   dimmedVertices?: VertexPoint[];
 }
 
-interface GobanState {
+interface BoardState {
   signMap: Map<Sign>;
   width: number;
   height: number;
@@ -72,7 +72,7 @@ interface GobanState {
   randomMap: number[][];
 }
 
-const emptyState: GobanState = {
+const emptyState: BoardState = {
   signMap: [],
   width: 0,
   height: 0,
@@ -87,10 +87,10 @@ const emptyState: GobanState = {
   randomMap: [],
 };
 
-export default class Goban extends Component<GobanProps, GobanState> {
-  static getDerivedStateFromProps: (props: GobanProps, state: GobanState) => Partial<GobanState>;
+export default class Board extends Component<BoardProps, BoardState> {
+  static getDerivedStateFromProps: (props: BoardProps, state: BoardState) => Partial<BoardState>;
 
-  constructor(props: GobanProps) {
+  constructor(props: BoardProps) {
     super(props);
 
     this.state = emptyState;
@@ -153,11 +153,11 @@ export default class Goban extends Component<GobanProps, GobanState> {
         ...innerProps,
         id: this.props.id,
         className: classnames(
-          'shudan-goban',
-          'shudan-goban-image',
+          'ulugo-board',
+          'ulugo-board-image',
           {
-            'shudan-busy': busy,
-            'shudan-coordinates': showCoordinates,
+            'ulugo-busy': busy,
+            'ulugo-coordinates': showCoordinates,
           },
           this.props.class ?? this.props.className
         ),
@@ -183,7 +183,7 @@ export default class Goban extends Component<GobanProps, GobanState> {
       h(
         'div',
         {
-          className: 'shudan-content',
+          className: 'ulugo-content',
           style: {
             position: 'relative',
             width: `${xs.length}em`,
@@ -205,7 +205,7 @@ export default class Goban extends Component<GobanProps, GobanState> {
         h(
           'div',
           {
-            className: 'shudan-vertices',
+            className: 'ulugo-vertices',
             style: {
               display: 'grid',
               gridTemplateColumns: `repeat(${xs.length}, 1em)`,
@@ -273,7 +273,7 @@ export default class Goban extends Component<GobanProps, GobanState> {
   }
 }
 
-Goban.getDerivedStateFromProps = function (props: GobanProps, state: GobanState): Partial<GobanState> {
+Board.getDerivedStateFromProps = function (props: BoardProps, state: BoardState): Partial<BoardState> {
   let {signMap = [], rangeX = [0, Infinity], rangeY = [0, Infinity]} = props;
 
   let width = signMap.length === 0 ? 0 : signMap[0].length;

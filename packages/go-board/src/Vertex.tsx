@@ -106,30 +106,30 @@ function Vertex(props: VertexProps) {
         'style': {
           position: 'relative',
         } satisfies CSSProperties,
-        'className': classnames('shudan-vertex', `shudan-random_${random}`, `shudan-sign_${sign}`, {
-          [`shudan-shift_${shift}`]: !!shift,
-          [`shudan-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
-          'shudan-bestmove': !!moveHint?.best,
-          [`shudan-nextmove_${moveHint?.branch}`]: !!moveHint?.branch,
-          [`shudan-nextmove-sign_${moveHint?.sign}`]: !!moveHint?.sign,
-          'shudan-dimmed': dimmed,
-          'shudan-animate': animate,
+        'className': classnames('ulugo-vertex', `ulugo-random_${random}`, `ulugo-sign_${sign}`, {
+          [`ulugo-shift_${shift}`]: !!shift,
+          [`ulugo-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
+          'ulugo-bestmove': !!moveHint?.best,
+          [`ulugo-nextmove_${moveHint?.branch}`]: !!moveHint?.branch,
+          [`ulugo-nextmove-sign_${moveHint?.sign}`]: !!moveHint?.sign,
+          'ulugo-dimmed': dimmed,
+          'ulugo-animate': animate,
 
-          [`shudan-paint_${paint > 0 ? 1 : -1}`]: !!paint,
+          [`ulugo-paint_${paint > 0 ? 1 : -1}`]: !!paint,
 
-          'shudan-selected': selected,
-          'shudan-selectedleft': selectedLeft,
-          'shudan-selectedright': selectedRight,
-          'shudan-selectedtop': selectedTop,
-          'shudan-selectedbottom': selectedBottom,
+          'ulugo-selected': selected,
+          'ulugo-selectedleft': selectedLeft,
+          'ulugo-selectedright': selectedRight,
+          'ulugo-selectedtop': selectedTop,
+          'ulugo-selectedbottom': selectedBottom,
 
-          [`shudan-marker_${marker?.type}`]: !!marker?.type,
-          'shudan-smalllabel':
+          [`ulugo-marker_${marker?.type}`]: !!marker?.type,
+          'ulugo-smalllabel':
             marker?.type === 'label' && ((marker.label ?? '').includes('\n') || (marker.label ?? '').length >= 3),
 
-          [`shudan-ghost_${ghostStone?.sign}`]: !!ghostStone,
-          [`shudan-ghost_${ghostStone?.type}`]: !!ghostStone?.type,
-          'shudan-ghost_faint': !!ghostStone?.faint,
+          [`ulugo-ghost_${ghostStone?.sign}`]: !!ghostStone,
+          [`ulugo-ghost_${ghostStone?.type}`]: !!ghostStone?.type,
+          'ulugo-ghost_faint': !!ghostStone?.faint,
         }),
       },
       ...vertexEvents.map((eventName) => ({
@@ -141,14 +141,14 @@ function Vertex(props: VertexProps) {
       !!ghostStone &&
       h('div', {
         key: 'ghost',
-        className: 'shudan-ghost',
+        className: 'ulugo-ghost',
         style: absoluteStyle(),
       }),
 
     h('div', {
       key: 'analysisOverlay',
-      className: classnames('shudan-analysis-overlay', {
-        [`shudan-analysis-strength_${analysisOverlay?.strength}`]:
+      className: classnames('ulugo-analysis-overlay', {
+        [`ulugo-analysis-strength_${analysisOverlay?.strength}`]:
           (analysisOverlay?.halo ?? true) && (analysisOverlay?.strength ?? 0) > 0,
       }),
       style: absoluteStyle(),
@@ -156,7 +156,7 @@ function Vertex(props: VertexProps) {
 
     h(
       'div',
-      {key: 'stone', className: 'shudan-stone', style: absoluteStyle()},
+      {key: 'stone', className: 'ulugo-stone', style: absoluteStyle()},
 
       !!sign &&
         h(
@@ -164,10 +164,10 @@ function Vertex(props: VertexProps) {
           {
             key: 'inner',
             className: classnames(
-              'shudan-inner',
-              'shudan-stone-image',
-              `shudan-random_${random}`,
-              `shudan-sign_${sign}`
+              'ulugo-inner',
+              'ulugo-stone-image',
+              `ulugo-random_${random}`,
+              `ulugo-sign_${sign}`
             ),
             style: absoluteStyle(),
           },
@@ -178,37 +178,37 @@ function Vertex(props: VertexProps) {
     !!paint &&
       h('div', {
         key: 'paint',
-        className: 'shudan-paint',
+        className: 'ulugo-paint',
         style: {
           ...absoluteStyle(),
-          '--shudan-paint-opacity': paintOpacity,
+          '--ulugo-paint-opacity': paintOpacity,
         } as CSSProperties,
       }),
 
     !!moveHint?.best &&
       h('div', {
         key: 'bestmove',
-        className: 'shudan-movehint shudan-movehint-best',
+        className: 'ulugo-movehint ulugo-movehint-best',
         style: absoluteStyle(),
       }),
 
     moveHint?.branch != null &&
       h('div', {
         key: 'nextmove',
-        className: 'shudan-movehint shudan-movehint-next',
+        className: 'ulugo-movehint ulugo-movehint-next',
         style: absoluteStyle(),
       }),
 
     !!analysisOverlay?.dot &&
       h('div', {
         key: 'analysisDot',
-        className: classnames('shudan-analysis-dot', {
-          [`shudan-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
+        className: classnames('ulugo-analysis-dot', {
+          [`ulugo-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
         }),
         style: {
           ...absoluteStyle(),
-          '--shudan-analysis-dot-size': analysisOverlay.dotSize == null ? undefined : `${analysisOverlay.dotSize}em`,
-          '--shudan-analysis-dot-offset':
+          '--ulugo-analysis-dot-size': analysisOverlay.dotSize == null ? undefined : `${analysisOverlay.dotSize}em`,
+          '--ulugo-analysis-dot-offset':
             analysisOverlay.dotSize == null ? undefined : `${-analysisOverlay.dotSize / 2}em`,
         } as CSSProperties,
       }),
@@ -218,7 +218,7 @@ function Vertex(props: VertexProps) {
     !!selected &&
       h('div', {
         key: 'selection',
-        className: 'shudan-selection',
+        className: 'ulugo-selection',
         style: absoluteStyle(),
       }),
     analysisOverlay?.text != null &&
@@ -226,8 +226,8 @@ function Vertex(props: VertexProps) {
         'div',
         {
           key: 'analysisLabel',
-          className: classnames('shudan-analysis-label', {
-            'shudan-analysis-label_multiline': analysisOverlay.text.toString().includes('\n'),
+          className: classnames('ulugo-analysis-label', {
+            'ulugo-analysis-label_multiline': analysisOverlay.text.toString().includes('\n'),
           }),
           style: absoluteStyle(),
         },

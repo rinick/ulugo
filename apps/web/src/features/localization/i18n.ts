@@ -720,7 +720,7 @@ export const resources = {
       settings: 'Paramètres',
       showMarkup: 'Afficher les annotations',
       playStoneSound: 'Jouer le son de pierre',
-      boardBackground: 'Fond du goban',
+      boardBackground: 'Fond du plateau',
       golden: 'Dore',
       natural: 'Naturel',
       flat: 'Plat',

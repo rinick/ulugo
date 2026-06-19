@@ -1,4 +1,4 @@
-import {Goban, type AnalysisOverlay, type Marker, type MoveHint, type Vertex} from '@ulugo/react-shudan';
+import {Board, type AnalysisOverlay, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
 import {deriveBoardPosition, type BoardPoint} from '@ulugo/go-core';
 import {getNodeAtPath, pointToVertex, type MarkupKind, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
 import {useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
@@ -34,7 +34,7 @@ const markerTypes: Record<MarkupKind, Marker['type']> = {
   SL: 'point',
 };
 
-const gobanBorderEm = 0.3;
+const boardBorderEm = 0.3;
 const coordinateTrackEm = 2;
 const boardPaddingWithoutCoordinatesEm = 0.5;
 const evalThresholds = [12, 6, 3, 1.5, 0.5, 0];
@@ -57,7 +57,7 @@ export function GoBoard({
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
     const extraSlots = showCoordinates ? coordinateTrackEm : boardPaddingWithoutCoordinatesEm;
-    const slots = position.size + extraSlots + gobanBorderEm;
+    const slots = position.size + extraSlots + boardBorderEm;
     return Math.max(12, Math.floor(Math.min(availableSize.width, availableSize.height) / slots));
   }, [availableSize.height, availableSize.width, position.size, showCoordinates]);
 
@@ -176,8 +176,8 @@ export function GoBoard({
   return (
     <div className="board-frame" ref={frameRef}>
       <div className="board-surface" onContextMenu={(event) => event.preventDefault()}>
-        <Goban
-          className={`ulugo-goban shudan-goban-${boardBackground}`}
+        <Board
+          className={`ulugo-board-${boardBackground}`}
           vertexSize={vertexSize}
           showCoordinates={showCoordinates}
           signMap={signMap}

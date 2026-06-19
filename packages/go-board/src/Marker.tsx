@@ -11,7 +11,7 @@ interface MarkerProps extends Marker {
 
 export default function Marker({sign, type, label}: MarkerProps) {
   let containerProps = {
-    className: 'shudan-marker',
+    className: 'ulugo-marker',
     style: {
       position: 'absolute',
     },
