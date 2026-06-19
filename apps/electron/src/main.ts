@@ -505,19 +505,13 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
   if (katagoProcess != null) return;
 
   if (settings.executablePath === '' || !(await fileExists(settings.executablePath))) {
-    const message = 'KataGo cannot start because no installed executable is selected.';
-    sendKataGoConsole(sender, 'ulugo', 'error', message);
-    throw new Error(message);
+    throw new Error('KataGo cannot start because no installed executable is selected.');
   }
   if (settings.modelPath === '' || !(await fileExists(settings.modelPath))) {
-    const message = 'KataGo cannot start because no installed model is selected.';
-    sendKataGoConsole(sender, 'ulugo', 'error', message);
-    throw new Error(message);
+    throw new Error('KataGo cannot start because no installed model is selected.');
   }
   if (settings.configPath === '' || !(await fileExists(settings.configPath))) {
-    const message = 'KataGo cannot start because no analysis config is available.';
-    sendKataGoConsole(sender, 'ulugo', 'error', message);
-    throw new Error(message);
+    throw new Error('KataGo cannot start because no analysis config is available.');
   }
 
   const {command, args, options} = kataGoCommand(settings);
