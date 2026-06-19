@@ -35,7 +35,7 @@ export interface KataGoDownloadProgress {
 
 const catalogFileName = 'available-assets.json';
 export function ulugoDataDirectory(): string {
-  return path.join(app.getPath('home'), '.ulugo');
+  return app.getPath('userData');
 }
 
 export function katagoInstallDirectory(): string {

@@ -165,9 +165,9 @@ export function SettingsModal({
             value={settings.maxMoves}
             onChange={(value) => updateSettings({maxMoves: value as AnalysisSettings['maxMoves']})}
             options={[
-              {value: 1, label: '1'},
-              {value: 5, label: '5'},
-              {value: 20, label: '20'},
+              {value: 1, label: t('lastMove')},
+              {value: 5, label: t('last5Moves')},
+              {value: 20, label: t('last20Moves')},
               {value: 'all', label: t('all')},
             ]}
           />

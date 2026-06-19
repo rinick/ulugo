@@ -77,7 +77,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
   moveDisplay: ['scoreChange'],
   stoneOverlay: 'dot',
   maxMoves: 5,
-  minVisits: 50,
+  minVisits: 20,
   showMarkup: true,
   showNextMove: true,
   showTopMoves: true,
@@ -140,6 +140,7 @@ let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
 
+app.setPath('userData', path.join(app.getPath('home'), '.ulugo'));
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
@@ -289,7 +290,8 @@ function registerIpc(): void {
     const previous = await readJson('katago-settings.json', defaultKataGoSettings);
     const next = await normalizeKataGoSettings({
       ...previous,
-      executablePath: request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.executablePath,
+      executablePath:
+        request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.executablePath,
       modelPath: request.kind === 'model' && previous.modelPath === asset.path ? '' : previous.modelPath,
       configPath: request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.configPath,
     });
@@ -513,7 +515,8 @@ function settingsPath(name: string): string {
 async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory?: string): Promise<KataGoSettings> {
   const executablePath = await findInstalledAssetPath('katago', settings.executablePath);
   const modelPath = await findInstalledAssetPath('model', settings.modelPath);
-  const defaultConfigPath = executablePath === '' ? '' : await findDefaultKataGoConfig(searchDirectory ?? executablePath);
+  const defaultConfigPath =
+    executablePath === '' ? '' : await findDefaultKataGoConfig(searchDirectory ?? executablePath);
   const configPath =
     executablePath === ''
       ? ''

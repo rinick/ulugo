@@ -97,6 +97,7 @@ import {useKataGoAnalysis} from './useKataGoAnalysis';
 const {Header, Content} = Layout;
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
+const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
 
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
@@ -129,7 +130,7 @@ export function App() {
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(() => readStoredBoolean(leftPanelOpenStorageKey, true));
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -172,6 +173,10 @@ export function App() {
   useEffect(() => {
     writeStoredBoolean(playStoneSoundStorageKey, playStoneSound);
   }, [playStoneSound]);
+
+  useEffect(() => {
+    writeStoredBoolean(leftPanelOpenStorageKey, leftPanelOpen);
+  }, [leftPanelOpen]);
 
   const {
     analysisSettings,
@@ -1143,7 +1148,7 @@ export function App() {
                 {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
               </Button>
             ) : null}
-            {!isElectron && (
+            {isElectron && (
               <Button
                 className="left-panel-toggle"
                 icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
