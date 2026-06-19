@@ -16,6 +16,5 @@ export const electronCapabilities: AppCapabilities = {
   katago: true,
 };
 
-export function getAppCapabilities(): AppCapabilities {
-  return window.ulugo?.platform === 'electron' ? electronCapabilities : webCapabilities;
-}
+export const isElectron = window.ulugo?.platform === 'electron';
+export const capabilities = isElectron ? electronCapabilities : webCapabilities;

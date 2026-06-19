@@ -905,3 +905,11 @@ button.ant-btn.analysis-button-active:before {
   font-weight: 550;
   text-shadow: 1px 1px 3px #ae6705;
 }
+
+button.ant-btn.left-panel-toggle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 0 0 10px 0;
+  z-index: 10;
+}

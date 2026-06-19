@@ -76,6 +76,8 @@ export const resources = {
       analysisMode: 'Analysis mode',
       deepAnalysisMode: 'Deep analysis mode',
       aiConfig: 'AI Config',
+      openLeftPanel: 'Open left panel',
+      closeLeftPanel: 'Close left panel',
       katagoHelp:
         'Install KataGo and models here, or copy custom builds into ~/.ulugo/katago and models into ~/.ulugo/models.',
       maxVisits: 'Max visits',
@@ -246,6 +248,8 @@ export const resources = {
       analysisMode: '分析模式',
       deepAnalysisMode: '深度分析模式',
       aiConfig: 'AI配置',
+      openLeftPanel: '打开左侧面板',
+      closeLeftPanel: '关闭左侧面板',
       katagoHelp: '在这里安装 KataGo 和模型，或把自定义 KataGo 放入 ~/.ulugo/katago，把模型放入 ~/.ulugo/models。',
       maxVisits: '最大访问数',
       fastVisits: '快速访问数',
@@ -415,6 +419,8 @@ export const resources = {
       analysisMode: '解析モード',
       deepAnalysisMode: '深い解析モード',
       aiConfig: 'AI設定',
+      openLeftPanel: '左パネルを開く',
+      closeLeftPanel: '左パネルを閉じる',
       katagoHelp:
         'ここでKataGoとモデルをインストールするか、独自のKataGoを~/.ulugo/katagoに、モデルを~/.ulugo/modelsにコピーしてください。',
       maxVisits: '最大訪問数',
@@ -585,6 +591,8 @@ export const resources = {
       analysisMode: '분석 모드',
       deepAnalysisMode: '심층 분석 모드',
       aiConfig: 'AI설정',
+      openLeftPanel: '왼쪽 패널 열기',
+      closeLeftPanel: '왼쪽 패널 닫기',
       katagoHelp:
         '여기에서 KataGo와 모델을 설치하거나 사용자 KataGo는 ~/.ulugo/katago에, 모델은 ~/.ulugo/models에 복사하세요.',
       maxVisits: '최대 방문 수',
@@ -755,6 +763,8 @@ export const resources = {
       analysisMode: 'Mode analyse',
       deepAnalysisMode: 'Analyse profonde',
       aiConfig: 'Configuration IA',
+      openLeftPanel: 'Ouvrir le panneau gauche',
+      closeLeftPanel: 'Fermer le panneau gauche',
       katagoHelp:
         'Installez KataGo et les modeles ici, ou copiez les builds personnalises dans ~/.ulugo/katago et les modeles dans ~/.ulugo/models.',
       maxVisits: 'Visites max',
@@ -925,6 +935,8 @@ export const resources = {
       analysisMode: 'Analysemodus',
       deepAnalysisMode: 'Tiefenanalyse',
       aiConfig: 'KI-Konfiguration',
+      openLeftPanel: 'Linkes Panel oeffnen',
+      closeLeftPanel: 'Linkes Panel schliessen',
       katagoHelp:
         'Installiere KataGo und Modelle hier, oder kopiere eigene Builds nach ~/.ulugo/katago und Modelle nach ~/.ulugo/models.',
       maxVisits: 'Max. Besuche',
@@ -1096,6 +1108,8 @@ export const resources = {
       analysisMode: 'Режим анализа',
       deepAnalysisMode: 'Глубокий анализ',
       aiConfig: 'Конфигурация ИИ',
+      openLeftPanel: 'Открыть левую панель',
+      closeLeftPanel: 'Закрыть левую панель',
       katagoHelp:
         'Установите KataGo и модели здесь или скопируйте свои сборки в ~/.ulugo/katago, а модели в ~/.ulugo/models.',
       maxVisits: 'Макс. посещений',

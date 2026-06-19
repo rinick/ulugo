@@ -6,8 +6,10 @@ import {
   SettingOutlined,
   ThunderboltOutlined,
   ToolOutlined,
+  LeftSquareOutlined,
+  RightSquareOutlined,
 } from '@ant-design/icons';
-import {Button, ConfigProvider, Dropdown, Input, Layout, Modal, Space, message, theme} from 'antd';
+import {Button, ConfigProvider, Dropdown, Input, Layout, Modal, Space, message} from 'antd';
 import type {MenuProps} from 'antd';
 import {
   addLabel,
@@ -59,7 +61,7 @@ import {
 } from '../features/shortcuts/keyboardShortcuts';
 import {EditorToolbar} from '../features/toolbar/EditorToolbar';
 import type {EditorTool} from '../features/toolbar/types';
-import {getAppCapabilities} from './capabilities';
+import {capabilities, isElectron} from './capabilities';
 import {addSetupStoneToPath, findChildMovePath, isCurrentSetupStone, oppositeColor, toolToMarkup} from './sgfEditUtils';
 import {
   findCurrentStoneMovePath,
@@ -82,6 +84,7 @@ import {blurNonTextControlFocus, isModalOpen, isPopupOpen, isTextInputActive} fr
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
 import {formatConsoleTime} from './katagoConsoleUtils';
 import {getAppFontFamily} from './fonts';
+import {appTheme} from './appTheme';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
 import {
   gtpMoveToPoint,
@@ -110,7 +113,6 @@ interface CurrentFileMetadata {
 
 export function App() {
   const {t, i18n} = useTranslation();
-  const capabilities = useMemo(() => getAppCapabilities(), []);
   const [document, setDocument] = useState<SgfDocument>(() => createNewGame());
   const [path, setPath] = useState<number[]>([]);
   const [tool, setTool] = useState<EditorTool>('auto');
@@ -127,6 +129,7 @@ export function App() {
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -208,7 +211,7 @@ export function App() {
     analysisSettings.boardBackground,
     autoBoardBackgroundReady && analysisSettings.showTopMoves
   );
-  const appTitle = capabilities.platform === 'electron' ? t('electronTitle') : t('appTitle');
+  const appTitle = isElectron ? t('electronTitle') : t('appTitle');
   const blackPlayerName = gameInfo.PB.trim() === '' ? t('black') : gameInfo.PB;
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
 
@@ -326,7 +329,7 @@ export function App() {
 
   async function handleSaveSgfToGoogleDrive(): Promise<void> {
     const fileName = currentSgfFileName(currentFile, gameInfo.GN);
-    const showPendingDialog = capabilities.platform === 'electron';
+    const showPendingDialog = isElectron;
     if (showPendingDialog) setGoogleDrivePending('save');
     try {
       const result = await saveSgfToGoogleDrive({
@@ -395,7 +398,7 @@ export function App() {
   }
 
   async function handleImportSgfFromGoogleDrive(): Promise<void> {
-    const showPendingDialog = capabilities.platform === 'electron';
+    const showPendingDialog = isElectron;
     if (showPendingDialog) setGoogleDrivePending('open');
     try {
       const result = await openSgfFromGoogleDrive(capabilities.platform);
@@ -945,27 +948,7 @@ export function App() {
   }
 
   return (
-    <ConfigProvider
-      locale={antdLocale}
-      componentSize="small"
-      theme={{
-        algorithm: [theme.defaultAlgorithm, theme.compactAlgorithm],
-        components: {
-          Button: {
-            defaultHoverBorderColor: '#dc8916',
-            defaultHoverColor: '#dc8916',
-          },
-          Radio: {
-            colorPrimary: '#dc8916',
-          },
-        },
-        token: {
-          colorPrimary: '#f4b458',
-          borderRadius: 6,
-          fontFamily: appFontFamily,
-        },
-      }}
-    >
+    <ConfigProvider locale={antdLocale} componentSize="small" theme={appTheme}>
       <Modal
         open={googleDrivePending != null}
         title={t('googleDrive')}
@@ -1085,7 +1068,7 @@ export function App() {
         </Header>
         <Content className="app-content">
           {capabilities.katago ? (
-            <aside className="left-panel">
+            <aside className="left-panel" style={{display: leftPanelOpen ? 'flex' : 'none'}}>
               <div className="katago-console-header">
                 <h2>{t('katagoConsole')}</h2>
                 <Button size="small" onClick={() => setKataGoConsoleMessages([])}>
@@ -1109,7 +1092,7 @@ export function App() {
               </div>
             </aside>
           ) : capabilities.platform === 'web' ? (
-            <aside className="left-panel web-ad-panel">
+            <aside className="left-panel web-ad-panel" style={{display: leftPanelOpen ? 'flex' : 'none'}}>
               <GoogleAd />
               <div className="policy-links">
                 <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
@@ -1160,6 +1143,14 @@ export function App() {
                 {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
               </Button>
             ) : null}
+            {!isElectron && (
+              <Button
+                className="left-panel-toggle"
+                icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
+                title={t(leftPanelOpen ? 'closeLeftPanel' : 'openLeftPanel')}
+                onClick={() => setLeftPanelOpen((open) => !open)}
+              />
+            )}
           </main>
           <aside className="right-region">
             <section className="capture-summary">
