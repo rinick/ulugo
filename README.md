@@ -5,31 +5,28 @@
   <img src="/apps/web/src/assets/wulu-512.webp"/>
 </p>
 
-Ulugo is an SGF editor and AI review tool for Go/Weiqi. It runs as a web app and as an Electron desktop app that can manage KataGo analysis locally.
+Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an sgf editor.
 
 ## Features
 
-- Open, edit, and save SGF game records.
-- Import common Go record formats, including SGF and Tygem GIB.
-- Edit game information, comments, move branches, labels, and board markup.
 - Review games with KataGo analysis in the Electron app.
-- Download or select KataGo binaries and neural network models from the app.
-- Open from and save to Google Drive.
+- Open, edit, and save SGF game records.
+  - Also available as a standalone web app at [ulugo.com](https://ulugo.com).
 
 ## Development
+
+Start electron app, and it will automatically download KataGo to analyze games.
+
+```sh
+pnpm install
+pnpm dev:electron
+```
 
 Start web server
 
 ```sh
 pnpm install
 pnpm dev
-```
-
-Start electron app
-
-```sh
-pnpm install
-pnpm dev:electron
 ```
 
 ## Acknowledgements

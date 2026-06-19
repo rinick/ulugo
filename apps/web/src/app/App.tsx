@@ -815,7 +815,7 @@ export function App() {
     }
 
     if (tool === 'erase') {
-      replaceDocument(eraseMarkup(document, path, point), path, {invalidatePath: path});
+      replaceDocument(eraseMarkup(document, path, point), path);
       return;
     }
 
