@@ -82,10 +82,6 @@ export function nodeKey(document: SgfDocument, path: number[]): string {
   return getNodeAtPath(document, path).id;
 }
 
-export function collectNodeIds(node: SgfNode): string[] {
-  return [node.id, ...node.children.flatMap(collectNodeIds)];
-}
-
 export function getLinePaths(path: number[]): number[][] {
   return [[], ...path.map((_, index) => path.slice(0, index + 1))];
 }

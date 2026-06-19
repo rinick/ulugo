@@ -97,7 +97,6 @@ const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
-  invalidatePath?: number[];
   convertHiddenPassPath?: number[];
   pendingSetupPath?: number[] | null;
   replaceMoveState?: ReplaceMoveState | null;
@@ -765,7 +764,7 @@ export function App() {
       });
       if (result == null) return;
 
-      replaceDocument(result.document, result.path, {invalidatePath: result.path, replaceMoveState: result.state});
+      replaceDocument(result.document, result.path, {replaceMoveState: result.state});
       playPlaceStoneSound();
       return;
     }
@@ -792,7 +791,7 @@ export function App() {
         if (position.stones.has(point) && !isCurrentSetupStone(document, path, point)) return;
 
         const result = addSetupStoneToPath(document, path, color, point);
-        replaceDocument(result.document, result.path, {invalidatePath: result.path, pendingSetupPath: result.path});
+        replaceDocument(result.document, result.path, {pendingSetupPath: result.path});
         if (result.placed) {
           playPlaceStoneSound();
           setAutoColorOverride(oppositeColor(color));
@@ -870,7 +869,6 @@ export function App() {
       if (result == null) return;
 
       replaceDocument(result.document, result.path, {
-        invalidatePath: result.path,
         convertHiddenPassPath: result.path,
         replaceMoveState: result.state,
       });

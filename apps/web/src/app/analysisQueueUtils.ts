@@ -143,11 +143,6 @@ export function getStaleLiveQueryIds(
     .map(([queryId]) => queryId);
 }
 
-export function isInvalidatedAnalysisKey(key: string, invalidatedNodeIds: Set<string>): boolean {
-  if (invalidatedNodeIds.has(key)) return true;
-  return key.endsWith(':pass') && invalidatedNodeIds.has(key.slice(0, -5));
-}
-
 function isPassMovePath(document: SgfDocument, path: number[]): boolean {
   if (path.length === 0) return false;
   const node = getNodeAtPath(document, path);

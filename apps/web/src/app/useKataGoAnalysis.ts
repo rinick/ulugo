@@ -26,13 +26,12 @@ import {
   type AnalysisQueryContext,
   type CachedAnalysis,
 } from './appAnalysisUtils';
-import {collectNodeIds, nodeKey} from './sgfPathUtils';
+import {nodeKey} from './sgfPathUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
 import {
   buildFastAnalysisJobs,
   getFastQueryIdsOutsidePaths,
   getStaleLiveQueryIds,
-  isInvalidatedAnalysisKey,
   livePassAnalysisRequest,
   passAnalysisNodeId,
   type PassAnalysisRequest,
@@ -60,7 +59,6 @@ interface UseKataGoAnalysisOptions {
 
 interface AnalysisDocumentChangeOptions {
   clearAnalysisCache?: boolean;
-  invalidatePath?: number[];
   convertHiddenPassPath?: number[];
 }
 
@@ -237,18 +235,11 @@ export function useKataGoAnalysis({
 
       if (options.clearAnalysisCache === true) setAnalysisCache({});
       else
-        setAnalysisCache((current) => {
-          let nextCache = current;
-          if (options.invalidatePath != null) {
-            const invalidatedNodeIds = new Set(collectNodeIds(getNodeAtPath(next, options.invalidatePath)));
-            nextCache = Object.fromEntries(
-              Object.entries(nextCache).filter(([nodeId]) => !isInvalidatedAnalysisKey(nodeId, invalidatedNodeIds))
-            );
-          }
-          if (options.convertHiddenPassPath != null)
-            nextCache = convertHiddenPassAnalysisToRegularPass(nextCache, next, options.convertHiddenPassPath);
-          return nextCache;
-        });
+        setAnalysisCache((current) =>
+          options.convertHiddenPassPath == null
+            ? current
+            : convertHiddenPassAnalysisToRegularPass(current, next, options.convertHiddenPassPath)
+        );
     },
     [enabled]
   );
