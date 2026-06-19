@@ -1222,6 +1222,7 @@ export function App() {
       {capabilities.katago ? (
         <KataGoSettingsModal
           open={kataGoSettingsOpen}
+          onCurrentAssetUninstalled={() => setAnalysisModeActive(false)}
           onCancel={() => {
             setKataGoSettingsOpen(false);
             void refreshKataGoSettings();

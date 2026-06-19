@@ -296,7 +296,10 @@ export function useKataGoAnalysis({
       }
 
       if (context.version !== documentVersionRef.current) return;
-      if (result.error != null) return;
+      if (result.error != null) {
+        setAnalysisModeActive(false);
+        return;
+      }
 
       setKataGoInitialized(true);
       const visits = getAnalysisVisits(result);
@@ -322,7 +325,7 @@ export function useKataGoAnalysis({
       unsubscribeAnalysis();
       unsubscribeConsole();
     };
-  }, [appendKataGoConsoleMessage, document, enabled]);
+  }, [appendKataGoConsoleMessage, document, enabled, setAnalysisModeActive]);
 
   useEffect(() => {
     const element = kataGoConsoleRef.current;

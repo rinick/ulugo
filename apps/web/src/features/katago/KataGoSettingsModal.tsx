@@ -15,13 +15,15 @@ type AssetKind = 'katago' | 'model';
 interface KataGoSettingsModalProps {
   open: boolean;
   onCancel: () => void;
+  onCurrentAssetUninstalled: () => void;
 }
 
-export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) {
+export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}: KataGoSettingsModalProps) {
   const {t} = useTranslation();
   const [form] = Form.useForm<KataGoSettings>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cancelDisabled, setCancelDisabled] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [installing, setInstalling] = useState<AssetKind | null>(null);
   const [inventory, setInventory] = useState<KataGoAssetInventory | null>(null);
@@ -30,6 +32,7 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
 
   useEffect(() => {
     if (!open || window.ulugo == null) return;
+    setCancelDisabled(false);
     void loadInventory();
   }, [open]);
 
@@ -102,7 +105,15 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       });
       setInventory({...inventory, settings});
       message.success(t('katagoSettingsSaved'));
-      onCancel();
+      if (!inventory.katago.some((asset) => asset.installed) || !inventory.models.some((asset) => asset.installed)) {
+        Modal.warning({
+          title: t('aiAnalysisUnavailableTitle'),
+          content: t('aiAnalysisUnavailableContent'),
+          onOk: onCancel,
+        });
+      } else {
+        onCancel();
+      }
     } catch (error) {
       if (error instanceof Error) message.error(error.message);
     } finally {
@@ -151,13 +162,19 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
   }
 
   async function handleUninstall(kind: AssetKind, assetId: string): Promise<void> {
-    if (window.ulugo == null) return;
+    if (window.ulugo == null || inventory == null) return;
+    const currentAssetUninstalled =
+      kind === 'katago' ? assetId === selectedKataGoId : assetId === selectedModelId;
 
     try {
       const nextInventory = await window.ulugo.katago.uninstallAsset({kind, assetId});
       setInventory(nextInventory);
       form.setFieldsValue(nextInventory.settings);
       setInstallTarget(defaultInstallTarget(nextInventory));
+      if (currentAssetUninstalled) {
+        setCancelDisabled(true);
+        onCurrentAssetUninstalled();
+      }
       message.success(t(kind === 'katago' ? 'katagoUninstalled' : 'modelUninstalled'));
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('uninstallFailed'));
@@ -212,6 +229,10 @@ export function KataGoSettingsModal({open, onCancel}: KataGoSettingsModalProps) 
       onOk={() => void handleSave()}
       okText={t('save')}
       confirmLoading={saving}
+      cancelButtonProps={{disabled: cancelDisabled}}
+      closable={false}
+      keyboard={false}
+      maskClosable={false}
       width={860}
       destroyOnHidden
     >
