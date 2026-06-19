@@ -15,6 +15,7 @@ import {
   uninstallKataGoAsset,
   type KataGoAsset,
   type KataGoAssetKind,
+  type KataGoAvailableAsset,
 } from './katagoAssets';
 
 interface KataGoSettings {
@@ -137,6 +138,7 @@ let katagoOutputBuffer = '';
 let katagoSender: WebContents | null = null;
 let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
+const firstRunSetupFileName = 'katago-first-run-setup.json';
 
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
@@ -153,7 +155,9 @@ async function createWindow(): Promise<void> {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: '#f4f7f5',
-    icon: path.join(__dirname, '../../web/src/assets/icon-512.png'),
+    icon: app.isPackaged
+      ? path.join(process.resourcesPath, 'web/dist/assets/icon-512.png')
+      : path.join(__dirname, '../../web/src/assets/icon-512.png'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -170,10 +174,10 @@ async function createWindow(): Promise<void> {
 
   if (process.env.ULUGO_WEB_URL != null && process.env.ULUGO_WEB_URL !== '') {
     await window.loadURL(process.env.ULUGO_WEB_URL);
-    return;
+  } else {
+    await window.loadFile(path.join(__dirname, '../../web/dist/index.html'));
   }
-
-  await window.loadFile(path.join(__dirname, '../../web/dist/index.html'));
+  void setupFirstRunKataGo(window.webContents);
 }
 
 app.whenReady().then(async () => {
@@ -300,19 +304,7 @@ function registerIpc(): void {
     const option = options.find((item) => item.id === request.optionId);
     if (option == null) throw new Error(`Unknown download option: ${request.optionId}`);
 
-    sendKataGoConsole(event.sender, 'ulugo', 'info', `Downloading ${option.label}.`);
-    const result = await downloadKataGoAsset(option, request.kind, (progress) => {
-      event.sender.send('ulugo:katago:download-progress', progress);
-    });
-    const settings = await readJson('katago-settings.json', defaultKataGoSettings);
-    const nextSettings = await normalizeKataGoSettings(
-      request.kind === 'katago' ? {...settings, executablePath: result.path} : {...settings, modelPath: result.path},
-      path.dirname(result.path)
-    );
-    restartKataGoEngineIfSettingsChanged(settings, nextSettings);
-    await writeJson('katago-settings.json', nextSettings);
-    sendKataGoConsole(event.sender, 'ulugo', 'info', `${option.label} installed at ${result.path}.`);
-    return {...result, settings: nextSettings};
+    return installKataGoAsset(request.kind, option, event.sender);
   });
   ipcMain.handle('ulugo:katago:analyze', async (event, query: KataGoAnalysisQuery) => {
     const normalizedQuery = normalizeAnalysisQuery(query);
@@ -373,6 +365,59 @@ async function selectKataGoAsset(kind: KataGoAssetKind, assetId: string): Promis
   );
   restartKataGoEngineIfSettingsChanged(previous, next);
   return writeJson('katago-settings.json', next);
+}
+
+async function installKataGoAsset(
+  kind: KataGoAssetKind,
+  option: KataGoAvailableAsset,
+  sender: WebContents
+): Promise<{path: string; settings: KataGoSettings}> {
+  sendKataGoConsole(sender, 'ulugo', 'info', `Downloading ${option.label}.`);
+  const result = await downloadKataGoAsset(option, kind, (progress) => {
+    sender.send('ulugo:katago:download-progress', progress);
+  });
+  const settings = await readJson('katago-settings.json', defaultKataGoSettings);
+  const nextSettings = await normalizeKataGoSettings(
+    kind === 'katago' ? {...settings, executablePath: result.path} : {...settings, modelPath: result.path},
+    path.dirname(result.path)
+  );
+  restartKataGoEngineIfSettingsChanged(settings, nextSettings);
+  await writeJson('katago-settings.json', nextSettings);
+  sendKataGoConsole(sender, 'ulugo', 'info', `${option.label} installed at ${result.path}.`);
+  return {...result, settings: nextSettings};
+}
+
+async function setupFirstRunKataGo(sender: WebContents): Promise<void> {
+  if ((await readJson(firstRunSetupFileName, {complete: false})).complete) return;
+
+  try {
+    sendKataGoConsole(sender, 'ulugo', 'info', 'Setting up KataGo for first use.');
+    const catalog = await refreshKataGoAssetCatalog();
+    const katagoOption = catalog.katago.find((asset) => asset.id.toLowerCase().includes('opencl'));
+    const modelOption = catalog.models.find((asset) => asset.id.toLowerCase().includes('b18c384'));
+    if (katagoOption == null) throw new Error('No OpenCL KataGo build is available for this platform.');
+    if (modelOption == null) throw new Error('No b18c384 KataGo model is available.');
+
+    let inventory = await getKataGoAssetInventory();
+    const installedKataGo = inventory.katago.find((asset) => asset.id === katagoOption.id && asset.path != null);
+    if (installedKataGo == null) await installKataGoAsset('katago', katagoOption, sender);
+    else await selectKataGoAsset('katago', installedKataGo.id);
+
+    inventory = await getKataGoAssetInventory();
+    const installedModel = inventory.models.find((asset) => asset.id === modelOption.id && asset.path != null);
+    if (installedModel == null) await installKataGoAsset('model', modelOption, sender);
+    else await selectKataGoAsset('model', installedModel.id);
+
+    await writeJson(firstRunSetupFileName, {complete: true});
+    sendKataGoConsole(sender, 'ulugo', 'info', 'First-use KataGo setup complete.');
+  } catch (error) {
+    sendKataGoConsole(
+      sender,
+      'ulugo',
+      'error',
+      error instanceof Error ? `First-use KataGo setup failed: ${error.message}` : 'First-use KataGo setup failed.'
+    );
+  }
 }
 
 async function readAnalysisSettings(): Promise<AnalysisSettings> {

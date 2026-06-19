@@ -6,7 +6,7 @@ build
 *.map
 *.jsx
 /temp
-
+/release
 /app/**/*.d.ts
 /packages/**/*.d.ts
 /tool/**/*.d.ts

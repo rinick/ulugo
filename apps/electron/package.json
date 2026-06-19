@@ -1,6 +1,7 @@
 {
   "name": "@ulugo/electron",
   "productName": "Ulugo AI review",
+  "description": "Ulugo AI review",
   "version": "0.0.0",
   "private": true,
   "type": "commonjs",
@@ -8,8 +9,41 @@
   "scripts": {
     "dev": "tsc -p tsconfig.json && electron dist/main.js",
     "build": "tsc -p tsconfig.json",
+    "package:win-x64": "electron-builder --win portable --x64",
+    "package:mac-arm64": "electron-builder --mac dmg --arm64",
+    "package:linux-x64": "electron-builder --linux AppImage --x64",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "build": {
+    "appId": "com.ulugo.app",
+    "executableName": "ulugo",
+    "asar": true,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "../../release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web/dist"
+      }
+    ],
+    "win": {
+      "artifactName": "ulugo.${ext}",
+      "icon": "../web/src/assets/icon-512.png"
+    },
+    "mac": {
+      "icon": "../web/src/assets/icon-512.png"
+    },
+    "linux": {
+      "icon": "../web/src/assets/icon-512.png",
+      "category": "Game"
+    }
   },
   "dependencies": {
     "extract-zip": "^2.0.1"
@@ -17,6 +51,7 @@
   "devDependencies": {
     "@types/node": "^24.10.2",
     "electron": "^39.2.6",
+    "electron-builder": "^26.15.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   }
