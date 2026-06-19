@@ -13,6 +13,7 @@ import {
   moveBranchToMain,
   parseGib,
   parseSgf,
+  pruneBranch,
   replaceMove,
   serializeSgf,
   updateComment,
@@ -155,5 +156,12 @@ describe('sgf-core', () => {
     const result = deleteNode(document, [0, 0]);
     expect(result.path).toEqual([0]);
     expect(serializeSgf(result.document)).toBe('(;GM[1]SZ[19];B[aa];W[cc])');
+  });
+
+  it('prunes branches from parent nodes while keeping child branches', () => {
+    const document = parseSgf('(;GM[1]SZ[19](;B[aa](;W[bb])(;W[cc](;B[dd])(;B[ee])))(;B[ff]))');
+    const result = pruneBranch(document, [0, 1]);
+    expect(result.path).toEqual([0, 0]);
+    expect(serializeSgf(result.document)).toBe('(;GM[1]SZ[19];B[aa];W[cc](;B[dd])(;B[ee]))');
   });
 });

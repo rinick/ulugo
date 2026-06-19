@@ -489,6 +489,21 @@ export function deleteNode(document: SgfDocument, path: number[]): {document: Sg
   return {document: next, path: parentPath};
 }
 
+export function pruneBranch(document: SgfDocument, path: number[]): {document: SgfDocument; path: number[]} {
+  if (path.length === 0) return {document, path};
+
+  const next = cloneDocument(document);
+  let node = next.root;
+  for (const childIndex of path) {
+    const child = node.children[childIndex];
+    if (child == null) throw new Error(`Invalid SGF path: ${path.join('.')}`);
+    node.children = [child];
+    node = child;
+  }
+
+  return {document: next, path: path.map(() => 0)};
+}
+
 export function replaceMove(
   document: SgfDocument,
   path: number[],

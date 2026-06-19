@@ -29,6 +29,7 @@ export type ShortcutActionId =
   | 'moveBranchToMain'
   | 'moveBranchLeft'
   | 'moveBranchRight'
+  | 'pruneBranch'
   | 'deleteBranch'
   | 'toggleShowCoordinates'
   | 'toggleShowNextMove'
@@ -104,6 +105,7 @@ export const shortcutActions: ShortcutAction[] = [
   {id: 'moveBranchToMain', labelKey: 'moveBranchToMain', defaultShortcut: shortcut('\\')},
   {id: 'moveBranchLeft', labelKey: 'moveBranchLeft', defaultShortcut: null},
   {id: 'moveBranchRight', labelKey: 'moveBranchRight', defaultShortcut: null},
+  {id: 'pruneBranch', labelKey: 'pruneBranch', defaultShortcut: null},
   {id: 'deleteBranch', labelKey: 'deleteBranch', defaultShortcut: shortcut('Delete')},
   {id: 'toggleShowCoordinates', labelKey: 'showCoordinates', defaultShortcut: shortcut('`')},
   {

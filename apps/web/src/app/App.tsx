@@ -26,6 +26,7 @@ import {
   buildTree,
   moveBranch,
   moveBranchToMain,
+  pruneBranch,
   samePath,
   serializeSgf,
   updateComment,
@@ -652,6 +653,9 @@ export function App() {
         case 'moveBranchRight':
           if (path.length > 0) handleMoveBranchRight();
           break;
+        case 'pruneBranch':
+          if (path.length > 0) handlePruneBranch();
+          break;
         case 'deleteBranch':
           if (path.length > 0) handleDeleteNode();
           break;
@@ -927,6 +931,21 @@ export function App() {
 
     const result = deleteNode(document, path);
     replaceDocument(result.document, result.path);
+  }
+
+  function handlePruneBranch(): void {
+    Modal.confirm({
+      title: t('pruneBranchConfirmTitle'),
+      content: t('pruneBranchConfirmContent'),
+      okText: t('pruneBranch'),
+      cancelText: t('cancel'),
+      okButtonProps: {danger: true},
+      onOk: () => {
+        const result = pruneBranch(document, path);
+        branchMemoryRef.current.clear();
+        replaceDocument(result.document, result.path);
+      },
+    });
   }
 
   function handleLanguageChange(language: AppLanguage): void {
@@ -1211,6 +1230,7 @@ export function App() {
               onMoveToMain={handleMoveBranchToMain}
               onMoveLeft={handleMoveBranchLeft}
               onMoveRight={handleMoveBranchRight}
+              onPrune={handlePruneBranch}
               onDelete={handleDeleteNode}
               onPreviousMove={() => navigatePrevious()}
               onNextMove={() => navigateNext()}

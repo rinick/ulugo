@@ -1,4 +1,4 @@
-import {LeftOutlined, RightOutlined, DeleteOutlined, DoubleLeftOutlined} from '@ant-design/icons';
+import {LeftOutlined, RightOutlined, DeleteOutlined, DoubleLeftOutlined, ScissorOutlined} from '@ant-design/icons';
 import {Button, Space} from 'antd';
 import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {useCallback, useEffect, useMemo, useRef, type ReactNode, type WheelEvent} from 'react';
@@ -25,6 +25,7 @@ interface SgfTreePanelProps {
   onMoveToMain: () => void;
   onMoveLeft: () => void;
   onMoveRight: () => void;
+  onPrune: () => void;
   onDelete: () => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
@@ -38,6 +39,7 @@ export function SgfTreePanel({
   onMoveToMain,
   onMoveLeft,
   onMoveRight,
+  onPrune,
   onDelete,
   onPreviousMove,
   onNextMove,
@@ -159,6 +161,13 @@ export function SgfTreePanel({
             disabled={selectedPath.length === 0}
             icon={<RightOutlined />}
             onClick={onMoveRight}
+          />
+          <TreeActionButton
+            title={withShortcut(t('pruneBranch'), shortcutLabels.pruneBranch)}
+            disabled={selectedPath.length === 0}
+            icon={<ScissorOutlined />}
+            danger
+            onClick={onPrune}
           />
           <TreeActionButton
             title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}

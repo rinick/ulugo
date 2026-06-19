@@ -144,15 +144,15 @@ export function EditorToolbar({
               title={withShortcut(t('addCross'), shortcutLabels.addCross)}
               onToolChange={onToolChange}
             />
+            <ToolButton
+              tool="erase"
+              current={tool}
+              icon={<DeleteOutlined />}
+              title={withShortcut(t('eraseMarkup'), shortcutLabels.eraseMarkup)}
+              onToolChange={onToolChange}
+            />
           </>
         )}
-        <ToolButton
-          tool="erase"
-          current={tool}
-          icon={<DeleteOutlined />}
-          title={withShortcut(t('eraseMarkup'), shortcutLabels.eraseMarkup)}
-          onToolChange={onToolChange}
-        />
       </Space.Compact>
       <Space.Compact className="navigation-tools">
         <NavButton
