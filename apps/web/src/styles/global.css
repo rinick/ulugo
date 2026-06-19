@@ -930,6 +930,8 @@ button.ant-btn.left-panel-toggle {
   position: absolute;
   left: 0;
   top: 0;
+  border-top: none;
+  border-left: none;
   border-radius: 0 0 10px 0;
   z-index: 10;
 }

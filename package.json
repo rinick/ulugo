@@ -8,6 +8,7 @@
     "build": "pnpm -r build",
     "build:electron": "pnpm --filter @ulugo/web build && pnpm --filter @ulugo/electron build",
     "build:win-x64": "pnpm build:electron && pnpm --filter @ulugo/electron package:win-x64",
+    "build:msix-x64": "pnpm build:electron && pnpm --filter @ulugo/electron package:msix-x64",
     "build:mac-arm64": "pnpm build:electron && pnpm --filter @ulugo/electron package:mac-arm64",
     "build:linux-x64": "pnpm build:electron && pnpm --filter @ulugo/electron package:linux-x64",
     "test": "pnpm -r test",
