@@ -632,6 +632,7 @@ textarea,
   align-items: center;
   min-width: max-content;
   padding: 4px 0 12px;
+  pointer-events: none;
 }
 
 .tree-panel-header .ant-btn-sm {
@@ -694,6 +695,7 @@ textarea,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  pointer-events: visible;
 }
 
 .move-tree-node-text {

@@ -1,7 +1,17 @@
 import {LeftOutlined, RightOutlined, DeleteOutlined, DoubleLeftOutlined, ScissorOutlined} from '@ant-design/icons';
-import {Button, Space} from 'antd';
+import {Button, Dropdown, Space} from 'antd';
+import type {MenuProps} from 'antd';
 import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
-import {useCallback, useEffect, useMemo, useRef, type ReactNode, type WheelEvent} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type WheelEvent,
+} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
@@ -22,11 +32,11 @@ interface SgfTreePanelProps {
   document: SgfDocument;
   selectedPath: number[];
   onSelectPath: (path: number[]) => void;
-  onMoveToMain: () => void;
-  onMoveLeft: () => void;
-  onMoveRight: () => void;
-  onPrune: () => void;
-  onDelete: () => void;
+  onMoveToMain: (path?: number[]) => void;
+  onMoveLeft: (path?: number[]) => void;
+  onMoveRight: (path?: number[]) => void;
+  onPrune: (path?: number[]) => void;
+  onDelete: (path?: number[]) => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
@@ -51,6 +61,9 @@ export function SgfTreePanel({
   const selectedFromScrollRef = useRef(false);
   const releaseSuppressScrollSelectRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef(0);
+  const contextPathRef = useRef<number[] | null>(null);
+  const [contextPath, setContextPath] = useState<number[] | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const tree = useMemo(() => buildTree(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
   const layout = useMemo(() => layoutTree(tree[0], boardSize), [boardSize, tree]);
@@ -140,6 +153,79 @@ export function SgfTreePanel({
     [onNextMove, onPreviousMove]
   );
 
+  const contextMenuItems = useMemo<MenuProps['items']>(
+    () => [
+      {
+        key: 'moveBranchToMain',
+        label: t('moveBranchToMain'),
+        icon: <DoubleLeftOutlined />,
+        disabled: contextPath == null || contextPath.length === 0,
+      },
+      {
+        key: 'moveBranchLeft',
+        label: t('moveBranchLeft'),
+        icon: <LeftOutlined />,
+        disabled: contextPath == null || contextPath.length === 0,
+      },
+      {
+        key: 'moveBranchRight',
+        label: t('moveBranchRight'),
+        icon: <RightOutlined />,
+        disabled: contextPath == null || contextPath.length === 0,
+      },
+      {
+        key: 'pruneBranch',
+        label: t('pruneBranch'),
+        icon: <ScissorOutlined />,
+        danger: true,
+        disabled: contextPath == null || contextPath.length === 0,
+      },
+      {
+        key: 'deleteBranch',
+        label: t('deleteBranch'),
+        icon: <DeleteOutlined />,
+        danger: true,
+        disabled: contextPath == null || contextPath.length === 0,
+      },
+    ],
+    [contextPath, t]
+  );
+
+  const handleContextMenu = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const node = (event.target as Element).closest<HTMLElement>('[data-tree-node-id]');
+      const cell = layout.cells.find((candidate) => candidate.id === node?.dataset.treeNodeId);
+      const nextPath = cell?.path ?? null;
+      contextPathRef.current = nextPath;
+      setContextPath(nextPath);
+    },
+    [layout]
+  );
+
+  const handleContextMenuClick: MenuProps['onClick'] = ({key}) => {
+    const targetPath = contextPathRef.current;
+    if (targetPath == null || targetPath.length === 0) return;
+
+    setContextMenuOpen(false);
+    switch (key) {
+      case 'moveBranchToMain':
+        onMoveToMain(targetPath);
+        break;
+      case 'moveBranchLeft':
+        onMoveLeft(targetPath);
+        break;
+      case 'moveBranchRight':
+        onMoveRight(targetPath);
+        break;
+      case 'pruneBranch':
+        onPrune(targetPath);
+        break;
+      case 'deleteBranch':
+        onDelete(targetPath);
+        break;
+    }
+  };
+
   return (
     <section className="side-panel tree-panel">
       <div className="tree-panel-header">
@@ -148,53 +234,61 @@ export function SgfTreePanel({
             title={withShortcut(t('moveBranchToMain'), shortcutLabels.moveBranchToMain)}
             disabled={selectedPath.length === 0}
             icon={<DoubleLeftOutlined />}
-            onClick={onMoveToMain}
+            onClick={() => onMoveToMain()}
           />
           <TreeActionButton
             title={withShortcut(t('moveBranchLeft'), shortcutLabels.moveBranchLeft)}
             disabled={selectedPath.length === 0}
             icon={<LeftOutlined />}
-            onClick={onMoveLeft}
+            onClick={() => onMoveLeft()}
           />
           <TreeActionButton
             title={withShortcut(t('moveBranchRight'), shortcutLabels.moveBranchRight)}
             disabled={selectedPath.length === 0}
             icon={<RightOutlined />}
-            onClick={onMoveRight}
+            onClick={() => onMoveRight()}
           />
           <TreeActionButton
             title={withShortcut(t('pruneBranch'), shortcutLabels.pruneBranch)}
             disabled={selectedPath.length === 0}
             icon={<ScissorOutlined />}
             danger
-            onClick={onPrune}
+            onClick={() => onPrune()}
           />
           <TreeActionButton
             title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}
             disabled={selectedPath.length === 0}
             icon={<DeleteOutlined />}
             danger
-            onClick={onDelete}
+            onClick={() => onDelete()}
           />
         </Space.Compact>
       </div>
       <div className="tree-scroll" ref={scrollRef} onScroll={handleScroll} onWheel={handleWheel}>
-        <div
-          className="move-tree"
-          style={{gridTemplateColumns: `${gutterWidth}px repeat(${layout.columns}, ${treeColumnStep}px)`}}
+        <Dropdown
+          trigger={['contextMenu']}
+          open={contextMenuOpen}
+          onOpenChange={(open) => setContextMenuOpen(open && contextPathRef.current != null)}
+          menu={{items: contextMenuItems, onClick: handleContextMenuClick}}
         >
-          <ConnectorLayer layout={layout} />
-          {layout.rows.map((row) => (
-            <MoveTreeRow
-              key={row}
-              row={row}
-              columns={layout.columns}
-              cells={layout.cells.filter((cell) => cell.row === row)}
-              selectedPath={selectedPath}
-              onSelectPath={onSelectPath}
-            />
-          ))}
-        </div>
+          <div
+            className="move-tree"
+            style={{gridTemplateColumns: `${gutterWidth}px repeat(${layout.columns}, ${treeColumnStep}px)`}}
+            onContextMenuCapture={handleContextMenu}
+          >
+            <ConnectorLayer layout={layout} />
+            {layout.rows.map((row) => (
+              <MoveTreeRow
+                key={row}
+                row={row}
+                columns={layout.columns}
+                cells={layout.cells.filter((cell) => cell.row === row)}
+                selectedPath={selectedPath}
+                onSelectPath={onSelectPath}
+              />
+            ))}
+          </div>
+        </Dropdown>
       </div>
     </section>
   );

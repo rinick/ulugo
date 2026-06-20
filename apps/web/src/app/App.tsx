@@ -898,42 +898,43 @@ export function App() {
     replaceDocument(result.document, result.path, {convertHiddenPassPath: result.path});
   }
 
-  function handleMoveBranchToMain(): void {
-    const result = moveBranchToMain(document, path);
+  function handleMoveBranchToMain(targetPath = path): void {
+    const result = moveBranchToMain(document, targetPath);
     replaceDocument(result.document, result.path);
   }
 
-  function handleMoveBranchLeft(): void {
-    const result = moveBranch(document, path, -1);
+  function handleMoveBranchLeft(targetPath = path): void {
+    const result = moveBranch(document, targetPath, -1);
     replaceDocument(result.document, result.path);
   }
 
-  function handleMoveBranchRight(): void {
-    const result = moveBranch(document, path, 1);
+  function handleMoveBranchRight(targetPath = path): void {
+    const result = moveBranch(document, targetPath, 1);
     replaceDocument(result.document, result.path);
   }
 
-  function handleDeleteNode(): void {
-    if (getNodeAtPath(document, path).children.length > 0) {
+  function handleDeleteNode(targetPath = path): void {
+    const deleteTarget = () => {
+      const result = deleteNode(document, targetPath);
+      replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
+    };
+
+    if (getNodeAtPath(document, targetPath).children.length > 0) {
       Modal.confirm({
         title: t('deleteBranchConfirmTitle'),
         content: t('deleteBranchConfirmContent'),
         okText: t('ok'),
         cancelText: t('cancel'),
         okButtonProps: {danger: true},
-        onOk: () => {
-          const result = deleteNode(document, path);
-          replaceDocument(result.document, result.path);
-        },
+        onOk: deleteTarget,
       });
       return;
     }
 
-    const result = deleteNode(document, path);
-    replaceDocument(result.document, result.path);
+    deleteTarget();
   }
 
-  function handlePruneBranch(): void {
+  function handlePruneBranch(targetPath = path): void {
     Modal.confirm({
       title: t('pruneBranchConfirmTitle'),
       content: t('pruneBranchConfirmContent'),
@@ -941,7 +942,7 @@ export function App() {
       cancelText: t('cancel'),
       okButtonProps: {danger: true},
       onOk: () => {
-        const result = pruneBranch(document, path);
+        const result = pruneBranch(document, targetPath);
         branchMemoryRef.current.clear();
         replaceDocument(result.document, result.path);
       },
@@ -1292,6 +1293,25 @@ export function App() {
 
 function hasDraggedFiles(dataTransfer: DataTransfer): boolean {
   return Array.from(dataTransfer.types).includes('Files');
+}
+
+function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {
+  if (samePath(selectedPath.slice(0, deletedPath.length), deletedPath)) {
+    return deletedPath.slice(0, -1);
+  }
+
+  const parentPath = deletedPath.slice(0, -1);
+  if (
+    selectedPath.length > parentPath.length &&
+    samePath(selectedPath.slice(0, parentPath.length), parentPath) &&
+    selectedPath[parentPath.length] > deletedPath[deletedPath.length - 1]
+  ) {
+    const nextPath = [...selectedPath];
+    nextPath[parentPath.length] -= 1;
+    return nextPath;
+  }
+
+  return selectedPath;
 }
 
 function currentSgfFileName(currentFile: CurrentFileMetadata | null, gameName: string): string {
