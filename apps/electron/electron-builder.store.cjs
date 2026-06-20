@@ -15,6 +15,7 @@ module.exports = {
     identityName: identity.name,
     publisher: identity.publisher,
     publisherDisplayName: identity.publisherDisplayName,
+    minVersion: '10.0.17763.0',
     languages: ['en-US', 'zh-CN', 'ja-JP', 'ko-KR', 'fr-FR', 'de-DE', 'ru-RU'],
   },
 };
