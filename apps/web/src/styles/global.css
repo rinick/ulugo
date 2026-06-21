@@ -85,6 +85,20 @@ textarea,
   gap: 16px;
 }
 
+.app-settings-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-settings-scale-row .ant-slider {
+  flex: 1;
+}
+
+.app-settings-scale-row .ant-input-number-group-wrapper {
+  width: 100px;
+}
+
 .keyboard-shortcuts-list {
   display: grid;
   gap: 6px;

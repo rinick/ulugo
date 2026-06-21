@@ -1,4 +1,4 @@
-import {Button, Checkbox, Form, InputNumber, Modal, Select, Switch, message} from 'antd';
+import {Button, Checkbox, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
@@ -9,12 +9,14 @@ interface SettingsModalProps {
   open: boolean;
   settings: AnalysisSettings;
   language: AppLanguage;
+  uiScale: number;
   showCoordinates: boolean;
   playStoneSound: boolean;
   showKataGoAnalysisSettings?: boolean;
   onCancel: () => void;
   onAnalysisSettingsChange: (settings: AnalysisSettings) => void;
   onLanguageChange: (language: AppLanguage) => void;
+  onUiScaleChange: (uiScale: number) => void;
   onShowCoordinatesChange: (showCoordinates: boolean) => void;
   onPlayStoneSoundChange: (playStoneSound: boolean) => void;
   onKeyboardShortcutsClick: () => void;
@@ -24,12 +26,14 @@ export function SettingsModal({
   open,
   settings,
   language,
+  uiScale,
   showCoordinates,
   playStoneSound,
   showKataGoAnalysisSettings = false,
   onCancel,
   onAnalysisSettingsChange,
   onLanguageChange,
+  onUiScaleChange,
   onShowCoordinatesChange,
   onPlayStoneSoundChange,
   onKeyboardShortcutsClick,
@@ -97,6 +101,21 @@ export function SettingsModal({
             onChange={(value) => onLanguageChange(value as AppLanguage)}
             options={languageOptions}
           />
+        </Form.Item>
+        <Form.Item label={t('uiScale')}>
+          <div className="app-settings-scale-row">
+            <Slider min={25} max={400} value={uiScale} onChange={onUiScaleChange} />
+            <InputNumber
+              size="small"
+              min={25}
+              max={400}
+              value={uiScale}
+              addonAfter="%"
+              onChange={(value) => {
+                if (value != null) onUiScaleChange(value);
+              }}
+            />
+          </div>
         </Form.Item>
         <Form.Item>
           <div className="app-settings-row">

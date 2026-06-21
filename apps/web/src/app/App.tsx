@@ -97,6 +97,7 @@ import {
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 
 const {Header, Content} = Layout;
+const uiScaleStorageKey = 'ulugo.uiScale';
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
@@ -122,6 +123,7 @@ export function App() {
   const [labelText, setLabelText] = useState('A');
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
   const [replaceMoveState, setReplaceMoveState] = useState<ReplaceMoveState | null>(null);
+  const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
   const [gameInfoOpen, setGameInfoOpen] = useState(false);
@@ -167,6 +169,12 @@ export function App() {
     globalThis.document.documentElement.lang = currentLanguage;
     globalThis.document.documentElement.style.setProperty('--ulugo-font-family', appFontFamily);
   }, [appFontFamily, currentLanguage]);
+
+  useEffect(() => {
+    const root = globalThis.document.getElementById('root');
+    if (root != null) root.style.zoom = `${uiScale}%`;
+    writeStoredNumber(uiScaleStorageKey, uiScale);
+  }, [uiScale]);
 
   useEffect(() => {
     writeStoredBoolean(showCoordinatesStorageKey, showCoordinates);
@@ -1259,12 +1267,14 @@ export function App() {
         open={settingsOpen}
         settings={analysisSettings}
         language={currentLanguage}
+        uiScale={uiScale}
         showCoordinates={showCoordinates}
         playStoneSound={playStoneSound}
         showKataGoAnalysisSettings={capabilities.katago}
         onCancel={() => setSettingsOpen(false)}
         onAnalysisSettingsChange={updateAnalysisSettings}
         onLanguageChange={handleLanguageChange}
+        onUiScaleChange={setUiScale}
         onShowCoordinatesChange={setShowCoordinates}
         onPlayStoneSoundChange={setPlayStoneSound}
         onKeyboardShortcutsClick={openKeyboardShortcuts}
@@ -1366,6 +1376,18 @@ function readStoredBoolean(key: string, fallback: boolean): boolean {
   }
 }
 
+function readStoredNumber(key: string, fallback: number, min: number, max: number): number {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored == null) return fallback;
+    const value = Number(stored);
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(max, Math.max(min, value));
+  } catch {
+    return fallback;
+  }
+}
+
 function resolveBoardBackground(
   boardBackground: AnalysisSettings['boardBackground'],
   useNaturalBackground: boolean
@@ -1375,6 +1397,14 @@ function resolveBoardBackground(
 }
 
 function writeStoredBoolean(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    // Ignore storage failures; the current session state is still updated.
+  }
+}
+
+function writeStoredNumber(key: string, value: number): void {
   try {
     localStorage.setItem(key, String(value));
   } catch {
