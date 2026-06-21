@@ -1,17 +1,4 @@
-import {
-  FileAddOutlined,
-  FolderOpenOutlined,
-  InfoCircleOutlined,
-  SaveOutlined,
-  SettingOutlined,
-  ThunderboltOutlined,
-  ToolOutlined,
-  LeftSquareOutlined,
-  RightSquareOutlined,
-  CloudDownloadOutlined,
-} from '@ant-design/icons';
-import {Button, ConfigProvider, Dropdown, Input, Layout, Modal, Space, message} from 'antd';
-import type {MenuProps} from 'antd';
+import {ConfigProvider, Layout, Modal} from 'antd';
 import {
   addLabel,
   addMarkup,
@@ -28,30 +15,29 @@ import {
   moveBranchToMain,
   pruneBranch,
   samePath,
-  serializeSgf,
   updateComment,
   updateGameInfo,
   type SgfColor,
   type SgfDocument,
 } from '@ulugo/sgf-core';
-import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
-import {useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent} from 'react';
+import type {BoardSize} from '@ulugo/ui-shared';
+import {useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
 import type {AnalysisSettings} from '@ulugo/analysis-core';
 import stoneSoundUrl from '../assets/go_stone_light.wav';
-import privacyPolicyUrl from '../../../../policies/privacy-policy.md?url';
-import termsOfServiceUrl from '../../../../policies/terms-of-service.md?url';
-import {GoogleAd} from '../features/ads/GoogleAd';
-import {GoBoard, type BoardVertexClickOptions} from '../features/board/GoBoard';
-import {CommentsPanel} from '../features/comments/CommentsPanel';
+import {AppBoardRegion} from '../features/app-shell/AppBoardRegion';
+import {AppLeftPanel} from '../features/app-shell/AppLeftPanel';
+import {AppMenuBar} from '../features/app-shell/AppMenuBar';
+import {AppRightPanel} from '../features/app-shell/AppRightPanel';
+import {AppStatusModals} from '../features/app-shell/AppStatusModals';
+import {AppToolbars} from '../features/app-shell/AppToolbars';
+import type {BoardVertexClickOptions} from '../features/board/GoBoard';
 import {GameInfoModal} from '../features/game-info/GameInfoModal';
 import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
-import {SgfTreePanel} from '../features/sgf-tree/SgfTreePanel';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
-import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
 import {
   readKeyboardShortcuts,
   shortcutActionForEvent,
@@ -61,9 +47,13 @@ import {
   type KeyboardShortcutConfig,
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
-import {EditorToolbar} from '../features/toolbar/EditorToolbar';
-import {NavigationToolbar} from '../features/toolbar/NavigationToolbar';
 import type {EditorTool} from '../features/toolbar/types';
+import {
+  isMarkupTool,
+  nextLabelText,
+  resolveBoardBackground,
+  selectedPathAfterDelete,
+} from './appEditorUtils';
 import {capabilities, isElectron} from './capabilities';
 import {addSetupStoneToPath, findChildMovePath, isCurrentSetupStone, oppositeColor, toolToMarkup} from './sgfEditUtils';
 import {
@@ -76,44 +66,27 @@ import {
   normalizeSelectedPath,
   pathKey,
 } from './sgfPathUtils';
-import {
-  isGameRecordFile,
-  parseGameRecord,
-  readGameRecordFile,
-  safeFileName,
-  withImportedGameName,
-} from './gameRecordFileUtils';
 import {blurNonTextControlFocus, isModalOpen, isPopupOpen, isTextInputActive} from './domUtils';
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
-import {formatConsoleTime} from './katagoConsoleUtils';
 import {getAppFontFamily} from './fonts';
 import {appTheme} from './appTheme';
-import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
 import {
   gtpMoveToPoint,
   hasReplaceableContinuation,
   replaceNextMoveBranch,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
+import {useAppPreferences} from './useAppPreferences';
+import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 
 const {Header, Content} = Layout;
-const uiScaleStorageKey = 'ulugo.uiScale';
-const showCoordinatesStorageKey = 'ulugo.showCoordinates';
-const playStoneSoundStorageKey = 'ulugo.playStoneSound';
-const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
 
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   convertHiddenPassPath?: number[];
   pendingSetupPath?: number[] | null;
   replaceMoveState?: ReplaceMoveState | null;
-}
-
-interface CurrentFileMetadata {
-  name: string;
-  electronFilePath?: string;
-  googleDriveFileId?: string;
 }
 
 export function App() {
@@ -124,20 +97,23 @@ export function App() {
   const [labelText, setLabelText] = useState('A');
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
   const [replaceMoveState, setReplaceMoveState] = useState<ReplaceMoveState | null>(null);
-  const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
-  const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
-  const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
+  const {
+    uiScale,
+    setUiScale,
+    showCoordinates,
+    setShowCoordinates,
+    playStoneSound,
+    setPlayStoneSound,
+    leftPanelOpen,
+    setLeftPanelOpen,
+  } = useAppPreferences();
   const [gameInfoOpen, setGameInfoOpen] = useState(false);
-  const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
   const [kataGoSettingsOpen, setKataGoSettingsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
-  const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
-  const [leftPanelOpen, setLeftPanelOpen] = useState(() => readStoredBoolean(leftPanelOpenStorageKey, true));
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const pendingSetupPathRef = useRef<number[] | null>(null);
@@ -171,24 +147,6 @@ export function App() {
     globalThis.document.documentElement.style.setProperty('--ulugo-font-family', appFontFamily);
   }, [appFontFamily, currentLanguage]);
 
-  useEffect(() => {
-    const root = globalThis.document.getElementById('root');
-    if (root != null) root.style.zoom = `${uiScale}%`;
-    writeStoredNumber(uiScaleStorageKey, uiScale);
-  }, [uiScale]);
-
-  useEffect(() => {
-    writeStoredBoolean(showCoordinatesStorageKey, showCoordinates);
-  }, [showCoordinates]);
-
-  useEffect(() => {
-    writeStoredBoolean(playStoneSoundStorageKey, playStoneSound);
-  }, [playStoneSound]);
-
-  useEffect(() => {
-    writeStoredBoolean(leftPanelOpenStorageKey, leftPanelOpen);
-  }, [leftPanelOpen]);
-
   const {
     analysisSettings,
     updateAnalysisSettings,
@@ -219,6 +177,15 @@ export function App() {
     pendingSetupPathRef,
     startFailedMessage: t('analysisStartFailed'),
   });
+  const gameRecordFiles = useGameRecordFiles({
+    document,
+    gameName: gameInfo.GN,
+    onImport: (importedDocument) => {
+      branchMemoryRef.current.clear();
+      setAnalysisModeActive(capabilities.katago && analysisSettings.mode === 'review' && analysisSettings.autoAnalyze);
+      replaceDocument(importedDocument, [], {clearAnalysisCache: true});
+    },
+  });
   const showMarkup = analysisSettings.showMarkup;
   const stoneOverlayDisplay =
     !capabilities.katago && analysisSettings.stoneOverlay === 'dot' ? 'number' : analysisSettings.stoneOverlay;
@@ -242,16 +209,6 @@ export function App() {
   useEffect(() => {
     if (!showMarkup && isMarkupTool(tool)) setTool('auto');
   }, [showMarkup, tool]);
-
-  const newMenuItems: MenuProps['items'] = boardSizes.map((size) => ({
-    key: String(size),
-    label: t(`new${size}`),
-  }));
-  const openMenuItems: MenuProps['items'] = [{key: 'googleDrive', label: t('openFromGoogleDrive')}];
-  const saveMenuItems: MenuProps['items'] = [
-    {key: 'saveAs', label: t('saveAs')},
-    {key: 'googleDrive', label: t('saveToGoogleDrive')},
-  ];
 
   useEffect(() => {
     if (capabilities.katago || analysisSettings.stoneOverlay !== 'dot') return;
@@ -309,159 +266,9 @@ export function App() {
 
   function handleNew(size: BoardSize = 19): void {
     branchMemoryRef.current.clear();
-    setCurrentFile(null);
+    gameRecordFiles.clearCurrentFile();
     setAnalysisModeActive(false);
     replaceDocument(createNewGame(size), [], {clearAnalysisCache: true});
-  }
-
-  async function handleSaveSgf(): Promise<void> {
-    if (currentFile == null) {
-      await handleSaveAsSgf();
-      return;
-    }
-
-    if (currentFile.googleDriveFileId != null) {
-      await handleSaveSgfToGoogleDrive();
-      return;
-    }
-
-    await exportSgfFile(currentFile.name, {electronFilePath: currentFile.electronFilePath});
-  }
-
-  async function handleSaveAsSgf(): Promise<void> {
-    const fileName =
-      capabilities.storage === 'filesystem'
-        ? currentSgfFileName(currentFile, gameInfo.GN)
-        : await promptSaveFileName({
-            title: t('saveAs'),
-            initialValue: currentSgfFileName(currentFile, gameInfo.GN),
-            okText: t('save'),
-            cancelText: t('cancel'),
-          });
-    if (fileName == null) return;
-
-    await exportSgfFile(fileName, {saveAs: true});
-  }
-
-  async function handleSaveSgfToGoogleDrive(): Promise<void> {
-    const fileName = currentSgfFileName(currentFile, gameInfo.GN);
-    const showPendingDialog = isElectron;
-    if (showPendingDialog) setGoogleDrivePending('save');
-    try {
-      const result = await saveSgfToGoogleDrive({
-        platform: capabilities.platform,
-        content: serializeSgf(document),
-        fileName,
-        fileId: currentFile?.googleDriveFileId,
-      });
-      if (result == null) return;
-      setCurrentFile({name: result.fileName, googleDriveFileId: result.fileId});
-      message.success(t('savedToGoogleDrive'));
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t('googleDriveFailed'));
-    } finally {
-      if (showPendingDialog) setGoogleDrivePending(null);
-    }
-  }
-
-  async function exportSgfFile(
-    fileName: string,
-    options: {saveAs?: boolean; electronFilePath?: string | null} = {}
-  ): Promise<void> {
-    const content = serializeSgf(document);
-    if (capabilities.storage === 'filesystem' && window.ulugo != null) {
-      try {
-        const result = await window.ulugo.exportSgf({
-          content,
-          suggestedName: fileName,
-          filePath: options.saveAs ? undefined : (options.electronFilePath ?? undefined),
-        });
-        if (!result.canceled && result.fileName != null) {
-          setCurrentFile({name: result.fileName, electronFilePath: result.filePath});
-        }
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : t('exportFailed'));
-      }
-      return;
-    }
-
-    const blob = new Blob([content], {type: 'application/x-go-sgf;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const link = window.document.createElement('a');
-    link.href = url;
-    link.download = normalizeSgfFileName(fileName);
-    link.click();
-    URL.revokeObjectURL(url);
-    setCurrentFile({name: normalizeSgfFileName(fileName)});
-  }
-
-  async function handleImportSgfFromMenu(): Promise<void> {
-    if (capabilities.storage === 'filesystem' && window.ulugo != null) {
-      try {
-        const result = await window.ulugo.importSgf();
-        if (result == null) return;
-        importSgfText(result.content, result.fileName, {
-          name: result.fileName,
-          electronFilePath: result.filePath,
-        });
-      } catch (error) {
-        message.error(error instanceof Error ? error.message : t('importFailed'));
-      }
-      return;
-    }
-
-    fileInputRef.current?.click();
-  }
-
-  async function handleImportSgfFromGoogleDrive(): Promise<void> {
-    const showPendingDialog = isElectron;
-    if (showPendingDialog) setGoogleDrivePending('open');
-    try {
-      const result = await openSgfFromGoogleDrive(capabilities.platform);
-      if (result == null) return;
-      importSgfText(result.content, result.fileName, {
-        name: result.fileName,
-        googleDriveFileId: result.fileId,
-      });
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t('googleDriveFailed'));
-    } finally {
-      if (showPendingDialog) setGoogleDrivePending(null);
-    }
-  }
-
-  async function handleImportSgf(file: File | undefined): Promise<void> {
-    if (file == null) return;
-
-    try {
-      const text = await readGameRecordFile(file);
-      importSgfText(text, file.name, {name: file.name});
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t('importFailed'));
-    } finally {
-      if (fileInputRef.current != null) fileInputRef.current.value = '';
-    }
-  }
-
-  function handleBoardDragOver(event: DragEvent<HTMLElement>): void {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
-    event.preventDefault();
-  }
-
-  function handleBoardDrop(event: DragEvent<HTMLElement>): void {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
-
-    event.preventDefault();
-    const file = Array.from(event.dataTransfer.files).find((item) => isGameRecordFile(item.name));
-    void handleImportSgf(file);
-  }
-
-  function importSgfText(text: string, fileName: string, metadata: CurrentFileMetadata): void {
-    const importedDocument = withImportedGameName(parseGameRecord(text, fileName), fileName);
-    branchMemoryRef.current.clear();
-    setCurrentFile(metadata);
-    setAnalysisModeActive(capabilities.katago && analysisSettings.mode === 'review' && analysisSettings.autoAnalyze);
-    replaceDocument(importedDocument, [], {clearAnalysisCache: true});
   }
 
   function handleReviewEditModeChange(mode: AnalysisSettings['mode']): void {
@@ -594,10 +401,10 @@ export function App() {
 
       switch (shortcutAction) {
         case 'open':
-          void handleImportSgfFromMenu();
+          void gameRecordFiles.open();
           break;
         case 'save':
-          void handleSaveSgf();
+          void gameRecordFiles.save();
           break;
         case 'gameInfo':
           setGameInfoOpen(true);
@@ -738,6 +545,7 @@ export function App() {
     capabilities.katago,
     currentAnalysis,
     document,
+    gameRecordFiles,
     keyboardShortcuts,
     navigateBranch,
     navigateFirstChild,
@@ -974,288 +782,131 @@ export function App() {
     setKeyboardShortcutsOpen(true);
   }
 
-  function cancelGoogleDriveOperation(): void {
-    void window.ulugo?.googleDrive.cancel();
-  }
-
   function handleAppClickCapture(): void {
     window.requestAnimationFrame(blurNonTextControlFocus);
   }
 
   return (
     <ConfigProvider locale={antdLocale} componentSize="small" theme={appTheme}>
-      <Modal
-        open={googleDrivePending != null}
-        title={t('googleDrive')}
-        footer={
-          <Button size="small" onClick={cancelGoogleDriveOperation}>
-            {t('cancel')}
-          </Button>
-        }
-        closable={false}
-        keyboard={false}
-        maskClosable={false}
-      >
-        {googleDrivePending === 'open' ? t('googleDriveOpenWaiting') : t('googleDriveSaveWaiting')}
-      </Modal>
-      <Modal
-        open={kataGoAutotuningOpen}
-        title={t('katagoAutotuning')}
-        footer={
-          <Button size="small" type="primary" onClick={() => setKataGoAutotuningOpen(false)}>
-            {t('ok')}
-          </Button>
-        }
-        closable={false}
-        keyboard={false}
-        maskClosable={false}
-      >
-        {t('katagoAutotuningMessage')}
-      </Modal>
+      <AppStatusModals
+        googleDrivePending={gameRecordFiles.googleDrivePending}
+        kataGoAutotuningOpen={kataGoAutotuningOpen}
+        onCancelGoogleDrive={gameRecordFiles.cancelGoogleDriveOperation}
+        onCloseKataGoAutotuning={() => setKataGoAutotuningOpen(false)}
+      />
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         <Header className="app-header">
-          <div className="menu-row">
-            <div className="app-title">{appTitle}</div>
-            <Space wrap>
-              <Dropdown.Button
-                size="small"
-                icon={<FileAddOutlined />}
-                menu={{
-                  items: newMenuItems,
-                  onClick: (info) => handleNew(Number(info.key) as BoardSize),
-                }}
-                onClick={() => handleNew(19)}
-              >
-                {t('new')}
-              </Dropdown.Button>
-              <Dropdown.Button
-                size="small"
-                icon={<FolderOpenOutlined />}
-                menu={{
-                  items: openMenuItems,
-                  onClick: (info) => {
-                    if (info.key === 'googleDrive') void handleImportSgfFromGoogleDrive();
-                  },
-                }}
-                onClick={() => void handleImportSgfFromMenu()}
-              >
-                {t('open')}
-              </Dropdown.Button>
-              <Dropdown.Button
-                size="small"
-                icon={<SaveOutlined />}
-                menu={{
-                  items: saveMenuItems,
-                  onClick: (info) => {
-                    if (info.key === 'saveAs') {
-                      void handleSaveAsSgf();
-                    } else if (info.key === 'googleDrive') {
-                      void handleSaveSgfToGoogleDrive();
-                    }
-                  },
-                }}
-                onClick={() => void handleSaveSgf()}
-              >
-                {t('save')}
-              </Dropdown.Button>
-              <Button size="small" icon={<InfoCircleOutlined />} onClick={() => setGameInfoOpen(true)}>
-                {t('gameInfo')}
-              </Button>
-              {capabilities.katago ? (
-                <Button size="small" icon={<ToolOutlined />} onClick={() => setKataGoSettingsOpen(true)}>
-                  {t('aiConfig')}
-                </Button>
-              ) : null}
-              <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>
-                {t('settings')}
-              </Button>
-            </Space>
-          </div>
-          <div className="editor-toolbar">
-            <EditorToolbar
-              tool={tool}
-              nextColor={nextAutoColor}
-              canReplaceMove={canReplaceMove}
-              showMarkup={showMarkup}
-              labelText={labelText}
-              shortcutLabels={shortcutLabels}
-              onToolChange={handleToolChange}
-              onLabelTextChange={setLabelText}
-              onAutoToolClick={handleAutoToolClick}
-              onPass={handlePass}
-            />
-            <NavigationToolbar
-              canNavigatePrevious={canNavigatePrevious}
-              canNavigateNext={canNavigateNext}
-              shortcutLabels={shortcutLabels}
-              onFirst={navigateToFirst}
-              onPrevious10={() => navigatePrevious(10)}
-              onPrevious={() => navigatePrevious()}
-              onNext={() => navigateNext()}
-              onNext10={() => navigateNext(10)}
-              onLast={navigateToLast}
-            />
-            <AnalysisToolbarOptions
-              katagoEnabled={capabilities.katago}
-              analysisSettings={analysisSettings}
-              stoneOverlayDisplay={stoneOverlayDisplay}
-              onModeChange={handleReviewEditModeChange}
-              onSettingsChange={updateAnalysisSettings}
-            />
-          </div>
+          <AppMenuBar
+            title={appTitle}
+            showAiConfig={capabilities.katago}
+            onNew={handleNew}
+            onOpen={() => void gameRecordFiles.open()}
+            onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
+            onSave={() => void gameRecordFiles.save()}
+            onSaveAs={() => void gameRecordFiles.saveAs()}
+            onSaveToGoogleDrive={() => void gameRecordFiles.saveToGoogleDrive()}
+            onGameInfo={() => setGameInfoOpen(true)}
+            onAiConfig={() => setKataGoSettingsOpen(true)}
+            onSettings={() => setSettingsOpen(true)}
+          />
+          <AppToolbars
+            tool={tool}
+            nextColor={nextAutoColor}
+            canNavigatePrevious={canNavigatePrevious}
+            canNavigateNext={canNavigateNext}
+            canReplaceMove={canReplaceMove}
+            showMarkup={showMarkup}
+            labelText={labelText}
+            shortcutLabels={shortcutLabels}
+            katagoEnabled={capabilities.katago}
+            analysisSettings={analysisSettings}
+            stoneOverlayDisplay={stoneOverlayDisplay}
+            onToolChange={handleToolChange}
+            onLabelTextChange={setLabelText}
+            onAutoToolClick={handleAutoToolClick}
+            onPass={handlePass}
+            onFirst={navigateToFirst}
+            onPrevious10={() => navigatePrevious(10)}
+            onPrevious={() => navigatePrevious()}
+            onNext={() => navigateNext()}
+            onNext10={() => navigateNext(10)}
+            onLast={navigateToLast}
+            onModeChange={handleReviewEditModeChange}
+            onAnalysisSettingsChange={updateAnalysisSettings}
+          />
         </Header>
         <Content className="app-content">
-          {capabilities.katago ? (
-            <aside className="left-panel" style={{display: leftPanelOpen ? 'flex' : 'none'}}>
-              <div className="katago-console-header">
-                <h2>{t('katagoConsole')}</h2>
-                <Button size="small" onClick={() => setKataGoConsoleMessages([])}>
-                  {t('clear')}
-                </Button>
-              </div>
-              <div className="katago-console-log" ref={kataGoConsoleRef}>
-                {kataGoConsoleMessages.length === 0 ? (
-                  <div className="katago-console-empty">{t('katagoConsoleEmpty')}</div>
-                ) : (
-                  kataGoConsoleMessages.map((item) => (
-                    <div key={item.id} className={`katago-console-line ${item.level}`}>
-                      <div className="katago-console-meta">
-                        <span className="katago-console-time">{formatConsoleTime(item.time)}</span>
-                        <span className={`katago-console-source ${item.source}`}>{item.source}</span>
-                      </div>
-                      <div className="katago-console-text">{item.text}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </aside>
-          ) : capabilities.platform === 'web' ? (
-            <aside className="left-panel web-ad-panel" style={{display: leftPanelOpen ? 'flex' : 'none'}}>
-              <GoogleAd />
-              <div className="policy-links">
-                <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
-                  Privacy Policy
-                </Button>
-                <Button type="link" href={termsOfServiceUrl} target="_blank" rel="noreferrer">
-                  Terms of Service
-                </Button>
-              </div>
-            </aside>
-          ) : null}
-          <main
-            className="board-region"
-            onDragOver={handleBoardDragOver}
-            onDrop={handleBoardDrop}
-            onWheel={(event) => {
-              if (event.deltaY > 0) navigateNext();
-              if (event.deltaY < 0) navigatePrevious();
+          <AppLeftPanel
+            katagoEnabled={capabilities.katago}
+            platform={capabilities.platform}
+            open={leftPanelOpen}
+            consoleMessages={kataGoConsoleMessages}
+            consoleRef={kataGoConsoleRef}
+            onClearConsole={() => setKataGoConsoleMessages([])}
+          />
+          <AppBoardRegion
+            document={document}
+            path={path}
+            showCoordinates={showCoordinates}
+            showMarkup={showMarkup}
+            moveNumberLimit={boardMoveNumberLimit}
+            analysis={currentAnalysis}
+            stoneScoreDeltas={stoneScoreDeltas}
+            analysisSettings={analysisSettings}
+            boardBackground={boardBackground}
+            katagoEnabled={capabilities.katago}
+            analysisMode={analysisMode}
+            analysisDeepMode={analysisDeepMode}
+            analysisIdle={analysisIdle}
+            fastAnalysisPendingCount={fastAnalysisPendingCount}
+            leftPanelOpen={leftPanelOpen}
+            onBoardClick={handleBoardClick}
+            onBoardRightClick={handleBoardRightClick}
+            onDragOver={gameRecordFiles.handleDragOver}
+            onDrop={gameRecordFiles.handleDrop}
+            onPreviousMove={() => navigatePrevious()}
+            onNextMove={() => navigateNext()}
+            onAnalysisClick={handleAnalysisButtonClick}
+            onToggleLeftPanel={() => setLeftPanelOpen((open) => !open)}
+          />
+          <AppRightPanel
+            document={document}
+            path={path}
+            blackPlayerName={blackPlayerName}
+            whitePlayerName={whitePlayerName}
+            capturedBlackStones={position.captures.W}
+            capturedWhiteStones={position.captures.B}
+            comment={getComment(document, path)}
+            analysisSettings={analysisSettings}
+            showAnalysisControls={capabilities.katago}
+            chartData={analysisChartData}
+            selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
+            chartSummary={analysisChartSummary}
+            shortcutLabels={shortcutLabels}
+            onCommentChange={handleCommentChange}
+            onAnalysisSettingsChange={updateAnalysisSettings}
+            onPreviousMove={() => navigatePrevious()}
+            onNextMove={() => navigateNext()}
+            onSelectChartMove={(moveNumber) => {
+              const nextPath = analysisChartPaths[moveNumber];
+              if (nextPath == null) return;
+              selectPath(nextPath);
             }}
-          >
-            <GoBoard
-              document={document}
-              path={path}
-              showCoordinates={showCoordinates}
-              showMarkup={showMarkup}
-              moveNumberLimit={boardMoveNumberLimit}
-              analysis={currentAnalysis}
-              stoneScoreDeltas={stoneScoreDeltas}
-              analysisSettings={analysisSettings}
-              boardBackground={boardBackground}
-              onVertexClick={handleBoardClick}
-              onVertexRightClick={handleBoardRightClick}
-            />
-            {capabilities.katago ? (
-              <Button
-                className={[
-                  'analysis-button',
-                  analysisMode ? 'analysis-button-active' : '',
-                  analysisDeepMode ? 'analysis-button-deep' : analysisIdle ? 'analysis-button-idle' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                icon={<ThunderboltOutlined />}
-                type={analysisMode ? 'primary' : 'default'}
-                title={t('analysis')}
-                onClick={handleAnalysisButtonClick}
-              >
-                {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
-              </Button>
-            ) : (
-              <Button
-                className="analysis-button desktop-download-button"
-                icon={<CloudDownloadOutlined />}
-                href="https://github.com/rinick/ulugo/releases"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span className="desktop-download-label">{t('downloadDesktopApp')}</span>
-              </Button>
-            )}
-            <Button
-              className="left-panel-toggle"
-              icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
-              title={t(leftPanelOpen ? 'closeLeftPanel' : 'openLeftPanel')}
-              onClick={() => setLeftPanelOpen((open) => !open)}
-            />
-          </main>
-          <aside className="right-region">
-            <section className="capture-summary">
-              <span className="capture-player">
-                <span className="capture-name">{blackPlayerName}</span>
-                <span className="capture-loss">−</span>
-                <span className="capture-count capture-count-black">{position.captures.W}</span>
-              </span>
-              <span className="capture-player">
-                <span className="capture-name">{whitePlayerName}</span>
-                <span className="capture-loss">−</span>
-                <span className="capture-count capture-count-white">{position.captures.B}</span>
-              </span>
-            </section>
-            <CommentsPanel
-              value={getComment(document, path)}
-              onChange={handleCommentChange}
-              showAnalysisControls={capabilities.katago}
-              chartData={analysisChartData}
-              moveDisplay={analysisSettings.moveDisplay}
-              showScore={analysisSettings.showScore}
-              showPointLoss={analysisSettings.showPointLoss}
-              showWinrate={analysisSettings.showWinrate}
-              showComments={analysisSettings.showComments}
-              selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
-              chartSummary={analysisChartSummary}
-              onDisplayChange={updateAnalysisSettings}
-              onPreviousMove={() => navigatePrevious()}
-              onNextMove={() => navigateNext()}
-              onSelectChartMove={(moveNumber) => {
-                const nextPath = analysisChartPaths[moveNumber];
-                if (nextPath == null) return;
-                selectPath(nextPath);
-              }}
-            />
-            <SgfTreePanel
-              document={document}
-              selectedPath={path}
-              onSelectPath={(nextPath) => {
-                selectPath(nextPath);
-              }}
-              onMoveToMain={handleMoveBranchToMain}
-              onMoveLeft={handleMoveBranchLeft}
-              onMoveRight={handleMoveBranchRight}
-              onPrune={handlePruneBranch}
-              onDelete={handleDeleteNode}
-              onPreviousMove={() => navigatePrevious()}
-              onNextMove={() => navigateNext()}
-              shortcutLabels={shortcutLabels}
-            />
-          </aside>
+            onSelectPath={selectPath}
+            onMoveToMain={handleMoveBranchToMain}
+            onMoveLeft={handleMoveBranchLeft}
+            onMoveRight={handleMoveBranchRight}
+            onPrune={handlePruneBranch}
+            onDelete={handleDeleteNode}
+          />
         </Content>
       </Layout>
       <input
-        ref={fileInputRef}
+        ref={gameRecordFiles.fileInputRef}
         className="hidden-file-input"
         type="file"
         accept=".sgf,.gib,application/x-go-sgf,text/plain"
-        onChange={(event) => void handleImportSgf(event.target.files?.[0])}
+        onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
       />
       {capabilities.katago ? (
         <KataGoSettingsModal
@@ -1301,142 +952,4 @@ export function App() {
       />
     </ConfigProvider>
   );
-}
-
-function hasDraggedFiles(dataTransfer: DataTransfer): boolean {
-  return Array.from(dataTransfer.types).includes('Files');
-}
-
-function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {
-  if (samePath(selectedPath.slice(0, deletedPath.length), deletedPath)) {
-    return deletedPath.slice(0, -1);
-  }
-
-  const parentPath = deletedPath.slice(0, -1);
-  if (
-    selectedPath.length > parentPath.length &&
-    samePath(selectedPath.slice(0, parentPath.length), parentPath) &&
-    selectedPath[parentPath.length] > deletedPath[deletedPath.length - 1]
-  ) {
-    const nextPath = [...selectedPath];
-    nextPath[parentPath.length] -= 1;
-    return nextPath;
-  }
-
-  return selectedPath;
-}
-
-function currentSgfFileName(currentFile: CurrentFileMetadata | null, gameName: string): string {
-  if (currentFile != null) return normalizeSgfFileName(currentFile.name);
-  return `${safeFileName(gameName || 'game')}.sgf`;
-}
-
-function normalizeSgfFileName(fileName: string): string {
-  const normalized = safeFileName(fileName.replace(/\.(sgf|gib)$/i, ''));
-  return `${normalized}.sgf`;
-}
-
-function promptSaveFileName({
-  title,
-  initialValue,
-  okText,
-  cancelText,
-}: {
-  title: string;
-  initialValue: string;
-  okText: string;
-  cancelText: string;
-}): Promise<string | null> {
-  let value = initialValue;
-
-  return new Promise((resolve) => {
-    Modal.confirm({
-      title,
-      icon: null,
-      content: (
-        <Input
-          autoFocus
-          defaultValue={initialValue}
-          onChange={(event) => {
-            value = event.target.value;
-          }}
-        />
-      ),
-      okText,
-      cancelText,
-      onOk: () => resolve(normalizeSgfFileName(value)),
-      onCancel: () => resolve(null),
-    });
-  });
-}
-
-function readStoredBoolean(key: string, fallback: boolean): boolean {
-  try {
-    const value = localStorage.getItem(key);
-    if (value == null) return fallback;
-    return value === 'true';
-  } catch {
-    return fallback;
-  }
-}
-
-function readStoredNumber(key: string, fallback: number, min: number, max: number): number {
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored == null) return fallback;
-    const value = Number(stored);
-    if (!Number.isFinite(value)) return fallback;
-    return Math.min(max, Math.max(min, value));
-  } catch {
-    return fallback;
-  }
-}
-
-function resolveBoardBackground(
-  boardBackground: AnalysisSettings['boardBackground'],
-  useNaturalBackground: boolean
-): Exclude<AnalysisSettings['boardBackground'], 'auto'> {
-  if (boardBackground === 'auto') return useNaturalBackground ? 'natural' : 'golden';
-  return boardBackground;
-}
-
-function writeStoredBoolean(key: string, value: boolean): void {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // Ignore storage failures; the current session state is still updated.
-  }
-}
-
-function writeStoredNumber(key: string, value: number): void {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // Ignore storage failures; the current session state is still updated.
-  }
-}
-
-function isMarkupTool(tool: EditorTool): boolean {
-  return tool === 'alphabet' || tool === 'circle' || tool === 'square' || tool === 'triangle' || tool === 'cross';
-}
-
-function nextLabelText(value: string): string {
-  if (/^\d+$/.test(value)) return (BigInt(value) + 1n).toString();
-  if (/^[a-z]+$/.test(value)) return nextLetters(value, 'a'.charCodeAt(0));
-  if (/^[A-Z]+$/.test(value)) return nextLetters(value, 'A'.charCodeAt(0));
-  return value;
-}
-
-function nextLetters(value: string, baseCode: number): string {
-  const codes = [...value].map((char) => char.charCodeAt(0) - baseCode);
-
-  for (let index = codes.length - 1; index >= 0; index -= 1) {
-    if (codes[index] < 25) {
-      codes[index] += 1;
-      return codes.map((code) => String.fromCharCode(baseCode + code)).join('');
-    }
-    codes[index] = 0;
-  }
-
-  return String.fromCharCode(baseCode) + codes.map((code) => String.fromCharCode(baseCode + code)).join('');
 }

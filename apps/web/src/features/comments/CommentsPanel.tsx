@@ -23,7 +23,7 @@ interface CommentsPanelProps {
   onSelectChartMove?: (moveNumber: number) => void;
 }
 
-interface AnalysisChartSummary {
+export interface AnalysisChartSummary {
   scoreLead: number | null;
   winrate: number | null;
   color?: 'B' | 'W';
