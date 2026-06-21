@@ -1179,14 +1179,12 @@ export function App() {
                 <span className="desktop-download-label">{t('downloadDesktopApp')}</span>
               </Button>
             )}
-            {isElectron && (
-              <Button
-                className="left-panel-toggle"
-                icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
-                title={t(leftPanelOpen ? 'closeLeftPanel' : 'openLeftPanel')}
-                onClick={() => setLeftPanelOpen((open) => !open)}
-              />
-            )}
+            <Button
+              className="left-panel-toggle"
+              icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
+              title={t(leftPanelOpen ? 'closeLeftPanel' : 'openLeftPanel')}
+              onClick={() => setLeftPanelOpen((open) => !open)}
+            />
           </main>
           <aside className="right-region">
             <section className="capture-summary">

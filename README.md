@@ -7,6 +7,10 @@
 
 Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an sgf editor.
 
+- Download from [Mirosoft Store](https://apps.microsoft.com/detail/9mtflxctfhxq). 
+- Download latest version form [Releases Page](https://github.com/rinick/ulugo/releases) (unsigned)
+
+
 ## Features
 
 - Review games with KataGo analysis in the desktop app.
@@ -16,18 +20,12 @@ Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an s
 
 ## Development
 
-Start electron app, and it will automatically download KataGo to analyze games.
+Requires [Node.js](https://nodejs.org/en/download)
 
+Start electron app.
 ```sh
-pnpm install
-pnpm dev:electron
-```
-
-Start web server
-
-```sh
-pnpm install
-pnpm dev
+npm install
+npm dev:electron
 ```
 
 ## Acknowledgements
