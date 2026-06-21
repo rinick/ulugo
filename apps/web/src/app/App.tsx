@@ -62,6 +62,7 @@ import {
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
 import {EditorToolbar} from '../features/toolbar/EditorToolbar';
+import {NavigationToolbar} from '../features/toolbar/NavigationToolbar';
 import type {EditorTool} from '../features/toolbar/types';
 import {capabilities, isElectron} from './capabilities';
 import {addSetupStoneToPath, findChildMovePath, isCurrentSetupStone, oppositeColor, toolToMarkup} from './sgfEditUtils';
@@ -1070,35 +1071,38 @@ export function App() {
               </Button>
             </Space>
           </div>
-          <EditorToolbar
-            tool={tool}
-            nextColor={nextAutoColor}
-            canNavigatePrevious={canNavigatePrevious}
-            canNavigateNext={canNavigateNext}
-            canReplaceMove={canReplaceMove}
-            showMarkup={showMarkup}
-            labelText={labelText}
-            shortcutLabels={shortcutLabels}
-            onToolChange={handleToolChange}
-            onLabelTextChange={setLabelText}
-            onAutoToolClick={handleAutoToolClick}
-            onPass={handlePass}
-            onFirst={navigateToFirst}
-            onPrevious10={() => navigatePrevious(10)}
-            onPrevious={() => navigatePrevious()}
-            onNext={() => navigateNext()}
-            onNext10={() => navigateNext(10)}
-            onLast={navigateToLast}
-            extraEnd={
-              <AnalysisToolbarOptions
-                katagoEnabled={capabilities.katago}
-                analysisSettings={analysisSettings}
-                stoneOverlayDisplay={stoneOverlayDisplay}
-                onModeChange={handleReviewEditModeChange}
-                onSettingsChange={updateAnalysisSettings}
-              />
-            }
-          />
+          <div className="editor-toolbar">
+            <EditorToolbar
+              tool={tool}
+              nextColor={nextAutoColor}
+              canReplaceMove={canReplaceMove}
+              showMarkup={showMarkup}
+              labelText={labelText}
+              shortcutLabels={shortcutLabels}
+              onToolChange={handleToolChange}
+              onLabelTextChange={setLabelText}
+              onAutoToolClick={handleAutoToolClick}
+              onPass={handlePass}
+            />
+            <NavigationToolbar
+              canNavigatePrevious={canNavigatePrevious}
+              canNavigateNext={canNavigateNext}
+              shortcutLabels={shortcutLabels}
+              onFirst={navigateToFirst}
+              onPrevious10={() => navigatePrevious(10)}
+              onPrevious={() => navigatePrevious()}
+              onNext={() => navigateNext()}
+              onNext10={() => navigateNext(10)}
+              onLast={navigateToLast}
+            />
+            <AnalysisToolbarOptions
+              katagoEnabled={capabilities.katago}
+              analysisSettings={analysisSettings}
+              stoneOverlayDisplay={stoneOverlayDisplay}
+              onModeChange={handleReviewEditModeChange}
+              onSettingsChange={updateAnalysisSettings}
+            />
+          </div>
         </Header>
         <Content className="app-content">
           {capabilities.katago ? (

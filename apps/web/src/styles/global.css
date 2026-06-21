@@ -170,6 +170,10 @@ textarea,
   flex: 0 1 auto;
 }
 
+.pass-tool {
+  width: 26px;
+}
+
 .edit-tools .ant-btn {
   min-width: 30px;
 }

@@ -1,14 +1,8 @@
 import {
-  BackwardOutlined,
   BorderOutlined,
   CloseOutlined,
   DeleteOutlined,
-  FastBackwardOutlined,
-  FastForwardOutlined,
   FontSizeOutlined,
-  ForwardOutlined,
-  StepBackwardOutlined,
-  StepForwardOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
 import {Button, Input, Space} from 'antd';
@@ -20,8 +14,6 @@ import type {EditorTool} from './types';
 interface EditorToolbarProps {
   tool: EditorTool;
   nextColor: 'B' | 'W';
-  canNavigatePrevious: boolean;
-  canNavigateNext: boolean;
   canReplaceMove: boolean;
   showMarkup: boolean;
   labelText: string;
@@ -30,20 +22,11 @@ interface EditorToolbarProps {
   onLabelTextChange: (value: string) => void;
   onAutoToolClick: () => void;
   onPass: () => void;
-  onFirst: () => void;
-  onPrevious10: () => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  onNext10: () => void;
-  onLast: () => void;
-  extraEnd?: React.ReactNode;
 }
 
 export function EditorToolbar({
   tool,
   nextColor,
-  canNavigatePrevious,
-  canNavigateNext,
   canReplaceMove,
   showMarkup,
   labelText,
@@ -52,19 +35,18 @@ export function EditorToolbar({
   onLabelTextChange,
   onAutoToolClick,
   onPass,
-  onFirst,
-  onPrevious10,
-  onPrevious,
-  onNext,
-  onNext10,
-  onLast,
-  extraEnd,
 }: EditorToolbarProps) {
   const {t} = useTranslation();
 
   return (
-    <div className="editor-toolbar">
-      <Button size="middle" icon={<PalmIcon />} title={withShortcut(t('pass'), shortcutLabels.pass)} onClick={onPass} />
+    <>
+      <Button
+        className="pass-tool"
+        size="middle"
+        icon={<PalmIcon />}
+        title={withShortcut(t('pass'), shortcutLabels.pass)}
+        onClick={onPass}
+      />
       <Space.Compact className="edit-tools">
         <ToolButton
           tool="auto"
@@ -154,41 +136,7 @@ export function EditorToolbar({
           </>
         )}
       </Space.Compact>
-      <Space.Compact className="navigation-tools">
-        <NavButton
-          title={t('firstMove')}
-          disabled={!canNavigatePrevious}
-          icon={<StepBackwardOutlined />}
-          onClick={onFirst}
-        />
-        <NavButton
-          title={t('previous10Moves')}
-          disabled={!canNavigatePrevious}
-          icon={<FastBackwardOutlined />}
-          onClick={onPrevious10}
-        />
-        <NavButton
-          title={withShortcut(t('previousMove'), shortcutLabels.previousMove)}
-          disabled={!canNavigatePrevious}
-          icon={<BackwardOutlined />}
-          onClick={onPrevious}
-        />
-        <NavButton
-          title={withShortcut(t('nextMoveCurrent'), shortcutLabels.nextMoveCurrent)}
-          disabled={!canNavigateNext}
-          icon={<ForwardOutlined />}
-          onClick={onNext}
-        />
-        <NavButton
-          title={t('next10Moves')}
-          disabled={!canNavigateNext}
-          icon={<FastForwardOutlined />}
-          onClick={onNext10}
-        />
-        <NavButton title={t('lastMove')} disabled={!canNavigateNext} icon={<StepForwardOutlined />} onClick={onLast} />
-      </Space.Compact>
-      {extraEnd}
-    </div>
+    </>
   );
 }
 
@@ -236,20 +184,6 @@ function TriangleMarkerIcon() {
       </svg>
     </span>
   );
-}
-
-function NavButton({
-  title,
-  icon,
-  disabled,
-  onClick,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return <Button size="medium" disabled={disabled} icon={icon} title={title} onClick={onClick} />;
 }
 
 function ToolButton({
