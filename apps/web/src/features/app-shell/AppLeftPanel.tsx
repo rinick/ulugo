@@ -28,9 +28,9 @@ export function AppLeftPanel({
 }: AppLeftPanelProps) {
   const {t} = useTranslation();
 
-  if (hidden) return null;
-
   if (katagoEnabled) {
+    if (hidden) return null;
+
     return (
       <aside className="left-panel" style={{display: open ? 'flex' : 'none'}}>
         <div className="katago-console-header">
@@ -61,8 +61,8 @@ export function AppLeftPanel({
   if (platform !== 'web') return null;
 
   return (
-    <aside className="left-panel web-ad-panel" style={{display: open ? 'flex' : 'none'}}>
-      <GoogleAd />
+    <aside className="left-panel web-ad-panel" style={{display: open && !hidden ? 'flex' : 'none'}}>
+      <GoogleAd active={open && !hidden} />
       <div className="policy-links">
         <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
           Privacy Policy

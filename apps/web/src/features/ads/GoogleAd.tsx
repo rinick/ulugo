@@ -1,9 +1,14 @@
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 
 const AD_SCRIPT_ID = 'ulugo-google-ad-script';
 
-export function GoogleAd() {
+export function GoogleAd({active}: {active: boolean}) {
+  const adRef = useRef<HTMLModElement>(null);
+  const initializedRef = useRef(false);
+
   useEffect(() => {
+    if (!active || initializedRef.current) return;
+
     const adsWindow = window as Window & {adsbygoogle?: unknown[]};
     adsWindow.adsbygoogle = adsWindow.adsbygoogle ?? [];
 
@@ -16,11 +21,27 @@ export function GoogleAd() {
       document.head.appendChild(script);
     }
 
-    adsWindow.adsbygoogle.push({});
-  }, []);
+    const ad = adRef.current;
+    if (ad == null) return;
+
+    const initialize = () => {
+      if (initializedRef.current || ad.getBoundingClientRect().width <= 0) return;
+      initializedRef.current = true;
+      adsWindow.adsbygoogle?.push({});
+    };
+    const observer = new ResizeObserver(initialize);
+    observer.observe(ad);
+    const frame = window.requestAnimationFrame(initialize);
+
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, [active]);
 
   return (
     <ins
+      ref={adRef}
       className="adsbygoogle web-ad"
       data-ad-client="ca-pub-3283235194066083"
       data-ad-slot="9855991090"
