@@ -453,7 +453,7 @@ textarea,
   background: #ffffff;
 }
 
-.right-region.minimal {
+.minimal > .right-region {
   flex-basis: 250px;
   width: 250px;
 }
@@ -470,7 +470,7 @@ textarea,
   font-size: 12px;
 }
 
-.right-region.minimal .capture-summary {
+.minimal > .right-region .capture-summary {
   flex-direction: column;
   gap: 8px;
   align-items: start;
@@ -1068,4 +1068,15 @@ button.ant-btn.left-panel-toggle {
   border-left: none;
   border-radius: 0 0 10px 0;
   z-index: 10;
+}
+
+@media (orientation: portrait) {
+  .minimal {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100dvh;
+    height: 100dvw;
+    transform: rotate(90deg) translateY(-100%);
+    transform-origin: top left;
+  }
 }

@@ -36,7 +36,7 @@ export function MinimalControl({
   const items: MenuProps['items'] = [
     checkboxItem('rightPanel', t('showRightPanel'), showRightPanel),
     checkboxItem('basicTools', t('showBasicTools'), showBasicTools),
-    checkboxItem('moveNumber', t('showMoveNumber'), showMoveNumber),
+    checkboxItem('moveNumber', t('moveNumber'), showMoveNumber),
     checkboxItem('nextMove', t('nextMove'), showNextMove),
     checkboxItem('coordinates', t('showCoordinates'), showCoordinates),
     {type: 'divider'},

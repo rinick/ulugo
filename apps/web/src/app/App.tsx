@@ -868,7 +868,7 @@ export function App() {
             </section>
           </Header>
         )}
-        <Content className="app-content">
+        <Content className={`app-content${minimalMode ? ' minimal' : ''}`}>
           <AppLeftPanel
             katagoEnabled={capabilities.katago}
             platform={capabilities.platform}
@@ -916,7 +916,6 @@ export function App() {
               analysisSettings={analysisSettings}
               showAnalysisControls={capabilities.katago}
               hideCommentsPanel={minimalMode}
-              minimalMode={minimalMode}
               basicTools={
                 minimalMode && minimalBasicToolsOpen ? (
                   <div className="minimal-basic-tools">

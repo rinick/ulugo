@@ -19,7 +19,6 @@ interface AppRightPanelProps {
   analysisSettings: AnalysisSettings;
   showAnalysisControls: boolean;
   hideCommentsPanel: boolean;
-  minimalMode: boolean;
   basicTools?: ReactNode;
   chartData: AnalysisChartPoint[];
   selectedMoveNumber: number | null;
@@ -49,7 +48,6 @@ export function AppRightPanel({
   analysisSettings,
   showAnalysisControls,
   hideCommentsPanel,
-  minimalMode,
   basicTools,
   chartData,
   selectedMoveNumber,
@@ -68,7 +66,7 @@ export function AppRightPanel({
   onDelete,
 }: AppRightPanelProps) {
   return (
-    <aside className={`right-region${minimalMode ? ' minimal' : ''}`}>
+    <aside className="right-region">
       <section className="capture-summary">
         <span className="capture-player">
           <span className="capture-name">{blackPlayerName}</span>
