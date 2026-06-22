@@ -11,6 +11,7 @@ interface AppLeftPanelProps {
   katagoEnabled: boolean;
   platform: 'web' | 'electron';
   open: boolean;
+  hidden: boolean;
   consoleMessages: KataGoConsoleMessage[];
   consoleRef: RefObject<HTMLDivElement | null>;
   onClearConsole: () => void;
@@ -20,11 +21,14 @@ export function AppLeftPanel({
   katagoEnabled,
   platform,
   open,
+  hidden,
   consoleMessages,
   consoleRef,
   onClearConsole,
 }: AppLeftPanelProps) {
   const {t} = useTranslation();
+
+  if (hidden) return null;
 
   if (katagoEnabled) {
     return (

@@ -2,6 +2,7 @@ import {
   defaultAnalysisSettings,
   defaultEditModeSettings,
   defaultReviewModeSettings,
+  defaultZenModeSettings,
   type AnalysisDisplayMode,
   type AnalysisMode,
   type AnalysisModeSettings,
@@ -58,9 +59,9 @@ export function normalizeAnalysisSettings(
   },
   enabled: boolean
 ): AnalysisSettings {
-  const storedMode: AnalysisMode = settings.mode === 'edit' ? 'edit' : 'review';
-  const mode: AnalysisMode = enabled ? storedMode : 'edit';
-  const modeDefaults = mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings;
+  const storedMode: AnalysisMode = settings.mode === 'edit' || settings.mode === 'zen' ? settings.mode : 'review';
+  const mode: AnalysisMode = enabled || storedMode === 'zen' ? storedMode : 'edit';
+  const modeDefaults = defaultsForMode(mode);
   const activeSource = mode === storedMode ? settings : (settings.modeSettings?.[mode] ?? {});
   const stoneOverlay =
     activeSource.stoneOverlay ??
@@ -84,6 +85,7 @@ export function normalizeAnalysisSettings(
   const modeSettings = {
     review: normalizeModeSettings(settings.modeSettings?.review, defaultReviewModeSettings),
     edit: normalizeModeSettings(settings.modeSettings?.edit, defaultEditModeSettings),
+    zen: normalizeModeSettings(settings.modeSettings?.zen, defaultZenModeSettings),
     [mode]: activeModeSettings,
   };
   const normalized = {
@@ -113,7 +115,7 @@ export function updateCurrentModeSettings(
   if (changedModeSettings) {
     modeSettings[settings.mode] = normalizeModeSettings(
       Object.fromEntries(modeSettingKeys.map((key) => [key, next[key]])),
-      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+      defaultsForMode(settings.mode)
     );
   }
 
@@ -125,7 +127,7 @@ export function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMod
     ...settings.modeSettings,
     [settings.mode]: normalizeModeSettings(
       Object.fromEntries(modeSettingKeys.map((key) => [key, settings[key]])),
-      settings.mode === 'review' ? defaultReviewModeSettings : defaultEditModeSettings
+      defaultsForMode(settings.mode)
     ),
   };
   return normalizeAnalysisSettings(
@@ -137,6 +139,12 @@ export function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMod
     },
     enabled
   );
+}
+
+function defaultsForMode(mode: AnalysisMode): AnalysisModeSettings {
+  if (mode === 'review') return defaultReviewModeSettings;
+  if (mode === 'zen') return defaultZenModeSettings;
+  return defaultEditModeSettings;
 }
 
 function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {

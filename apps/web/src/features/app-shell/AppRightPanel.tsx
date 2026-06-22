@@ -17,6 +17,7 @@ interface AppRightPanelProps {
   comment: string;
   analysisSettings: AnalysisSettings;
   showAnalysisControls: boolean;
+  hideCommentsPanel: boolean;
   chartData: AnalysisChartPoint[];
   selectedMoveNumber: number | null;
   chartSummary: AnalysisChartSummary | null;
@@ -44,6 +45,7 @@ export function AppRightPanel({
   comment,
   analysisSettings,
   showAnalysisControls,
+  hideCommentsPanel,
   chartData,
   selectedMoveNumber,
   chartSummary,
@@ -74,23 +76,25 @@ export function AppRightPanel({
           <span className="capture-count capture-count-white">{capturedWhiteStones}</span>
         </span>
       </section>
-      <CommentsPanel
-        value={comment}
-        onChange={onCommentChange}
-        showAnalysisControls={showAnalysisControls}
-        chartData={chartData}
-        moveDisplay={analysisSettings.moveDisplay}
-        showScore={analysisSettings.showScore}
-        showPointLoss={analysisSettings.showPointLoss}
-        showWinrate={analysisSettings.showWinrate}
-        showComments={analysisSettings.showComments}
-        selectedMoveNumber={selectedMoveNumber}
-        chartSummary={chartSummary}
-        onDisplayChange={onAnalysisSettingsChange}
-        onPreviousMove={onPreviousMove}
-        onNextMove={onNextMove}
-        onSelectChartMove={onSelectChartMove}
-      />
+      {hideCommentsPanel ? null : (
+        <CommentsPanel
+          value={comment}
+          onChange={onCommentChange}
+          showAnalysisControls={showAnalysisControls}
+          chartData={chartData}
+          moveDisplay={analysisSettings.moveDisplay}
+          showScore={analysisSettings.showScore}
+          showPointLoss={analysisSettings.showPointLoss}
+          showWinrate={analysisSettings.showWinrate}
+          showComments={analysisSettings.showComments}
+          selectedMoveNumber={selectedMoveNumber}
+          chartSummary={chartSummary}
+          onDisplayChange={onAnalysisSettingsChange}
+          onPreviousMove={onPreviousMove}
+          onNextMove={onNextMove}
+          onSelectChartMove={onSelectChartMove}
+        />
+      )}
       <SgfTreePanel
         document={document}
         selectedPath={path}

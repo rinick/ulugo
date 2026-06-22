@@ -29,7 +29,7 @@ interface KataGoSettings {
 }
 
 interface AnalysisSettings {
-  mode: 'review' | 'edit';
+  mode: AnalysisMode;
   moveDisplay: AnalysisMoveDisplay;
   stoneOverlay: 'dot' | 'number' | 'none';
   maxMoves: 1 | 5 | 20 | 'all';
@@ -44,9 +44,10 @@ interface AnalysisSettings {
   showComments: boolean;
   boardBackground: 'auto' | 'golden' | 'natural' | 'flat';
   autoAnalyze: boolean;
-  modeSettings: Record<'review' | 'edit', AnalysisModeSettings>;
+  modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
+type AnalysisMode = 'review' | 'edit' | 'zen';
 type AnalysisDisplayMode = 'scoreChange' | 'winRateChange' | 'score' | 'value' | 'visits';
 type AnalysisMoveDisplay = [AnalysisDisplayMode] | [AnalysisDisplayMode, AnalysisDisplayMode];
 
@@ -111,6 +112,17 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showWinrate: false,
       showComments: true,
     },
+    zen: {
+      stoneOverlay: 'none',
+      showMarkup: false,
+      showNextMove: false,
+      showTopMoves: false,
+      showExpectedTerritory: false,
+      showScore: false,
+      showPointLoss: false,
+      showWinrate: false,
+      showComments: false,
+    },
   },
 };
 
@@ -151,7 +163,7 @@ async function createWindow(): Promise<void> {
 
   const window = new BrowserWindow({
     title: 'Ulugo AI review',
-    width: 1280,
+    width: 1440,
     height: 840,
     minWidth: 960,
     minHeight: 640,
@@ -435,7 +447,7 @@ function normalizeAnalysisSettings(
 ): AnalysisSettings {
   const {topMoveDisplay, ...storedSettings} = settings;
   const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
-  const mode = settings.mode === 'edit' ? 'edit' : 'review';
+  const mode: AnalysisMode = settings.mode === 'edit' || settings.mode === 'zen' ? settings.mode : 'review';
   const activeModeSettings = normalizeAnalysisModeSettings(
     {
       stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
@@ -453,6 +465,7 @@ function normalizeAnalysisSettings(
   const modeSettings = {
     review: normalizeAnalysisModeSettings(settings.modeSettings?.review, defaultAnalysisSettings.modeSettings.review),
     edit: normalizeAnalysisModeSettings(settings.modeSettings?.edit, defaultAnalysisSettings.modeSettings.edit),
+    zen: normalizeAnalysisModeSettings(settings.modeSettings?.zen, defaultAnalysisSettings.modeSettings.zen),
     [mode]: activeModeSettings,
   };
   return {

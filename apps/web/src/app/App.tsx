@@ -194,6 +194,7 @@ export function App() {
     analysisSettings.boardBackground,
     autoBoardBackgroundReady && analysisSettings.showTopMoves
   );
+  const zenMode = analysisSettings.mode === 'zen';
   const appTitle = isElectron ? t('electronTitle') : t('appTitle');
   const blackPlayerName = gameInfo.PB.trim() === '' ? t('black') : gameInfo.PB;
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
@@ -271,11 +272,11 @@ export function App() {
     replaceDocument(createNewGame(size), [], {clearAnalysisCache: true});
   }
 
-  function handleReviewEditModeChange(mode: AnalysisSettings['mode']): void {
+  function handleModeChange(mode: AnalysisSettings['mode']): void {
     if (mode === analysisSettings.mode) return;
     updateAnalysisSettings({mode});
     if (!capabilities.katago) return;
-    if (mode === 'edit') {
+    if (mode !== 'review') {
       setAnalysisModeActive(false);
     } else if (analysisSettings.autoAnalyze) {
       setAnalysisModeActive(true);
@@ -482,7 +483,7 @@ export function App() {
           updateAnalysisSettings({showNextMove: !analysisSettings.showNextMove});
           break;
         case 'toggleReviewEditMode':
-          handleReviewEditModeChange(analysisSettings.mode === 'review' ? 'edit' : 'review');
+          handleModeChange(analysisSettings.mode === 'review' ? 'edit' : 'review');
           break;
         case 'toggleDisplayDot':
           updateAnalysisSettings({stoneOverlay: analysisSettings.stoneOverlay === 'dot' ? 'none' : 'dot'});
@@ -511,6 +512,7 @@ export function App() {
           });
           break;
         case 'toggleAnalysisMode':
+          if (zenMode) break;
           if (tool === 'replace') {
             setReplaceMoveState(null);
             setTool('auto');
@@ -518,6 +520,7 @@ export function App() {
           toggleAnalysisMode();
           break;
         case 'toggleDeepAnalysisMode':
+          if (zenMode) break;
           if (tool === 'replace') {
             setReplaceMoveState(null);
             setTool('auto');
@@ -557,6 +560,7 @@ export function App() {
     toggleDeepAnalysisMode,
     toggleAnalysisMode,
     updateAnalysisSettings,
+    zenMode,
   ]);
 
   function handleAnalysisButtonClick(event: MouseEvent<HTMLElement>): void {
@@ -831,7 +835,7 @@ export function App() {
             onNext={() => navigateNext()}
             onNext10={() => navigateNext(10)}
             onLast={navigateToLast}
-            onModeChange={handleReviewEditModeChange}
+            onModeChange={handleModeChange}
             onAnalysisSettingsChange={updateAnalysisSettings}
           />
         </Header>
@@ -840,6 +844,7 @@ export function App() {
             katagoEnabled={capabilities.katago}
             platform={capabilities.platform}
             open={leftPanelOpen}
+            hidden={zenMode}
             consoleMessages={kataGoConsoleMessages}
             consoleRef={kataGoConsoleRef}
             onClearConsole={() => setKataGoConsoleMessages([])}
@@ -860,6 +865,7 @@ export function App() {
             analysisIdle={analysisIdle}
             fastAnalysisPendingCount={fastAnalysisPendingCount}
             leftPanelOpen={leftPanelOpen}
+            zenMode={zenMode}
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
             onDragOver={gameRecordFiles.handleDragOver}
@@ -879,6 +885,7 @@ export function App() {
             comment={getComment(document, path)}
             analysisSettings={analysisSettings}
             showAnalysisControls={capabilities.katago}
+            hideCommentsPanel={zenMode}
             chartData={analysisChartData}
             selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
             chartSummary={analysisChartSummary}

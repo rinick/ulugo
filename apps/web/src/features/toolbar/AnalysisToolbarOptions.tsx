@@ -1,4 +1,11 @@
-import {CheckCircleFilled, CloseOutlined, EditOutlined, FieldBinaryOutlined, StockOutlined} from '@ant-design/icons';
+import {
+  CheckCircleFilled,
+  CloseOutlined,
+  EditOutlined,
+  EyeInvisibleOutlined,
+  FieldBinaryOutlined,
+  StockOutlined,
+} from '@ant-design/icons';
 import {Checkbox, Radio, Segmented, Space} from 'antd';
 import {useTranslation} from 'react-i18next';
 import type {AnalysisSettings} from '@ulugo/analysis-core';
@@ -22,35 +29,45 @@ export function AnalysisToolbarOptions({
 
   return (
     <Space className="analysis-toolbar-options">
-      {katagoEnabled ? (
-        <span className="analysis-toolbar-option-group">
-          <span>{t('mode')}</span>
-          <Radio.Group
-            size="medium"
-            optionType="button"
-            value={analysisSettings.mode}
-            onChange={(event) => onModeChange(event.target.value as AnalysisSettings['mode'])}
-            options={[
-              {
-                value: 'review',
-                label: (
-                  <>
-                    <StockOutlined /> {t('review')}
-                  </>
-                ),
-              },
-              {
-                value: 'edit',
-                label: (
-                  <>
-                    <EditOutlined /> {t('edit')}
-                  </>
-                ),
-              },
-            ]}
-          />
-        </span>
-      ) : null}
+      <span className="analysis-toolbar-option-group">
+        <span>{t('mode')}</span>
+        <Radio.Group
+          size="medium"
+          optionType="button"
+          value={analysisSettings.mode}
+          onChange={(event) => onModeChange(event.target.value as AnalysisSettings['mode'])}
+          options={[
+            ...(katagoEnabled
+              ? [
+                  {
+                    value: 'review',
+                    label: (
+                      <>
+                        <StockOutlined /> {t('review')}
+                      </>
+                    ),
+                  },
+                ]
+              : []),
+            {
+              value: 'edit',
+              label: (
+                <>
+                  <EditOutlined /> {t('edit')}
+                </>
+              ),
+            },
+            {
+              value: 'zen',
+              label: (
+                <>
+                  <EyeInvisibleOutlined /> {t('zen')}
+                </>
+              ),
+            },
+          ]}
+        />
+      </span>
       <span className="analysis-toolbar-option-group">
         <span>{t('stoneOverlay')}</span>
         <Segmented
