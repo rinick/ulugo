@@ -438,6 +438,11 @@ textarea,
   background: #ffffff;
 }
 
+.right-region.minimal {
+  flex-basis: 250px;
+  width: 250px;
+}
+
 .capture-summary {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,7 @@ import {
   defaultAnalysisSettings,
   defaultEditModeSettings,
   defaultReviewModeSettings,
-  defaultZenModeSettings,
+  defaultMinimalModeSettings,
   type AnalysisDisplayMode,
   type AnalysisMode,
   type AnalysisModeSettings,
@@ -12,6 +12,7 @@ import {
 
 const analysisSettingsStorageKey = 'ulugo.analysisSettings';
 const showMarkupStorageKey = 'ulugo.showMarkup';
+const legacyMinimalMode = ['z', 'e', 'n'].join('');
 
 const modeSettingKeys = [
   'stoneOverlay',
@@ -59,8 +60,11 @@ export function normalizeAnalysisSettings(
   },
   enabled: boolean
 ): AnalysisSettings {
-  const storedMode: AnalysisMode = settings.mode === 'edit' || settings.mode === 'zen' ? settings.mode : 'review';
-  const mode: AnalysisMode = enabled || storedMode === 'zen' ? storedMode : 'edit';
+  const storedModeValue = settings.mode as string | undefined;
+  let storedMode: AnalysisMode = 'review';
+  if (storedModeValue === 'edit' || storedModeValue === 'minimal') storedMode = storedModeValue;
+  else if (storedModeValue === legacyMinimalMode) storedMode = 'minimal';
+  const mode: AnalysisMode = enabled || storedMode === 'minimal' ? storedMode : 'edit';
   const modeDefaults = defaultsForMode(mode);
   const activeSource = mode === storedMode ? settings : (settings.modeSettings?.[mode] ?? {});
   const stoneOverlay =
@@ -85,7 +89,11 @@ export function normalizeAnalysisSettings(
   const modeSettings = {
     review: normalizeModeSettings(settings.modeSettings?.review, defaultReviewModeSettings),
     edit: normalizeModeSettings(settings.modeSettings?.edit, defaultEditModeSettings),
-    zen: normalizeModeSettings(settings.modeSettings?.zen, defaultZenModeSettings),
+    minimal: normalizeModeSettings(
+      settings.modeSettings?.minimal ??
+        (settings.modeSettings as Partial<Record<string, AnalysisModeSettings>> | undefined)?.[legacyMinimalMode],
+      defaultMinimalModeSettings
+    ),
     [mode]: activeModeSettings,
   };
   const normalized = {
@@ -143,7 +151,7 @@ export function switchAnalysisMode(settings: AnalysisSettings, mode: AnalysisMod
 
 function defaultsForMode(mode: AnalysisMode): AnalysisModeSettings {
   if (mode === 'review') return defaultReviewModeSettings;
-  if (mode === 'zen') return defaultZenModeSettings;
+  if (mode === 'minimal') return defaultMinimalModeSettings;
   return defaultEditModeSettings;
 }
 

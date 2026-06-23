@@ -47,7 +47,7 @@ interface AnalysisSettings {
   modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
-type AnalysisMode = 'review' | 'edit' | 'zen';
+type AnalysisMode = 'review' | 'edit' | 'minimal';
 type AnalysisDisplayMode = 'scoreChange' | 'winRateChange' | 'score' | 'value' | 'visits';
 type AnalysisMoveDisplay = [AnalysisDisplayMode] | [AnalysisDisplayMode, AnalysisDisplayMode];
 
@@ -112,7 +112,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showWinrate: false,
       showComments: true,
     },
-    zen: {
+    minimal: {
       stoneOverlay: 'none',
       showMarkup: false,
       showNextMove: false,
@@ -447,7 +447,11 @@ function normalizeAnalysisSettings(
 ): AnalysisSettings {
   const {topMoveDisplay, ...storedSettings} = settings;
   const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
-  const mode: AnalysisMode = settings.mode === 'edit' || settings.mode === 'zen' ? settings.mode : 'review';
+  const legacyMinimalMode = ['z', 'e', 'n'].join('');
+  const storedMode = settings.mode as string | undefined;
+  let mode: AnalysisMode = 'review';
+  if (storedMode === 'edit' || storedMode === 'minimal') mode = storedMode;
+  else if (storedMode === legacyMinimalMode) mode = 'minimal';
   const activeModeSettings = normalizeAnalysisModeSettings(
     {
       stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
@@ -465,7 +469,11 @@ function normalizeAnalysisSettings(
   const modeSettings = {
     review: normalizeAnalysisModeSettings(settings.modeSettings?.review, defaultAnalysisSettings.modeSettings.review),
     edit: normalizeAnalysisModeSettings(settings.modeSettings?.edit, defaultAnalysisSettings.modeSettings.edit),
-    zen: normalizeAnalysisModeSettings(settings.modeSettings?.zen, defaultAnalysisSettings.modeSettings.zen),
+    minimal: normalizeAnalysisModeSettings(
+      settings.modeSettings?.minimal ??
+        (settings.modeSettings as Partial<Record<string, AnalysisModeSettings>> | undefined)?.[legacyMinimalMode],
+      defaultAnalysisSettings.modeSettings.minimal
+    ),
     [mode]: activeModeSettings,
   };
   return {

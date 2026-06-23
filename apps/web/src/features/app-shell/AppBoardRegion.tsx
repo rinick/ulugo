@@ -27,7 +27,7 @@ interface AppBoardRegionProps {
   analysisIdle: boolean;
   fastAnalysisPendingCount: number;
   leftPanelOpen: boolean;
-  zenMode: boolean;
+  minimalMode: boolean;
   onBoardClick: (point: string, options: BoardVertexClickOptions) => void;
   onBoardRightClick: (point: string) => void;
   onDragOver: (event: DragEvent<HTMLElement>) => void;
@@ -54,7 +54,7 @@ export function AppBoardRegion({
   analysisIdle,
   fastAnalysisPendingCount,
   leftPanelOpen,
-  zenMode,
+  minimalMode,
   onBoardClick,
   onBoardRightClick,
   onDragOver,
@@ -89,7 +89,7 @@ export function AppBoardRegion({
         onVertexClick={onBoardClick}
         onVertexRightClick={onBoardRightClick}
       />
-      {zenMode ? null : katagoEnabled ? (
+      {minimalMode ? null : katagoEnabled ? (
         <Button
           className={[
             'analysis-button',
@@ -116,7 +116,7 @@ export function AppBoardRegion({
           <span className="desktop-download-label">{t('downloadDesktopApp')}</span>
         </Button>
       )}
-      {zenMode ? null : (
+      {minimalMode ? null : (
         <Button
           className="left-panel-toggle"
           icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}

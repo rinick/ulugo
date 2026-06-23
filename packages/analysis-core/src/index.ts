@@ -3,7 +3,7 @@ export type AnalysisMoveDisplay = [AnalysisDisplayMode] | [AnalysisDisplayMode, 
 export type AnalysisStoneOverlay = 'dot' | 'number' | 'none';
 export type AnalysisMoveLimit = 1 | 5 | 20 | 'all';
 export type BoardBackground = 'auto' | 'golden' | 'natural' | 'flat';
-export type AnalysisMode = 'review' | 'edit' | 'zen';
+export type AnalysisMode = 'review' | 'edit' | 'minimal';
 
 export interface KataGoRootInfo {
   scoreLead?: number;
@@ -90,7 +90,7 @@ export const defaultEditModeSettings: AnalysisModeSettings = {
   showComments: true,
 };
 
-export const defaultZenModeSettings: AnalysisModeSettings = {
+export const defaultMinimalModeSettings: AnalysisModeSettings = {
   stoneOverlay: 'none',
   showMarkup: false,
   showNextMove: false,
@@ -121,7 +121,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   modeSettings: {
     review: defaultReviewModeSettings,
     edit: defaultEditModeSettings,
-    zen: defaultZenModeSettings,
+    minimal: defaultMinimalModeSettings,
   },
 };
 

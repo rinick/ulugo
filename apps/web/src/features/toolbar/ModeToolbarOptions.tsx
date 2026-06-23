@@ -42,10 +42,10 @@ export function ModeToolbarOptions({katagoEnabled, mode, onChange}: ModeToolbarO
             ),
           },
           {
-            value: 'zen',
+            value: 'minimal',
             label: (
               <span className="mode-button-content">
-                <EyeInvisibleOutlined /> {t('zen')}
+                <EyeInvisibleOutlined /> {t('minimal')}
               </span>
             ),
           },
