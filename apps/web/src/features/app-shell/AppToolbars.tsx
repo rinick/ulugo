@@ -1,6 +1,4 @@
-import type {AnalysisSettings} from '@ulugo/analysis-core';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
-import {AnalysisToolbarOptions} from '../toolbar/AnalysisToolbarOptions';
 import {EditorToolbar} from '../toolbar/EditorToolbar';
 import {NavigationToolbar} from '../toolbar/NavigationToolbar';
 import type {EditorTool} from '../toolbar/types';
@@ -14,9 +12,6 @@ interface AppToolbarsProps {
   showMarkup: boolean;
   labelText: string;
   shortcutLabels: Partial<Record<ShortcutActionId, string>>;
-  katagoEnabled: boolean;
-  analysisSettings: AnalysisSettings;
-  stoneOverlayDisplay: AnalysisSettings['stoneOverlay'];
   onToolChange: (tool: EditorTool) => void;
   onLabelTextChange: (value: string) => void;
   onAutoToolClick: () => void;
@@ -27,8 +22,6 @@ interface AppToolbarsProps {
   onNext: () => void;
   onNext10: () => void;
   onLast: () => void;
-  onModeChange: (mode: AnalysisSettings['mode']) => void;
-  onAnalysisSettingsChange: (values: Partial<AnalysisSettings>) => void;
 }
 
 export function AppToolbars({
@@ -40,9 +33,6 @@ export function AppToolbars({
   showMarkup,
   labelText,
   shortcutLabels,
-  katagoEnabled,
-  analysisSettings,
-  stoneOverlayDisplay,
   onToolChange,
   onLabelTextChange,
   onAutoToolClick,
@@ -53,8 +43,6 @@ export function AppToolbars({
   onNext,
   onNext10,
   onLast,
-  onModeChange,
-  onAnalysisSettingsChange,
 }: AppToolbarsProps) {
   return (
     <div className="editor-toolbar">
@@ -80,13 +68,6 @@ export function AppToolbars({
         onNext={onNext}
         onNext10={onNext10}
         onLast={onLast}
-      />
-      <AnalysisToolbarOptions
-        katagoEnabled={katagoEnabled}
-        analysisSettings={analysisSettings}
-        stoneOverlayDisplay={stoneOverlayDisplay}
-        onModeChange={onModeChange}
-        onSettingsChange={onAnalysisSettingsChange}
       />
     </div>
   );

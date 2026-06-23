@@ -38,6 +38,8 @@ import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
+import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
+import {ModeToolbarOptions} from '../features/toolbar/ModeToolbarOptions';
 import {
   readKeyboardShortcuts,
   shortcutActionForEvent,
@@ -800,44 +802,56 @@ export function App() {
       />
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         <Header className="app-header">
-          <AppMenuBar
-            title={appTitle}
-            showAiConfig={capabilities.katago}
-            onNew={handleNew}
-            onOpen={() => void gameRecordFiles.open()}
-            onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
-            onSave={() => void gameRecordFiles.save()}
-            onSaveAs={() => void gameRecordFiles.saveAs()}
-            onSaveToGoogleDrive={() => void gameRecordFiles.saveToGoogleDrive()}
-            onGameInfo={() => setGameInfoOpen(true)}
-            onAiConfig={() => setKataGoSettingsOpen(true)}
-            onSettings={() => setSettingsOpen(true)}
-          />
-          <AppToolbars
-            tool={tool}
-            nextColor={nextAutoColor}
-            canNavigatePrevious={canNavigatePrevious}
-            canNavigateNext={canNavigateNext}
-            canReplaceMove={canReplaceMove}
-            showMarkup={showMarkup}
-            labelText={labelText}
-            shortcutLabels={shortcutLabels}
-            katagoEnabled={capabilities.katago}
-            analysisSettings={analysisSettings}
-            stoneOverlayDisplay={stoneOverlayDisplay}
-            onToolChange={handleToolChange}
-            onLabelTextChange={setLabelText}
-            onAutoToolClick={handleAutoToolClick}
-            onPass={handlePass}
-            onFirst={navigateToFirst}
-            onPrevious10={() => navigatePrevious(10)}
-            onPrevious={() => navigatePrevious()}
-            onNext={() => navigateNext()}
-            onNext10={() => navigateNext(10)}
-            onLast={navigateToLast}
-            onModeChange={handleModeChange}
-            onAnalysisSettingsChange={updateAnalysisSettings}
-          />
+          <section className="app-header-left">
+            <div className="app-title">{appTitle}</div>
+            <AppToolbars
+              tool={tool}
+              nextColor={nextAutoColor}
+              canNavigatePrevious={canNavigatePrevious}
+              canNavigateNext={canNavigateNext}
+              canReplaceMove={canReplaceMove}
+              showMarkup={showMarkup}
+              labelText={labelText}
+              shortcutLabels={shortcutLabels}
+              onToolChange={handleToolChange}
+              onLabelTextChange={setLabelText}
+              onAutoToolClick={handleAutoToolClick}
+              onPass={handlePass}
+              onFirst={navigateToFirst}
+              onPrevious10={() => navigatePrevious(10)}
+              onPrevious={() => navigatePrevious()}
+              onNext={() => navigateNext()}
+              onNext10={() => navigateNext(10)}
+              onLast={navigateToLast}
+            />
+          </section>
+          <section className="app-header-middle">
+            <ModeToolbarOptions
+              katagoEnabled={capabilities.katago}
+              mode={analysisSettings.mode}
+              onChange={handleModeChange}
+            />
+          </section>
+          <section className="app-header-right">
+            <AppMenuBar
+              showAiConfig={capabilities.katago}
+              onNew={handleNew}
+              onOpen={() => void gameRecordFiles.open()}
+              onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
+              onSave={() => void gameRecordFiles.save()}
+              onSaveAs={() => void gameRecordFiles.saveAs()}
+              onSaveToGoogleDrive={() => void gameRecordFiles.saveToGoogleDrive()}
+              onGameInfo={() => setGameInfoOpen(true)}
+              onAiConfig={() => setKataGoSettingsOpen(true)}
+              onSettings={() => setSettingsOpen(true)}
+            />
+            <AnalysisToolbarOptions
+              katagoEnabled={capabilities.katago}
+              analysisSettings={analysisSettings}
+              stoneOverlayDisplay={stoneOverlayDisplay}
+              onSettingsChange={updateAnalysisSettings}
+            />
+          </section>
         </Header>
         <Content className="app-content">
           <AppLeftPanel

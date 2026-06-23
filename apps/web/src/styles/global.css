@@ -56,6 +56,9 @@ textarea,
 }
 
 .app-header {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
   height: auto;
   padding: 8px 12px;
   background: #ffffff;
@@ -63,19 +66,40 @@ textarea,
   line-height: 1.2;
 }
 
-.menu-row {
+.app-header-left {
+  flex: 0 1 auto;
+  min-width: 396px;
+}
+
+.app-header-middle {
   display: flex;
+  flex: 1 0 auto;
   align-items: center;
+  justify-content: center;
+}
+
+.app-header-right {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.app-header-right {
+  align-items: flex-end;
 }
 
 .app-title {
+  position: absolute;
   min-width: 150px;
   font-size: 16px;
   font-weight: 700;
   color: #1f343f;
+}
+
+.app-menu-buttons {
+  justify-content: flex-end;
 }
 
 .app-settings-row {
@@ -129,9 +153,13 @@ textarea,
 
 .editor-toolbar {
   display: flex;
+  flex-wrap: wrap-reverse;
+  place-content: flex-start flex-end;
   align-items: center;
   gap: 10px;
-  min-height: 34px;
+  row-gap: 5px;
+  height: 61px;
+  margin-top: -4px;
 }
 
 .navigation-tools {
@@ -144,12 +172,12 @@ textarea,
 }
 
 .analysis-toolbar-options {
-  margin-left: auto;
   gap: 12px;
   font-size: 12px;
   white-space: nowrap;
 }
 
+.mode-toolbar-options,
 .analysis-toolbar-option-group {
   display: inline-flex;
   align-items: center;
@@ -360,9 +388,9 @@ textarea,
 }
 
 .right-region {
-  display: grid;
+  display: flex;
   flex: 0 0 clamp(360px, 22vw, 400px);
-  grid-template-rows: auto 277px 1fr;
+  flex-direction: column;
   width: clamp(360px, 22vw, 400px);
   min-height: 0;
   border-left: 1px solid #d9d9d9;
@@ -440,20 +468,27 @@ textarea,
 
 .tree-panel {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
 }
 
 .tree-panel-header {
+  position: absolute;
+  right: 20px;
+  border-radius: 0 0 0 12px;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 0 6px 8px;
+  border-left: 1px solid #f0f0f0;
   border-bottom: 1px solid #f0f0f0;
   background: #ffffff;
+  z-index: 10;
 }
 .tree-panel-header .ant-space-compact {
   margin-left: auto;
@@ -468,6 +503,7 @@ textarea,
 
 .comments-panel {
   display: flex;
+  flex: 0 0 277px;
   flex-direction: column;
   border-bottom: 1px solid #f0f0f0;
   overflow: hidden;
