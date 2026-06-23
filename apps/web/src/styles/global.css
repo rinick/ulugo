@@ -184,6 +184,47 @@ textarea,
   gap: 4px;
 }
 
+.mode-toolbar-options {
+  display: flex;
+  flex-direction: column;
+  margin: -7px 12px;
+  gap: 0;
+}
+
+.mode-toolbar-options > span {
+  width: 70%;
+  padding: 4px 20px;
+  text-align: center;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+  margin-bottom: -8px;
+  background: #fff;
+  pointer-events: none;
+  z-index: 10;
+}
+.mode-toolbar-options .ant-radio-button-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  padding-inline: 12px;
+  line-height: 1;
+}
+
+.mode-button-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 42px;
+  text-align: center;
+}
+
+.mode-button-content .anticon {
+  font-size: 22px;
+}
+
 .analysis-toolbar-option-group > .ant-segmented-shape-round .ant-segmented-item-label {
   width: 24px;
   height: 24px;
@@ -399,8 +440,10 @@ textarea,
 
 .capture-summary {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
+  row-gap: 8px;
   min-height: 30px;
   padding: 4px 12px;
   border-bottom: 1px solid #f0f0f0;
@@ -497,7 +540,7 @@ textarea,
 .tree-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 12px 12px;
+  padding: 0;
   overflow: auto;
 }
 

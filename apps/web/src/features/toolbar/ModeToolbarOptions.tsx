@@ -13,7 +13,7 @@ export function ModeToolbarOptions({katagoEnabled, mode, onChange}: ModeToolbarO
   const {t} = useTranslation();
 
   return (
-    <span className="mode-toolbar-options">
+    <div className="mode-toolbar-options">
       <span>{t('mode')}</span>
       <Radio.Group
         size="medium"
@@ -26,9 +26,9 @@ export function ModeToolbarOptions({katagoEnabled, mode, onChange}: ModeToolbarO
                 {
                   value: 'review',
                   label: (
-                    <>
+                    <span className="mode-button-content">
                       <StockOutlined /> {t('review')}
-                    </>
+                    </span>
                   ),
                 },
               ]
@@ -36,21 +36,21 @@ export function ModeToolbarOptions({katagoEnabled, mode, onChange}: ModeToolbarO
           {
             value: 'edit',
             label: (
-              <>
+              <span className="mode-button-content">
                 <EditOutlined /> {t('edit')}
-              </>
+              </span>
             ),
           },
           {
             value: 'zen',
             label: (
-              <>
+              <span className="mode-button-content">
                 <EyeInvisibleOutlined /> {t('zen')}
-              </>
+              </span>
             ),
           },
         ]}
       />
-    </span>
+    </div>
   );
 }
