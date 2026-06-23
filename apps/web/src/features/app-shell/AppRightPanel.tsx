@@ -1,5 +1,6 @@
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
+import type {ReactNode} from 'react';
 import {
   CommentsPanel,
   type AnalysisChartSummary,
@@ -19,6 +20,7 @@ interface AppRightPanelProps {
   showAnalysisControls: boolean;
   hideCommentsPanel: boolean;
   minimalMode: boolean;
+  basicTools?: ReactNode;
   chartData: AnalysisChartPoint[];
   selectedMoveNumber: number | null;
   chartSummary: AnalysisChartSummary | null;
@@ -48,6 +50,7 @@ export function AppRightPanel({
   showAnalysisControls,
   hideCommentsPanel,
   minimalMode,
+  basicTools,
   chartData,
   selectedMoveNumber,
   chartSummary,
@@ -78,6 +81,7 @@ export function AppRightPanel({
           <span className="capture-count capture-count-white">{capturedWhiteStones}</span>
         </span>
       </section>
+      {basicTools}
       {hideCommentsPanel ? null : (
         <CommentsPanel
           value={comment}

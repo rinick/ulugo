@@ -225,6 +225,21 @@ textarea,
   font-size: 22px;
 }
 
+.minimal-control {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 100;
+}
+
+.minimal-control .anticon {
+  font-size: 22px;
+}
+
+.minimal-control-checkbox {
+  pointer-events: none;
+}
+
 .analysis-toolbar-option-group > .ant-segmented-shape-round .ant-segmented-item-label {
   width: 24px;
   height: 24px;
@@ -444,16 +459,31 @@ textarea,
 }
 
 .capture-summary {
+  flex-shrink: 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-  row-gap: 8px;
   min-height: 30px;
   padding: 4px 12px;
   border-bottom: 1px solid #f0f0f0;
   color: #595959;
   font-size: 12px;
+}
+
+.right-region.minimal .capture-summary {
+  flex-direction: column;
+  gap: 8px;
+  align-items: start;
+}
+
+.minimal-basic-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+  padding: 8px 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .capture-player {

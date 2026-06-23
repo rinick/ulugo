@@ -71,7 +71,7 @@ export function normalizeAnalysisSettings(
     activeSource.stoneOverlay ??
     (mode === storedMode ? settings.topMoveDisplay : undefined) ??
     modeDefaults.stoneOverlay;
-  const showMarkup = activeSource.showMarkup ?? readLegacyShowMarkup() ?? modeDefaults.showMarkup;
+  const showMarkup = mode === 'minimal' ? false : (activeSource.showMarkup ?? readLegacyShowMarkup() ?? modeDefaults.showMarkup);
   const activeModeSettings = normalizeModeSettings(
     {
       stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,

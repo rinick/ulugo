@@ -455,7 +455,7 @@ function normalizeAnalysisSettings(
   const activeModeSettings = normalizeAnalysisModeSettings(
     {
       stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
-      showMarkup: settings.showMarkup,
+      showMarkup: mode === 'minimal' ? false : settings.showMarkup,
       showNextMove: settings.showNextMove,
       showTopMoves: settings.showTopMoves,
       showExpectedTerritory: settings.showExpectedTerritory,

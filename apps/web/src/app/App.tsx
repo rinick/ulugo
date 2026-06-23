@@ -29,6 +29,7 @@ import stoneSoundUrl from '../assets/go_stone_light.wav';
 import {AppBoardRegion} from '../features/app-shell/AppBoardRegion';
 import {AppLeftPanel} from '../features/app-shell/AppLeftPanel';
 import {AppMenuBar} from '../features/app-shell/AppMenuBar';
+import {MinimalControl} from '../features/app-shell/MinimalControl';
 import {AppRightPanel} from '../features/app-shell/AppRightPanel';
 import {AppStatusModals} from '../features/app-shell/AppStatusModals';
 import {AppToolbars} from '../features/app-shell/AppToolbars';
@@ -39,6 +40,7 @@ import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
 import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
+import {EditorToolbar} from '../features/toolbar/EditorToolbar';
 import {ModeToolbarOptions} from '../features/toolbar/ModeToolbarOptions';
 import {
   readKeyboardShortcuts,
@@ -50,12 +52,7 @@ import {
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
 import type {EditorTool} from '../features/toolbar/types';
-import {
-  isMarkupTool,
-  nextLabelText,
-  resolveBoardBackground,
-  selectedPathAfterDelete,
-} from './appEditorUtils';
+import {isMarkupTool, nextLabelText, resolveBoardBackground, selectedPathAfterDelete} from './appEditorUtils';
 import {capabilities, isElectron} from './capabilities';
 import {addSetupStoneToPath, findChildMovePath, isCurrentSetupStone, oppositeColor, toolToMarkup} from './sgfEditUtils';
 import {
@@ -113,6 +110,8 @@ export function App() {
   const [kataGoSettingsOpen, setKataGoSettingsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
+  const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
+  const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
@@ -801,7 +800,21 @@ export function App() {
         onCloseKataGoAutotuning={() => setKataGoAutotuningOpen(false)}
       />
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
-        {minimalMode ? null : (
+        {minimalMode ? (
+          <MinimalControl
+            showRightPanel={minimalRightPanelOpen}
+            showBasicTools={minimalBasicToolsOpen}
+            showMoveNumber={analysisSettings.stoneOverlay === 'number'}
+            showNextMove={analysisSettings.showNextMove}
+            showCoordinates={showCoordinates}
+            onShowRightPanelChange={setMinimalRightPanelOpen}
+            onShowBasicToolsChange={setMinimalBasicToolsOpen}
+            onShowMoveNumberChange={(show) => updateAnalysisSettings({stoneOverlay: show ? 'number' : 'none'})}
+            onShowNextMoveChange={(show) => updateAnalysisSettings({showNextMove: show})}
+            onShowCoordinatesChange={setShowCoordinates}
+            onQuit={() => handleModeChange('edit')}
+          />
+        ) : (
           <Header className="app-header">
             <section className="app-header-left">
               <div className="app-title">{appTitle}</div>
@@ -891,38 +904,58 @@ export function App() {
             onAnalysisClick={handleAnalysisButtonClick}
             onToggleLeftPanel={() => setLeftPanelOpen((open) => !open)}
           />
-          <AppRightPanel
-            document={document}
-            path={path}
-            blackPlayerName={blackPlayerName}
-            whitePlayerName={whitePlayerName}
-            capturedBlackStones={position.captures.W}
-            capturedWhiteStones={position.captures.B}
-            comment={getComment(document, path)}
-            analysisSettings={analysisSettings}
-            showAnalysisControls={capabilities.katago}
-            hideCommentsPanel={minimalMode}
-            minimalMode={minimalMode}
-            chartData={analysisChartData}
-            selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
-            chartSummary={analysisChartSummary}
-            shortcutLabels={shortcutLabels}
-            onCommentChange={handleCommentChange}
-            onAnalysisSettingsChange={updateAnalysisSettings}
-            onPreviousMove={() => navigatePrevious()}
-            onNextMove={() => navigateNext()}
-            onSelectChartMove={(moveNumber) => {
-              const nextPath = analysisChartPaths[moveNumber];
-              if (nextPath == null) return;
-              selectPath(nextPath);
-            }}
-            onSelectPath={selectPath}
-            onMoveToMain={handleMoveBranchToMain}
-            onMoveLeft={handleMoveBranchLeft}
-            onMoveRight={handleMoveBranchRight}
-            onPrune={handlePruneBranch}
-            onDelete={handleDeleteNode}
-          />
+          {!minimalMode || minimalRightPanelOpen ? (
+            <AppRightPanel
+              document={document}
+              path={path}
+              blackPlayerName={blackPlayerName}
+              whitePlayerName={whitePlayerName}
+              capturedBlackStones={position.captures.W}
+              capturedWhiteStones={position.captures.B}
+              comment={getComment(document, path)}
+              analysisSettings={analysisSettings}
+              showAnalysisControls={capabilities.katago}
+              hideCommentsPanel={minimalMode}
+              minimalMode={minimalMode}
+              basicTools={
+                minimalMode && minimalBasicToolsOpen ? (
+                  <div className="minimal-basic-tools">
+                    <EditorToolbar
+                      tool={tool}
+                      nextColor={nextAutoColor}
+                      canReplaceMove={canReplaceMove}
+                      showMarkup={showMarkup}
+                      labelText={labelText}
+                      shortcutLabels={shortcutLabels}
+                      onToolChange={handleToolChange}
+                      onLabelTextChange={setLabelText}
+                      onAutoToolClick={handleAutoToolClick}
+                      onPass={handlePass}
+                    />
+                  </div>
+                ) : null
+              }
+              chartData={analysisChartData}
+              selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
+              chartSummary={analysisChartSummary}
+              shortcutLabels={shortcutLabels}
+              onCommentChange={handleCommentChange}
+              onAnalysisSettingsChange={updateAnalysisSettings}
+              onPreviousMove={() => navigatePrevious()}
+              onNextMove={() => navigateNext()}
+              onSelectChartMove={(moveNumber) => {
+                const nextPath = analysisChartPaths[moveNumber];
+                if (nextPath == null) return;
+                selectPath(nextPath);
+              }}
+              onSelectPath={selectPath}
+              onMoveToMain={handleMoveBranchToMain}
+              onMoveLeft={handleMoveBranchLeft}
+              onMoveRight={handleMoveBranchRight}
+              onPrune={handlePruneBranch}
+              onDelete={handleDeleteNode}
+            />
+          ) : null}
         </Content>
       </Layout>
       <input
