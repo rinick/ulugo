@@ -453,7 +453,7 @@ textarea,
   background: #ffffff;
 }
 
-.minimal > .right-region {
+body.minimal .app-content > .right-region {
   flex-basis: 250px;
   width: 250px;
 }
@@ -470,7 +470,7 @@ textarea,
   font-size: 12px;
 }
 
-.minimal > .right-region .capture-summary {
+body.minimal .app-content > .right-region .capture-summary {
   flex-direction: column;
   gap: 8px;
   align-items: start;
@@ -1071,7 +1071,7 @@ button.ant-btn.left-panel-toggle {
 }
 
 @media (orientation: portrait) {
-  .minimal {
+  body.platform-web.minimal {
     position: absolute;
     inset: 0 auto auto 0;
     width: 100dvh;
@@ -1079,4 +1079,11 @@ button.ant-btn.left-panel-toggle {
     transform: rotate(90deg) translateY(-100%);
     transform-origin: top left;
   }
+
+  body.platform-web.minimal .minimal-control-dropdown {
+    position: fixed !important;
+    inset: 52px 12px auto auto !important;
+    min-width: max-content !important;
+  }
 }
+

@@ -46,6 +46,7 @@ export function MinimalControl({
   return (
     <Dropdown
       open={open}
+      classNames={{root: 'minimal-control-dropdown'}}
       onOpenChange={(nextOpen, info) => {
         if (!nextOpen && info.source === 'menu') return;
         setOpen(nextOpen);

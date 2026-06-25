@@ -201,6 +201,15 @@ export function App() {
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
 
   useEffect(() => {
+    window.document.body.classList.toggle('platform-web', capabilities.platform === 'web');
+    window.document.body.classList.toggle('platform-electron', capabilities.platform === 'electron');
+    window.document.body.classList.toggle('minimal', minimalMode);
+    return () => {
+      window.document.body.classList.remove('platform-web', 'platform-electron', 'minimal');
+    };
+  }, [minimalMode]);
+
+  useEffect(() => {
     for (const item of kataGoConsoleMessages) {
       if (handledAutotuningMessageIdsRef.current.has(item.id)) continue;
       handledAutotuningMessageIdsRef.current.add(item.id);
@@ -868,7 +877,7 @@ export function App() {
             </section>
           </Header>
         )}
-        <Content className={`app-content${minimalMode ? ' minimal' : ''}`}>
+        <Content className="app-content">
           <AppLeftPanel
             katagoEnabled={capabilities.katago}
             platform={capabilities.platform}
