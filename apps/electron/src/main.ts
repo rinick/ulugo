@@ -226,14 +226,15 @@ function registerIpc(): void {
   ipcMain.handle(
     'ulugo:export-sgf',
     async (_event, request: {content: string; suggestedName: string; filePath?: string}) => {
-      const filePath =
-        request.filePath ??
-        (
-          await dialog.showSaveDialog({
+      let filePath = request.filePath;
+      if (filePath == null) {
+        const result = await dialog.showSaveDialog({
             defaultPath: request.suggestedName,
             filters: [{name: 'SGF files', extensions: ['sgf']}],
-          })
-        ).filePath;
+        });
+        if (result.canceled) return {canceled: true};
+        filePath = result.filePath;
+      }
       if (filePath == null) return {canceled: true};
 
       await fs.writeFile(filePath, request.content, 'utf8');
