@@ -3,6 +3,12 @@ import {contextBridge, ipcRenderer, webUtils} from 'electron';
 contextBridge.exposeInMainWorld('ulugo', {
   platform: 'electron',
   importSgf: () => ipcRenderer.invoke('ulugo:import-sgf'),
+  consumeOpenGameRecord: () => ipcRenderer.invoke('ulugo:consume-open-game-record'),
+  onOpenGameRecord: (callback: (result: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, result: unknown) => callback(result);
+    ipcRenderer.on('ulugo:open-game-record', listener);
+    return () => ipcRenderer.off('ulugo:open-game-record', listener);
+  },
   exportSgf: (request: {content: string; suggestedName: string; filePath?: string}) =>
     ipcRenderer.invoke('ulugo:export-sgf', request),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),

@@ -145,9 +145,17 @@ interface KataGoAnalysisQuery {
   };
 }
 
+interface GameRecordOpenResult {
+  content: string;
+  fileName: string;
+  filePath: string;
+}
+
 let katagoProcess: ChildProcessWithoutNullStreams | null = null;
 let katagoOutputBuffer = '';
 let katagoSender: WebContents | null = null;
+let mainWindow: BrowserWindow | null = null;
+let pendingOpenFilePath: string | null = gameRecordFilePathFromArgs(process.argv);
 let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
@@ -156,6 +164,9 @@ app.setPath('userData', path.join(app.getPath('home'), '.ulugo'));
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
+
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) app.quit();
 
 async function createWindow(): Promise<void> {
   app.setName('Ulugo AI review');
@@ -177,6 +188,10 @@ async function createWindow(): Promise<void> {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+  mainWindow = window;
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null;
+  });
   window.setMenuBarVisibility(false);
   window.webContents.on('before-input-event', (event, input) => {
     if (input.control && input.shift && input.key.toLowerCase() === 'i') {
@@ -193,13 +208,26 @@ async function createWindow(): Promise<void> {
   void setupFirstRunKataGo(window.webContents);
 }
 
-app.whenReady().then(async () => {
-  registerIpc();
-  await createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+if (singleInstanceLock) {
+  app.on('second-instance', (_event, argv) => {
+    const filePath = gameRecordFilePathFromArgs(argv);
+    if (filePath != null) void openGameRecordFile(filePath);
+    focusMainWindow();
   });
+
+  app.whenReady().then(async () => {
+    registerIpc();
+    await createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+    });
+  });
+}
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  void openGameRecordFile(filePath);
 });
 
 app.on('window-all-closed', () => {
@@ -214,13 +242,10 @@ function registerIpc(): void {
     });
     if (result.canceled || result.filePaths[0] == null) return null;
 
-    const filePath = result.filePaths[0];
-    const buffer = await fs.readFile(filePath);
-    return {
-      content: decodeGameRecordBuffer(buffer, filePath.toLowerCase().endsWith('.gib')),
-      fileName: path.basename(filePath),
-      filePath,
-    };
+    return readGameRecordFile(result.filePaths[0]);
+  });
+  ipcMain.handle('ulugo:consume-open-game-record', async () => {
+    return consumePendingGameRecordFile();
   });
 
   ipcMain.handle(
@@ -229,8 +254,8 @@ function registerIpc(): void {
       let filePath = request.filePath;
       if (filePath == null) {
         const result = await dialog.showSaveDialog({
-            defaultPath: request.suggestedName,
-            filters: [{name: 'SGF files', extensions: ['sgf']}],
+          defaultPath: request.suggestedName,
+          filters: [{name: 'SGF files', extensions: ['sgf']}],
         });
         if (result.canceled) return {canceled: true};
         filePath = result.filePath;
@@ -351,6 +376,54 @@ function bringSenderWindowToFront(sender: WebContents): void {
   window.show();
   window.moveTop();
   window.focus();
+}
+
+function focusMainWindow(): void {
+  if (mainWindow == null || mainWindow.isDestroyed()) return;
+  mainWindow.show();
+  mainWindow.moveTop();
+  mainWindow.focus();
+}
+
+async function openGameRecordFile(filePath: string): Promise<void> {
+  if (!isGameRecordFilePath(filePath)) return;
+  pendingOpenFilePath = filePath;
+
+  if (!app.isReady() || mainWindow == null || mainWindow.isDestroyed()) {
+    if (app.isReady()) await createWindow();
+    return;
+  }
+
+  try {
+    mainWindow.webContents.send('ulugo:open-game-record', await consumePendingGameRecordFile());
+  } catch (error) {
+    sendKataGoConsole(mainWindow.webContents, 'ulugo', 'error', error instanceof Error ? error.message : 'Failed to open game record.');
+  }
+}
+
+async function consumePendingGameRecordFile(): Promise<GameRecordOpenResult | null> {
+  if (pendingOpenFilePath == null) return null;
+
+  const filePath = pendingOpenFilePath;
+  pendingOpenFilePath = null;
+  return readGameRecordFile(filePath);
+}
+
+async function readGameRecordFile(filePath: string): Promise<GameRecordOpenResult> {
+  const buffer = await fs.readFile(filePath);
+  return {
+    content: decodeGameRecordBuffer(buffer, filePath.toLowerCase().endsWith('.gib')),
+    fileName: path.basename(filePath),
+    filePath,
+  };
+}
+
+function gameRecordFilePathFromArgs(argv: string[]): string | null {
+  return argv.find((item) => !item.startsWith('-') && isGameRecordFilePath(item)) ?? null;
+}
+
+function isGameRecordFilePath(filePath: string): boolean {
+  return /\.(sgf|gib)$/i.test(filePath);
 }
 
 async function getKataGoAssetInventory(): Promise<{

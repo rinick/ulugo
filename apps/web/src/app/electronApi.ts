@@ -46,6 +46,8 @@ export interface ElectronGoogleDriveSaveResult {
 export interface UlugoElectronApi {
   platform: 'electron';
   importSgf: () => Promise<ElectronImportResult | null>;
+  consumeOpenGameRecord: () => Promise<ElectronImportResult | null>;
+  onOpenGameRecord: (callback: (result: ElectronImportResult | null) => void) => () => void;
   exportSgf: (request: ElectronExportRequest) => Promise<ElectronExportResult>;
   getPathForFile: (file: File) => string;
   selectFile: (options?: {

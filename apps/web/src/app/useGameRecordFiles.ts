@@ -1,6 +1,6 @@
 import {message} from 'antd';
 import {serializeSgf, type SgfDocument} from '@ulugo/sgf-core';
-import {useRef, useState, type DragEvent, type RefObject} from 'react';
+import {useEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
 import {
@@ -48,6 +48,23 @@ export function useGameRecordFiles({
   const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isElectron || window.ulugo == null) return;
+
+    const importOpenedGameRecord = (result: {content: string; fileName: string; filePath: string} | null): void => {
+      if (result == null) return;
+      importText(result.content, result.fileName, {
+        name: result.fileName,
+        electronFilePath: result.filePath,
+      });
+    };
+    void window.ulugo
+      .consumeOpenGameRecord()
+      .then(importOpenedGameRecord)
+      .catch((error) => message.error(error instanceof Error ? error.message : t('importFailed')));
+    return window.ulugo.onOpenGameRecord(importOpenedGameRecord);
+  }, [onImport, t]);
 
   async function save(): Promise<void> {
     if (currentFile == null) {

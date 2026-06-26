@@ -34,6 +34,20 @@
         "to": "web/dist"
       }
     ],
+    "fileAssociations": [
+      {
+        "ext": "sgf",
+        "name": "SGF game record",
+        "description": "Smart Game Format record",
+        "role": "Editor"
+      },
+      {
+        "ext": "gib",
+        "name": "Tygem game record",
+        "description": "Tygem Go game record",
+        "role": "Editor"
+      }
+    ],
     "win": {
       "artifactName": "ulugo.${ext}",
       "icon": "../web/src/assets/icon-512.png"
