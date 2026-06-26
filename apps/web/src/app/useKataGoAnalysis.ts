@@ -1,8 +1,5 @@
 import {getNodeAtPath, samePath, type SgfDocument} from '@ulugo/sgf-core';
-import {
-  type AnalysisChartPoint,
-  type AnalysisSettings,
-} from '@ulugo/analysis-core';
+import {type AnalysisChartPoint, type AnalysisSettings} from '@ulugo/analysis-core';
 import {
   buildKataGoQuery,
   defaultKataGoSettings,
@@ -46,6 +43,7 @@ import {
 
 const deepAnalysisVisits = 10_000_000;
 const maxFastAnalysisQueries = 2;
+const liveAnalysisDelayMs = 100;
 
 interface UseKataGoAnalysisOptions {
   enabled: boolean;
@@ -430,6 +428,8 @@ export function useKataGoAnalysis({
           await ulugo.katago.stopAnalysis(liveQueryIds);
         }
         if (cancelled) return;
+        await delay(liveAnalysisDelayMs);
+        if (cancelled) return;
 
         await Promise.all([
           needsMain && !mainPending ? requestAnalysis(path, 'live', targetVisits, {live: true}) : Promise.resolve(),
@@ -561,6 +561,10 @@ export function useKataGoAnalysis({
     refreshKataGoSettings,
     resetAnalysisForDocumentChange,
   };
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function requestPassAnalysis(
