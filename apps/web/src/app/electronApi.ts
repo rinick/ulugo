@@ -47,6 +47,7 @@ export interface UlugoElectronApi {
   platform: 'electron';
   importSgf: () => Promise<ElectronImportResult | null>;
   exportSgf: (request: ElectronExportRequest) => Promise<ElectronExportResult>;
+  getPathForFile: (file: File) => string;
   selectFile: (options?: {
     title?: string;
     filters?: Array<{name: string; extensions: string[]}>;

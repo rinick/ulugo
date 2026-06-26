@@ -1,10 +1,11 @@
-import {contextBridge, ipcRenderer} from 'electron';
+import {contextBridge, ipcRenderer, webUtils} from 'electron';
 
 contextBridge.exposeInMainWorld('ulugo', {
   platform: 'electron',
   importSgf: () => ipcRenderer.invoke('ulugo:import-sgf'),
   exportSgf: (request: {content: string; suggestedName: string; filePath?: string}) =>
     ipcRenderer.invoke('ulugo:export-sgf', request),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   selectFile: (options?: {title?: string; filters?: Array<{name: string; extensions: string[]}>}) =>
     ipcRenderer.invoke('ulugo:select-file', options),
   googleDrive: {

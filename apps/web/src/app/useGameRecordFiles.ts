@@ -169,7 +169,7 @@ export function useGameRecordFiles({
 
     try {
       const text = await readGameRecordFile(file);
-      importText(text, file.name, {name: file.name});
+      importText(text, file.name, {name: file.name, electronFilePath: electronFilePath(file)});
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('importFailed'));
     } finally {
@@ -210,4 +210,9 @@ export function useGameRecordFiles({
     handleDrop,
     cancelGoogleDriveOperation: () => void window.ulugo?.googleDrive.cancel(),
   };
+}
+
+function electronFilePath(file: File): string | undefined {
+  const path = window.ulugo?.getPathForFile(file) ?? (file as File & {path?: unknown}).path;
+  return typeof path === 'string' && path !== '' ? path : undefined;
 }
