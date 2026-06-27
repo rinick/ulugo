@@ -77,7 +77,6 @@ export function EditorToolbar({
           current={tool}
           icon={<SwapOutlined />}
           title={withShortcut(t('replaceMove'), shortcutLabels.replaceMove)}
-          danger
           disabled={!canReplaceMove}
           onToolChange={onToolChange}
         />
