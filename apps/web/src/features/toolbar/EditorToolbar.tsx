@@ -21,6 +21,7 @@ interface EditorToolbarProps {
   onToolChange: (tool: EditorTool) => void;
   onLabelTextChange: (value: string) => void;
   onAutoToolClick: () => void;
+  onEraseAllMarkup: () => void;
   onPass: () => void;
 }
 
@@ -34,6 +35,7 @@ export function EditorToolbar({
   onToolChange,
   onLabelTextChange,
   onAutoToolClick,
+  onEraseAllMarkup,
   onPass,
 }: EditorToolbarProps) {
   const {t} = useTranslation();
@@ -130,8 +132,9 @@ export function EditorToolbar({
               tool="erase"
               current={tool}
               icon={<DeleteOutlined />}
-              title={withShortcut(t('eraseMarkup'), shortcutLabels.eraseMarkup)}
+              title={`${withShortcut(t('eraseMarkup'), shortcutLabels.eraseMarkup)}\n${t('eraseAllMarkupHint')}`}
               onToolChange={onToolChange}
+              onDoubleClick={onEraseAllMarkup}
             />
           </>
         )}
@@ -196,6 +199,7 @@ function ToolButton({
   disabled,
   children,
   onToolChange,
+  onDoubleClick,
 }: {
   className?: string;
   tool: EditorTool;
@@ -206,6 +210,7 @@ function ToolButton({
   disabled?: boolean;
   children?: React.ReactNode;
   onToolChange: (tool: EditorTool) => void;
+  onDoubleClick?: () => void;
 }) {
   return (
     <Button
@@ -217,6 +222,7 @@ function ToolButton({
       icon={icon}
       title={title}
       onClick={() => onToolChange(tool)}
+      onDoubleClick={onDoubleClick}
     >
       {children}
     </Button>

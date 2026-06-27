@@ -51,6 +51,7 @@ export interface AnalysisSettings {
   showComments: boolean;
   boardBackground: BoardBackground;
   autoAnalyze: boolean;
+  autoIncrementMarkupText: boolean;
   modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
@@ -118,6 +119,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   showComments: defaultEditModeSettings.showComments,
   boardBackground: 'auto',
   autoAnalyze: true,
+  autoIncrementMarkupText: true,
   modeSettings: {
     review: defaultReviewModeSettings,
     edit: defaultEditModeSettings,

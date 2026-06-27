@@ -44,6 +44,7 @@ interface AnalysisSettings {
   showComments: boolean;
   boardBackground: 'auto' | 'golden' | 'natural' | 'flat';
   autoAnalyze: boolean;
+  autoIncrementMarkupText: boolean;
   modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
@@ -89,6 +90,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
   showComments: true,
   boardBackground: 'auto',
   autoAnalyze: true,
+  autoIncrementMarkupText: true,
   modeSettings: {
     review: {
       stoneOverlay: 'dot',

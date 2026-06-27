@@ -5,6 +5,7 @@ import {
   addMove,
   createNewGame,
   deleteNode,
+  eraseAllMarkup,
   eraseMarkup,
   getComment,
   getBoardSize,
@@ -88,6 +89,8 @@ interface ReplaceDocumentOptions {
   replaceMoveState?: ReplaceMoveState | null;
 }
 
+const markupPropertyKeys = ['LB', 'CR', 'SQ', 'TR', 'MA'] as const;
+
 export function App() {
   const {t, i18n} = useTranslation();
   const [document, setDocument] = useState<SgfDocument>(() => createNewGame());
@@ -117,6 +120,7 @@ export function App() {
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
+  const labelResetPathKeyRef = useRef(pathKey([]));
   const pendingSetupPathRef = useRef<number[] | null>(null);
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
@@ -244,6 +248,7 @@ export function App() {
     resetAnalysisForDocumentChange(next, options);
     setDocument(next);
     setPath(normalizedPath);
+    resetLabelTextForUnmarkedSelection(next, normalizedPath);
     setAutoColorOverride(null);
     setReplaceMoveState(options.replaceMoveState ?? null);
     if (options.replaceMoveState != null) {
@@ -261,6 +266,7 @@ export function App() {
 
     rememberPath(normalizedPath);
     setPath(normalizedPath);
+    resetLabelTextForUnmarkedSelection(document, normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
     setReplaceMoveState(null);
     if (tool === 'replace') setTool('auto');
@@ -668,7 +674,7 @@ export function App() {
       const value = labelText.trim();
       if (value === '') return;
       replaceDocument(addLabel(document, path, point, value), path);
-      setLabelText(nextLabelText(value));
+      if (analysisSettings.autoIncrementMarkupText) setLabelText(nextLabelText(value));
       return;
     }
 
@@ -679,6 +685,20 @@ export function App() {
   function handleBoardRightClick(point: string): void {
     if (tool !== 'black' && tool !== 'white') return;
     handleBoardClick(point, {shiftKey: false, clickCount: 1}, tool === 'black' ? 'W' : 'B');
+  }
+
+  function handleEraseAllMarkup(): void {
+    replaceDocument(eraseAllMarkup(document, path), path);
+  }
+
+  function resetLabelTextForUnmarkedSelection(nextDocument: SgfDocument, nextPath: number[]): void {
+    const key = pathKey(nextPath);
+    if (labelResetPathKeyRef.current === key) return;
+    labelResetPathKeyRef.current = key;
+    if (!analysisSettings.autoIncrementMarkupText) return;
+    if (!nodeHasMarkup(getNodeAtPath(nextDocument, nextPath))) {
+      setLabelText((current) => resetLabelText(current));
+    }
   }
 
   function handlePlayBestAnalysisMove(): void {
@@ -839,6 +859,7 @@ export function App() {
                 onToolChange={handleToolChange}
                 onLabelTextChange={setLabelText}
                 onAutoToolClick={handleAutoToolClick}
+                onEraseAllMarkup={handleEraseAllMarkup}
                 onPass={handlePass}
                 onFirst={navigateToFirst}
                 onPrevious10={() => navigatePrevious(10)}
@@ -938,6 +959,7 @@ export function App() {
                       onToolChange={handleToolChange}
                       onLabelTextChange={setLabelText}
                       onAutoToolClick={handleAutoToolClick}
+                      onEraseAllMarkup={handleEraseAllMarkup}
                       onPass={handlePass}
                     />
                   </div>
@@ -1017,4 +1039,14 @@ export function App() {
       />
     </ConfigProvider>
   );
+}
+
+function nodeHasMarkup(node: ReturnType<typeof getNodeAtPath>): boolean {
+  return markupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0);
+}
+
+function resetLabelText(value: string): string {
+  if (/^\d+$/.test(value.trim())) return '0';
+  if (/^[a-z]+$/.test(value.trim())) return 'a';
+  return 'A';
 }

@@ -562,6 +562,12 @@ export function eraseMarkup(document: SgfDocument, path: number[], point: SgfPoi
   });
 }
 
+export function eraseAllMarkup(document: SgfDocument, path: number[]): SgfDocument {
+  return updateNode(document, path, (node) => {
+    for (const key of ['LB', 'CR', 'SQ', 'TR', 'MA', 'SL']) delete node.data[key];
+  });
+}
+
 export function addMarkup(document: SgfDocument, path: number[], kind: MarkupKind, point: SgfPoint): SgfDocument {
   return updateNode(document, path, (node) => {
     removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);

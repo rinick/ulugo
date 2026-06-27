@@ -129,6 +129,16 @@ export function SettingsModal({
             <Switch size="small" checked={playStoneSound} onChange={onPlayStoneSoundChange} />
           </div>
         </Form.Item>
+        <Form.Item>
+          <div className="app-settings-row">
+            <span>{t('autoIncrementMarkupText')}</span>
+            <Switch
+              size="small"
+              checked={settings.autoIncrementMarkupText}
+              onChange={(checked) => updateSettings({autoIncrementMarkupText: checked})}
+            />
+          </div>
+        </Form.Item>
         <Form.Item label={t('boardBackground')}>
           <Select
             size="small"

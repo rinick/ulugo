@@ -15,6 +15,7 @@ interface AppToolbarsProps {
   onToolChange: (tool: EditorTool) => void;
   onLabelTextChange: (value: string) => void;
   onAutoToolClick: () => void;
+  onEraseAllMarkup: () => void;
   onPass: () => void;
   onFirst: () => void;
   onPrevious10: () => void;
@@ -36,6 +37,7 @@ export function AppToolbars({
   onToolChange,
   onLabelTextChange,
   onAutoToolClick,
+  onEraseAllMarkup,
   onPass,
   onFirst,
   onPrevious10,
@@ -56,6 +58,7 @@ export function AppToolbars({
         onToolChange={onToolChange}
         onLabelTextChange={onLabelTextChange}
         onAutoToolClick={onAutoToolClick}
+        onEraseAllMarkup={onEraseAllMarkup}
         onPass={onPass}
       />
       <NavigationToolbar
