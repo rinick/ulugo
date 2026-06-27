@@ -251,7 +251,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
         loading={loading}
         rowKey="id"
         pagination={false}
-        scroll={{y: 300}}
+        scroll={{y: 200}}
         columns={assetColumns('katago')}
         dataSource={inventory?.katago ?? []}
         rowSelection={{
@@ -267,7 +267,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
         loading={loading}
         rowKey="id"
         pagination={false}
-        scroll={{y: 300}}
+        scroll={{y: 200}}
         columns={assetColumns('model')}
         dataSource={inventory?.models ?? []}
         rowSelection={{

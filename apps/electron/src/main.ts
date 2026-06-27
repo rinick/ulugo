@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Menu, dialog, ipcMain, type WebContents} from 'electron';
+import {app, BrowserWindow, Menu, dialog, ipcMain, type MessageBoxOptions, type WebContents} from 'electron';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -435,6 +435,18 @@ async function getKataGoAssetInventory(): Promise<{
   await writeJson('katago-settings.json', settings);
   const catalog = await readKataGoAssetCatalog();
   const assets = await listKataGoAssets(catalog);
+  if (
+    settings.executablePath !== '' &&
+    !assets.katago.some((asset) => asset.path === settings.executablePath)
+  ) {
+    assets.katago.unshift({
+      id: `custom:${settings.executablePath}`,
+      label: settings.executablePath,
+      available: false,
+      installed: true,
+      path: settings.executablePath,
+    });
+  }
   return {...assets, settings};
 }
 
@@ -480,18 +492,23 @@ async function setupFirstRunKataGo(sender: WebContents): Promise<void> {
 
   try {
     sendKataGoConsole(sender, 'ulugo', 'info', 'Setting up KataGo for first use.');
+    if (process.platform === 'darwin') await setupFirstRunMacKataGo(sender);
+
     const catalog = await refreshKataGoAssetCatalog();
-    const katagoOption = catalog.katago.find((asset) => asset.id.toLowerCase().includes('opencl'));
     const modelOption = catalog.models.find((asset) => asset.id.toLowerCase().includes('b18c384'));
-    if (katagoOption == null) throw new Error('No OpenCL KataGo build is available for this platform.');
     if (modelOption == null) throw new Error('No b18c384 KataGo model is available.');
 
-    let inventory = await getKataGoAssetInventory();
-    const installedKataGo = inventory.katago.find((asset) => asset.id === katagoOption.id && asset.path != null);
-    if (installedKataGo == null) await installKataGoAsset('katago', katagoOption, sender);
-    else await selectKataGoAsset('katago', installedKataGo.id);
+    if (process.platform !== 'darwin') {
+      const katagoOption = catalog.katago.find((asset) => asset.id.toLowerCase().includes('opencl'));
+      if (katagoOption == null) throw new Error('No OpenCL KataGo build is available for this platform.');
 
-    inventory = await getKataGoAssetInventory();
+      const inventory = await getKataGoAssetInventory();
+      const installedKataGo = inventory.katago.find((asset) => asset.id === katagoOption.id && asset.path != null);
+      if (installedKataGo == null) await installKataGoAsset('katago', katagoOption, sender);
+      else await selectKataGoAsset('katago', installedKataGo.id);
+    }
+
+    const inventory = await getKataGoAssetInventory();
     const installedModel = inventory.models.find((asset) => asset.id === modelOption.id && asset.path != null);
     if (installedModel == null) await installKataGoAsset('model', modelOption, sender);
     else await selectKataGoAsset('model', installedModel.id);
@@ -506,6 +523,74 @@ async function setupFirstRunKataGo(sender: WebContents): Promise<void> {
       error instanceof Error ? `First-use KataGo setup failed: ${error.message}` : 'First-use KataGo setup failed.'
     );
   }
+}
+
+async function setupFirstRunMacKataGo(sender: WebContents): Promise<void> {
+  sendKataGoConsole(
+    sender,
+    'ulugo',
+    'info',
+    'macOS uses KataGo from Homebrew. Ulugo will not download a macOS KataGo binary.'
+  );
+  const executablePath = await findKataGoOnPath();
+  if (executablePath == null) {
+    sendMacKataGoHomebrewGuidance(sender);
+    await showMacKataGoHomebrewDialog(sender);
+    throw new Error('KataGo was not found on this Mac.');
+  }
+
+  sendKataGoConsole(sender, 'ulugo', 'info', `Found KataGo at ${executablePath}.`);
+  const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+  const next = await normalizeKataGoSettings({...previous, executablePath, configPath: ''});
+  restartKataGoEngineIfSettingsChanged(previous, next);
+  await writeJson('katago-settings.json', next);
+}
+
+async function findKataGoOnPath(): Promise<string | null> {
+  const candidates = [
+    ...new Set([
+      ...pathCandidatesFromEnv('katago'),
+      '/opt/homebrew/bin/katago',
+      '/usr/local/bin/katago',
+    ]),
+  ];
+  for (const candidate of candidates) {
+    if (await fileExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+function pathCandidatesFromEnv(executableName: string): string[] {
+  return (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter((directory) => directory !== '')
+    .map((directory) => path.join(directory, executableName));
+}
+
+function sendMacKataGoHomebrewGuidance(sender: WebContents): void {
+  [
+    'KataGo was not found on this Mac.',
+    'Install the Apple Silicon Metal build with Homebrew:',
+    '1. Open Terminal.',
+    '2. If Homebrew is not installed, install it from https://brew.sh/.',
+    '3. Run: brew install katago',
+    '4. Verify it with: /opt/homebrew/bin/katago version',
+    '5. Restart Ulugo after installation.',
+    'If you use Intel Homebrew, the verify command may be: /usr/local/bin/katago version',
+  ].forEach((text) => sendKataGoConsole(sender, 'ulugo', 'warning', text));
+}
+
+async function showMacKataGoHomebrewDialog(sender: WebContents): Promise<void> {
+  const window = BrowserWindow.fromWebContents(sender);
+  const options: MessageBoxOptions = {
+    type: 'info',
+    title: 'KataGo setup needed',
+    message: 'KataGo is not installed.',
+    detail: 'Check the KataGo console for Homebrew installation steps.',
+    buttons: ['OK'],
+  };
+  if (window == null) await dialog.showMessageBox(options);
+  else await dialog.showMessageBox(window, options);
 }
 
 async function readAnalysisSettings(): Promise<AnalysisSettings> {
@@ -608,10 +693,13 @@ function settingsPath(name: string): string {
 }
 
 async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory?: string): Promise<KataGoSettings> {
-  const executablePath = await findInstalledAssetPath('katago', settings.executablePath);
+  const executablePath = await findKataGoExecutablePath(settings.executablePath);
   const modelPath = await findInstalledAssetPath('model', settings.modelPath);
+  const configSearchPath =
+    searchDirectory ??
+    (executablePath !== '' && !isInsideUlugoData(executablePath) ? ulugoDataDirectory() : executablePath);
   const defaultConfigPath =
-    executablePath === '' ? '' : await findDefaultKataGoConfig(searchDirectory ?? executablePath);
+    executablePath === '' ? '' : await findDefaultKataGoConfig(configSearchPath);
   const configPath =
     executablePath === ''
       ? ''
@@ -622,6 +710,16 @@ async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory
         : defaultConfigPath;
 
   return {...defaultKataGoSettings, ...settings, executablePath, modelPath, configPath};
+}
+
+async function findKataGoExecutablePath(preferredPath: string): Promise<string> {
+  if (preferredPath !== '' && (await fileExists(preferredPath))) return preferredPath;
+  return findInstalledAssetPath('katago', preferredPath);
+}
+
+function isInsideUlugoData(filePath: string): boolean {
+  const relative = path.relative(ulugoDataDirectory(), filePath);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 function shouldUseDefaultKataGoConfig(configPath: string, defaultConfigPath: string): boolean {
