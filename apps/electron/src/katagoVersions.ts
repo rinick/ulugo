@@ -30,6 +30,21 @@ interface KataGoNetwork {
 }
 
 const legacyModelOptionIds = new Set(['recommended-18b', 'old-15b', 'old-20b', 'old-30b', 'fat-40b']);
+const recommendedB18ModelPrefix = 'kata1-b18c384nbt';
+const knownKata1ModelPrefixes = [
+  recommendedB18ModelPrefix,
+  'kata1-b28c512nbt',
+  'kata1-zhizi-b28c512nbt',
+  'kata1-zhizi-b40c768nbt',
+];
+const maxKataGoModelCatalogPages = 5;
+const kataGoModelCatalogPageSize = 100;
+const recommendedB18Model: KataGoAvailableAsset = {
+  id: 'kata1:kata1-b18c384nbt-s9996604416-d4316597426',
+  label: 'kata1-b18c384nbt-s9996604416-d4316597426.bin.gz',
+  url: 'https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz',
+};
+type KataGoCatalogProgress = (message: string) => void;
 
 export async function readKataGoVersionCatalog(
   catalogPath: string,
@@ -47,14 +62,19 @@ export async function readKataGoVersionCatalog(
 
 export async function refreshKataGoVersionCatalog(
   catalogPath: string,
-  platform: string
+  platform: string,
+  onProgress?: KataGoCatalogProgress
 ): Promise<KataGoAssetCatalog> {
-  const [katago, models] = await Promise.all([fetchLatestKataGoBuilds(platform), fetchBestKata1ModelsByPrefix()]);
+  const [katago, models] = await Promise.all([
+    fetchLatestKataGoBuilds(platform, onProgress),
+    fetchKnownKata1Models(onProgress),
+  ]);
   const catalog = {
     updatedAt: new Date().toISOString(),
     katago: katago.length > 0 ? katago : fallbackCatalog(platform).katago,
     models,
   };
+  onProgress?.('Saving KataGo availability catalog.');
   await writeKataGoVersionCatalog(catalogPath, catalog);
   return catalog;
 }
@@ -63,7 +83,11 @@ export function isBs50KataGoBuild(value: string): boolean {
   return value.toLowerCase().includes('bs50');
 }
 
-async function fetchLatestKataGoBuilds(platform: string): Promise<KataGoAvailableAsset[]> {
+async function fetchLatestKataGoBuilds(
+  platform: string,
+  onProgress?: KataGoCatalogProgress
+): Promise<KataGoAvailableAsset[]> {
+  onProgress?.('Checking latest KataGo builds from GitHub.');
   const response = await fetch('https://api.github.com/repos/lightvector/KataGo/releases/latest', {
     headers: {'User-Agent': 'Ulugo'},
   });
@@ -73,7 +97,7 @@ async function fetchLatestKataGoBuilds(platform: string): Promise<KataGoAvailabl
   };
   const platformKey = platform === 'win32' ? 'windows-x64' : platform === 'linux' ? 'linux-x64' : 'macos';
 
-  return (release.assets ?? [])
+  const assets = (release.assets ?? [])
     .filter((asset) => asset.name?.endsWith('.zip') && asset.name.includes(platformKey) && !isBs50KataGoBuild(asset.name))
     .map((asset) => {
       const name = asset.name ?? '';
@@ -85,72 +109,87 @@ async function fetchLatestKataGoBuilds(platform: string): Promise<KataGoAvailabl
       };
     })
     .filter((asset) => asset.url !== '');
+  onProgress?.(`Found ${assets.length} KataGo build option${assets.length === 1 ? '' : 's'} for this platform.`);
+  return assets;
 }
 
-async function fetchBestKata1ModelsByPrefix(): Promise<KataGoAvailableAsset[]> {
-  const networks = await fetchKata1Networks();
-  const bestByPrefix = new Map<string, KataGoNetwork>();
+async function fetchKnownKata1Models(onProgress?: KataGoCatalogProgress): Promise<KataGoAvailableAsset[]> {
+  const networksByPrefix = new Map<string, KataGoNetwork>();
+  let hasRecommendedB18Replacement = false;
 
-  for (const network of networks) {
-    const prefix = kata1ModelPrefix(network.name);
+  for (const network of await fetchKata1Networks(new Set(), onProgress)) {
+    const prefix = knownKata1ModelPrefix(network.name);
     if (prefix == null) continue;
-
-    const current = bestByPrefix.get(prefix);
-    if (current == null || compareKataGoNetworks(network, current) > 0) bestByPrefix.set(prefix, network);
+    const current = networksByPrefix.get(prefix);
+    if (current == null || compareKataGoNetworks(network, current) > 0) {
+      networksByPrefix.set(prefix, network);
+    }
+    if (prefix === recommendedB18ModelPrefix) hasRecommendedB18Replacement = true;
   }
 
-  const best = [...bestByPrefix.values()];
-  const strongest = best.reduce<KataGoNetwork | null>(
+  const networks = [...networksByPrefix.values()];
+  const strongest = networks.reduce<KataGoNetwork | null>(
     (current, network) => (current == null || compareKataGoNetworks(network, current) > 0 ? network : current),
     null
   );
-  const fastest = best.reduce<KataGoNetwork | null>(
-    (current, network) =>
-      current == null ||
-      (network.model_file_bytes ?? Number.MAX_SAFE_INTEGER) < (current.model_file_bytes ?? Number.MAX_SAFE_INTEGER)
-        ? network
-        : current,
-    null
-  );
-
-  return best
-    .map((network) => ({
-      id: `kata1:${network.name}`,
-      label: `${network.name}.bin.gz`,
-      url: network.model_file,
-      notes: network === strongest ? 'strongest' : network === fastest ? 'fastest' : undefined,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const models: KataGoAvailableAsset[] = networks.map((network) => ({
+    id: `kata1:${network.name}`,
+    label: `${network.name}.bin.gz`,
+    url: network.model_file,
+    notes:
+      network === strongest
+        ? 'strongest'
+        : knownKata1ModelPrefix(network.name) === recommendedB18ModelPrefix
+          ? 'fastest'
+          : undefined,
+  }));
+  if (!hasRecommendedB18Replacement) models.push({...recommendedB18Model, notes: 'fastest'});
+  models.sort((a, b) => a.label.localeCompare(b.label));
+  onProgress?.(`Prepared ${models.length} KataGo model option${models.length === 1 ? '' : 's'}.`);
+  return models;
 }
 
-async function fetchKata1Networks(): Promise<KataGoNetwork[]> {
+async function fetchKata1Networks(
+  foundPrefixes: Set<string>,
+  onProgress?: KataGoCatalogProgress
+): Promise<KataGoNetwork[]> {
   const networks: KataGoNetwork[] = [];
-  let url: string | null = 'https://katagotraining.org/api/networks/?page_size=100';
+  let url: string | null = `https://katagotraining.org/api/networks/?page_size=${kataGoModelCatalogPageSize}`;
   let pageCount = 0;
 
-  while (url != null && pageCount < 100) {
+  onProgress?.('Checking known KataGo model prefixes from katagotraining.org.');
+  while (url != null && pageCount < maxKataGoModelCatalogPages && !hasEveryKnownModelPrefix(foundPrefixes)) {
     pageCount += 1;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to refresh KataGo models: ${response.status} ${response.statusText}`);
 
     const page = (await response.json()) as KataGoNetworksResponse;
-    networks.push(
-      ...page.results.filter(
-        (network) =>
-          network.name.startsWith('kata1-') &&
-          typeof network.model_file === 'string' &&
-          network.model_file !== '' &&
-          network.is_random !== true
-      )
-    );
+    for (const network of page.results) {
+      const prefix = knownKata1ModelPrefix(network.name);
+      if (
+        prefix == null ||
+        typeof network.model_file !== 'string' ||
+        network.model_file === '' ||
+        network.is_random === true
+      ) {
+        continue;
+      }
+      networks.push(network);
+      foundPrefixes.add(prefix);
+    }
     url = page.next;
+    onProgress?.(`Loaded recent KataGo model catalog page ${pageCount}.`);
   }
 
   return networks;
 }
 
-function kata1ModelPrefix(name: string): string | null {
-  return /^(kata1-(?:[a-z0-9]+-)?b\d+c\d+nbt)(?:-|$)/i.exec(name)?.[1] ?? null;
+function knownKata1ModelPrefix(name: string): string | null {
+  return knownKata1ModelPrefixes.find((prefix) => name === prefix || name.startsWith(`${prefix}-`)) ?? null;
+}
+
+function hasEveryKnownModelPrefix(foundPrefixes: ReadonlySet<string>): boolean {
+  return knownKata1ModelPrefixes.every((prefix) => foundPrefixes.has(prefix));
 }
 
 function compareKataGoNetworks(first: KataGoNetwork, second: KataGoNetwork): number {
@@ -169,7 +208,7 @@ function fallbackCatalog(platform: string): KataGoAssetCatalog {
   return {
     updatedAt: new Date(0).toISOString(),
     katago: fallbackKataGoBuilds(platform),
-    models: [],
+    models: [recommendedB18Model],
   };
 }
 

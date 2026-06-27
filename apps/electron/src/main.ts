@@ -74,19 +74,19 @@ const defaultKataGoSettings: KataGoSettings = {
 };
 
 const defaultAnalysisSettings: AnalysisSettings = {
-  mode: 'review',
+  mode: 'edit',
   moveDisplay: ['scoreChange'],
-  stoneOverlay: 'dot',
+  stoneOverlay: 'none',
   maxMoves: 5,
   minVisits: 20,
   showMarkup: true,
-  showNextMove: true,
-  showTopMoves: true,
-  showExpectedTerritory: true,
-  showScore: true,
+  showNextMove: false,
+  showTopMoves: false,
+  showExpectedTerritory: false,
+  showScore: false,
   showPointLoss: false,
-  showWinrate: true,
-  showComments: false,
+  showWinrate: false,
+  showComments: true,
   boardBackground: 'auto',
   autoAnalyze: true,
   modeSettings: {
@@ -494,7 +494,10 @@ async function setupFirstRunKataGo(sender: WebContents): Promise<void> {
     sendKataGoConsole(sender, 'ulugo', 'info', 'Setting up KataGo for first use.');
     if (process.platform === 'darwin') await setupFirstRunMacKataGo(sender);
 
-    const catalog = await refreshKataGoAssetCatalog();
+    const catalog = await refreshKataGoAssetCatalog(process.platform, (message) => {
+      sendKataGoConsole(sender, 'ulugo', 'info', message);
+    });
+    sendKataGoConsole(sender, 'ulugo', 'info', 'Selecting first-use KataGo and model options.');
     const modelOption = catalog.models.find((asset) => asset.id.toLowerCase().includes('b18c384'));
     if (modelOption == null) throw new Error('No b18c384 KataGo model is available.');
 

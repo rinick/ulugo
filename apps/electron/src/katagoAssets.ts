@@ -58,9 +58,12 @@ export async function readKataGoAssetCatalog(): Promise<KataGoAssetCatalog> {
   return readKataGoVersionCatalog(path.join(ulugoDataDirectory(), catalogFileName), process.platform);
 }
 
-export async function refreshKataGoAssetCatalog(platform = process.platform): Promise<KataGoAssetCatalog> {
+export async function refreshKataGoAssetCatalog(
+  platform = process.platform,
+  onProgress?: (message: string) => void
+): Promise<KataGoAssetCatalog> {
   await ensureUlugoAssetDirectories();
-  return refreshKataGoVersionCatalog(path.join(ulugoDataDirectory(), catalogFileName), platform);
+  return refreshKataGoVersionCatalog(path.join(ulugoDataDirectory(), catalogFileName), platform, onProgress);
 }
 
 export async function listKataGoAssets(catalog: KataGoAssetCatalog): Promise<{
