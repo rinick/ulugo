@@ -129,6 +129,7 @@ export function useGameRecordFiles({
         });
         if (!result.canceled && result.fileName != null) {
           setCurrentFile({name: result.fileName, electronFilePath: result.filePath});
+          message.success(t('saved'));
         }
       } catch (error) {
         message.error(error instanceof Error ? error.message : t('exportFailed'));
@@ -145,6 +146,7 @@ export function useGameRecordFiles({
     link.click();
     URL.revokeObjectURL(url);
     setCurrentFile({name: normalizedFileName});
+    message.success(t('saved'));
   }
 
   async function open(): Promise<void> {
