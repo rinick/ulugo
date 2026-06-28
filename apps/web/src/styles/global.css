@@ -123,6 +123,24 @@ textarea,
   width: 100px;
 }
 
+.ant-modal {
+  padding-bottom: 0;
+}
+
+.ant-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+
+.ant-modal .ant-modal-body {
+  flex: 1;
+  max-height: calc(100dvh - 112px);
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .keyboard-shortcuts-list {
   display: grid;
   gap: 6px;
@@ -1086,4 +1104,3 @@ button.ant-btn.left-panel-toggle {
     min-width: max-content !important;
   }
 }
-

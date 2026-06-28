@@ -18,6 +18,7 @@ export function promptSaveFileName({
 
   return new Promise((resolve) => {
     Modal.confirm({
+      centered: true,
       title,
       icon: null,
       content: (

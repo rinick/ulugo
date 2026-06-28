@@ -88,7 +88,7 @@ export function SettingsModal({
   }
 
   return (
-    <Modal title={t('settings')} open={open} onCancel={onCancel} footer={null} width={420} destroyOnHidden>
+    <Modal centered title={t('settings')} open={open} onCancel={onCancel} footer={null} width={420} destroyOnHidden>
       <Button block onClick={onKeyboardShortcutsClick}>
         {t('keyboardShortcuts')}
       </Button>

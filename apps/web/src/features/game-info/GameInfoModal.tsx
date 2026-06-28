@@ -38,6 +38,7 @@ export function GameInfoModal({open, values, onCancel, onSave}: GameInfoModalPro
 
   return (
     <Modal
+      centered
       title={t('gameInformation')}
       open={open}
       onCancel={onCancel}

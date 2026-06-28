@@ -107,6 +107,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
       message.success(t('katagoSettingsSaved'));
       if (!inventory.katago.some((asset) => asset.installed) || !inventory.models.some((asset) => asset.installed)) {
         Modal.warning({
+          centered: true,
           title: t('aiAnalysisUnavailableTitle'),
           content: t('aiAnalysisUnavailableContent'),
           onOk: onCancel,
@@ -223,6 +224,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
 
   return (
     <Modal
+      centered
       title={t('aiConfig')}
       open={open}
       onCancel={onCancel}

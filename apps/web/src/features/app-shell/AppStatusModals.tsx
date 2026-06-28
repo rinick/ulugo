@@ -19,6 +19,7 @@ export function AppStatusModals({
   return (
     <>
       <Modal
+        centered
         open={googleDrivePending != null}
         title={t('googleDrive')}
         footer={
@@ -33,6 +34,7 @@ export function AppStatusModals({
         {googleDrivePending === 'open' ? t('googleDriveOpenWaiting') : t('googleDriveSaveWaiting')}
       </Modal>
       <Modal
+        centered
         open={kataGoAutotuningOpen}
         title={t('katagoAutotuning')}
         footer={

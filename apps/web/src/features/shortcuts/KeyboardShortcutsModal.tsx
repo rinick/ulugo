@@ -73,6 +73,7 @@ export function KeyboardShortcutsModal({
 
   return (
     <Modal
+      centered
       title={t('keyboardShortcuts')}
       open={open}
       onCancel={onCancel}

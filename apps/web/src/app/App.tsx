@@ -769,6 +769,7 @@ export function App() {
 
     if (getNodeAtPath(document, targetPath).children.length > 0) {
       Modal.confirm({
+        centered: true,
         title: t('deleteBranchConfirmTitle'),
         content: t('deleteBranchConfirmContent'),
         okText: t('ok'),
@@ -784,6 +785,7 @@ export function App() {
 
   function handlePruneBranch(targetPath = path): void {
     Modal.confirm({
+      centered: true,
       title: t('pruneBranchConfirmTitle'),
       content: t('pruneBranchConfirmContent'),
       okText: t('pruneBranch'),
