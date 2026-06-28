@@ -56,6 +56,7 @@ export function GoBoard({
 }: GoBoardProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
+  const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
     const extraSlots = showCoordinates ? coordinateTrackEm : boardPaddingWithoutCoordinatesEm;
@@ -97,12 +98,12 @@ export function GoBoard({
         analysis,
         analysisSettings,
         position.nextColor,
-        rules,
+        valueOffset,
         position.points,
         position.moveNumber,
         stoneScoreDeltas
       ),
-    [analysis, analysisSettings, document, path, position, rules, stoneScoreDeltas]
+    [analysis, analysisSettings, document, path, position, stoneScoreDeltas, valueOffset]
   );
   const moveHintMap = useMemo(
     () => buildMoveHintMap(position.size, document, path, analysis, analysisSettings),
@@ -205,7 +206,7 @@ function buildAnalysisOverlayMap(
   analysis: KataGoAnalysisResult | null,
   settings: AnalysisSettings,
   nextColor: 'B' | 'W',
-  rules: string | undefined,
+  valueOffset: boolean,
   points: BoardPoint[],
   currentMoveNumber: number,
   stoneScoreDeltas: Map<string, number>
@@ -215,13 +216,19 @@ function buildAnalysisOverlayMap(
   let hasAnalysisOverlay = false;
 
   if (settings.showTopMoves && analysis?.moveInfos != null) {
-    const moves = analysis.moveInfos.filter((move) => gtpMoveToVertex(move.move, size) != null);
+    const moves: Array<{move: KataGoMoveInfo; moveKey: string; vertex: [number, number]}> = [];
+    let passScore: number | null = null;
+    for (const move of analysis.moveInfos) {
+      const moveKey = move.move.toLowerCase();
+      if (moveKey === 'pass') passScore = moveScoreLead(move);
+      const vertex = gtpMoveToVertex(move.move, size, moveKey);
+      if (vertex != null) moves.push({move, moveKey, vertex});
+    }
     const limit = analysisMoveLimit(settings.maxMoves);
     let limitedMoveCount = 0;
     const seenMoves = new Set<string>();
 
-    for (const [index, move] of moves.entries()) {
-      const moveKey = move.move.toLowerCase();
+    for (const [index, {move, moveKey, vertex}] of moves.entries()) {
       if (seenMoves.has(moveKey)) continue;
       seenMoves.add(moveKey);
 
@@ -233,11 +240,9 @@ function buildAnalysisOverlayMap(
       if (!withinLimit && !isChildMove && !hasEnoughVisitsForHint) continue;
       if (withinLimit) limitedMoveCount += 1;
 
-      const vertex = gtpMoveToVertex(move.move, size);
-      if (vertex == null) continue;
       const [x, y] = vertex;
       const showText = index === 0 || isChildMove || hasEnoughVisits;
-      const text = showText ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor, rules) : '';
+      const text = showText ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor, passScore, valueOffset) : '';
       result[y][x] = {
         ...(result[y][x] ?? {}),
         strength: analysisStrength(move, analysis, nextColor),
@@ -352,10 +357,11 @@ function analysisMoveText(
   mode: AnalysisSettings['moveDisplay'],
   analysis: KataGoAnalysisResult,
   nextColor: 'B' | 'W',
-  rules: string | undefined
+  passScore: number | null,
+  valueOffset: boolean
 ): string {
   return mode
-    .map((item) => analysisMoveTextLine(move, item, analysis, nextColor, rules))
+    .map((item) => analysisMoveTextLine(move, item, analysis, nextColor, passScore, valueOffset))
     .filter(Boolean)
     .join('\n');
 }
@@ -365,7 +371,8 @@ function analysisMoveTextLine(
   mode: AnalysisDisplayMode,
   analysis: KataGoAnalysisResult,
   nextColor: 'B' | 'W',
-  rules: string | undefined
+  passScore: number | null,
+  valueOffset: boolean
 ): string {
   if (mode === 'winRateChange') {
     const winrateLost = moveWinrateLost(move, analysis, nextColor);
@@ -379,14 +386,14 @@ function analysisMoveTextLine(
 
   if (mode === 'visits') return move.visits == null ? '' : formatVisits(move.visits);
 
-  const scoreDelta = moveScoreDelta(move, analysis, nextColor, mode);
+  const scoreDelta = moveScoreDelta(move, analysis, nextColor, mode, passScore);
   if (scoreDelta != null) {
-    return mode === 'value' ? formatValue(displayValue(scoreDelta, rules)) : formatScore(scoreDelta);
+    return mode === 'value' ? formatValue(displayValue(scoreDelta, valueOffset)) : formatScore(scoreDelta);
   }
 
   if (move.pointsLost != null) {
     const score = -move.pointsLost;
-    return mode === 'value' ? formatValue(displayValue(score, rules)) : formatScore(score);
+    return mode === 'value' ? formatValue(displayValue(score, valueOffset)) : formatScore(score);
   }
 
   return '';
@@ -405,13 +412,12 @@ function moveScoreDelta(
   move: KataGoMoveInfo,
   analysis: KataGoAnalysisResult,
   nextColor: 'B' | 'W',
-  mode: AnalysisDisplayMode
+  mode: AnalysisDisplayMode,
+  passScore: number | null
 ): number | null {
   const score = moveScoreLead(move);
   if (score == null) return null;
 
-  const passMove = analysis.moveInfos?.find((item) => item.move.toLowerCase() === 'pass');
-  const passScore = passMove == null ? null : moveScoreLead(passMove);
   if (mode === 'value') {
     if (passScore == null) return null;
     return (score - passScore) * (nextColor === 'B' ? 1 : -1);
@@ -448,8 +454,8 @@ function moveScoreLead(move: KataGoMoveInfo): number | null {
   return move.scoreLead ?? move.scoreMean ?? null;
 }
 
-function displayValue(value: number, rules: string | undefined): number {
-  return usesAreaValueOffset(rules) ? value - 1 : value;
+function displayValue(value: number, valueOffset: boolean): number {
+  return valueOffset ? value - 1 : value;
 }
 
 function usesAreaValueOffset(rules: string | undefined): boolean {
@@ -497,8 +503,8 @@ function formatPrecision(value: number): string {
   return String(normalized);
 }
 
-function gtpMoveToVertex(move: string, size: number): [number, number] | null {
-  if (move.toLowerCase() === 'pass') return null;
+function gtpMoveToVertex(move: string, size: number, moveKey = move.toLowerCase()): [number, number] | null {
+  if (moveKey === 'pass') return null;
   const match = /^([A-Za-z])(\d+)$/.exec(move);
   if (match == null) return null;
 

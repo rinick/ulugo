@@ -230,7 +230,8 @@ function mergeAnalysisResult(
 
 function mergeMoveInfoIntoAnalysis(analysis: KataGoAnalysisResult, move: KataGoMoveInfo): KataGoAnalysisResult {
   const moveInfos = analysis.moveInfos ?? [];
-  const index = moveInfos.findIndex((item) => sameMoveInfo(item, move));
+  const key = move.move.toLowerCase();
+  const index = moveInfos.findIndex((item) => item.move.toLowerCase() === key);
   if (index < 0) return {...analysis, moveInfos: [...moveInfos, move]};
 
   return {
@@ -246,21 +247,20 @@ function mergeMoveInfos(
   if (incoming == null) return existing;
   if (existing == null) return incoming;
 
-  const existingByMove = new Map(existing.map((move) => [move.move.toLowerCase(), move]));
-  const incomingMoves = new Set(incoming.map((move) => move.move.toLowerCase()));
-  return [
-    ...incoming.map((move) => mergeMoveInfo(existingByMove.get(move.move.toLowerCase()), move)),
-    ...existing.filter((move) => !incomingMoves.has(move.move.toLowerCase())),
-  ];
+  const existingMoves = existing.map((move) => ({move, key: move.move.toLowerCase()}));
+  const existingByMove = new Map(existingMoves.map(({move, key}) => [key, move]));
+  const incomingMoves = new Set<string>();
+  const mergedIncoming = incoming.map((move) => {
+    const key = move.move.toLowerCase();
+    incomingMoves.add(key);
+    return mergeMoveInfo(existingByMove.get(key), move);
+  });
+  return [...mergedIncoming, ...existingMoves.filter(({key}) => !incomingMoves.has(key)).map(({move}) => move)];
 }
 
 function mergeMoveInfo(existing: KataGoMoveInfo | undefined, incoming: KataGoMoveInfo): KataGoMoveInfo {
   if (existing == null) return incoming;
   return (incoming.visits ?? 0) >= (existing.visits ?? 0) ? {...existing, ...incoming} : {...incoming, ...existing};
-}
-
-function sameMoveInfo(first: KataGoMoveInfo, second: KataGoMoveInfo): boolean {
-  return first.move.toLowerCase() === second.move.toLowerCase();
 }
 
 export function buildAnalysisChartData(
@@ -307,9 +307,8 @@ export function buildStoneScoreDeltas(
     const parentPath = movePath.slice(0, -1);
     const parentAnalysis = cache[nodeKey(document, parentPath)]?.result;
     const childAnalysis = cache[nodeKey(document, movePath)]?.result;
-    const move = parentAnalysis?.moveInfos?.find(
-      (item) => item.move.toLowerCase() === sgfPointToGtp(point, boardSize).toLowerCase()
-    );
+    const moveKey = sgfPointToGtp(point, boardSize).toLowerCase();
+    const move = parentAnalysis?.moveInfos?.find((item) => item.move.toLowerCase() === moveKey);
 
     const moveVisits = move?.visits ?? 0;
     const childVisits = childAnalysis?.rootInfo?.visits ?? 0;
