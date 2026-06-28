@@ -172,11 +172,11 @@ const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
 
 async function createWindow(): Promise<void> {
-  app.setName('Ulugo AI review');
+  app.setName('Ulugo');
   Menu.setApplicationMenu(null);
 
   const window = new BrowserWindow({
-    title: 'Ulugo AI review',
+    title: 'Ulugo',
     width: 1440,
     height: 840,
     minWidth: 960,

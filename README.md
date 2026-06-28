@@ -7,16 +7,24 @@
 
 Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an sgf editor.
 
+- Download latest version form [Releases Page](https://github.com/rinick/ulugo/releases/latest) 
 - Download from [Mirosoft Store](https://apps.microsoft.com/detail/9mtflxctfhxq). 
-- Download latest version form [Releases Page](https://github.com/rinick/ulugo/releases) (unsigned)
-
 
 ## Features
 
-- Review games with KataGo analysis in the desktop app.
-  - Download from [Releases Page](https://github.com/rinick/ulugo/releases)
-- Open, edit, and save SGF game records.
-  - Also available as a standalone web app at [ulugo.com](https://ulugo.com).
+#### Review Mode
+- Review games with KataGo analysis
+- Show top moves and territories
+![](/screenshot/review.webp)
+
+#### Edit Mode
+- Open, edit, and save SGF game records
+- Work with SGF markup and comments
+![](/screenshot/edit.webp)
+
+#### Minimal Mode
+- Focus on the board, hide unecessary UI elements
+![](/screenshot/minimal.webp)
 
 ## Development
 
