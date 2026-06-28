@@ -49,7 +49,6 @@
       }
     ],
     "win": {
-      "artifactName": "ulugo.${ext}",
       "icon": "../web/src/assets/icon-512.png"
     },
     "mac": {
