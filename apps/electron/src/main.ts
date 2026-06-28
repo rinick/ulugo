@@ -400,7 +400,12 @@ async function openGameRecordFile(filePath: string): Promise<void> {
   try {
     mainWindow.webContents.send('ulugo:open-game-record', await consumePendingGameRecordFile());
   } catch (error) {
-    sendKataGoConsole(mainWindow.webContents, 'ulugo', 'error', error instanceof Error ? error.message : 'Failed to open game record.');
+    sendKataGoConsole(
+      mainWindow.webContents,
+      'ulugo',
+      'error',
+      error instanceof Error ? error.message : 'Failed to open game record.'
+    );
   }
 }
 
@@ -438,10 +443,7 @@ async function getKataGoAssetInventory(): Promise<{
   await writeJson('katago-settings.json', settings);
   const catalog = await readKataGoAssetCatalog();
   const assets = await listKataGoAssets(catalog);
-  if (
-    settings.executablePath !== '' &&
-    !assets.katago.some((asset) => asset.path === settings.executablePath)
-  ) {
+  if (settings.executablePath !== '' && !assets.katago.some((asset) => asset.path === settings.executablePath)) {
     assets.katago.unshift({
       id: `custom:${settings.executablePath}`,
       label: settings.executablePath,
@@ -554,11 +556,7 @@ async function setupFirstRunMacKataGo(sender: WebContents): Promise<void> {
 
 async function findKataGoOnPath(): Promise<string | null> {
   const candidates = [
-    ...new Set([
-      ...pathCandidatesFromEnv('katago'),
-      '/opt/homebrew/bin/katago',
-      '/usr/local/bin/katago',
-    ]),
+    ...new Set([...pathCandidatesFromEnv('katago'), '/opt/homebrew/bin/katago', '/usr/local/bin/katago']),
   ];
   for (const candidate of candidates) {
     if (await fileExists(candidate)) return candidate;
@@ -574,7 +572,7 @@ function pathCandidatesFromEnv(executableName: string): string[] {
 }
 
 function sendMacKataGoHomebrewGuidance(sender: WebContents): void {
-  [
+  sendKataGoConsole(sender, 'ulugo', 'warning', [
     'KataGo was not found on this Mac.',
     'Install the Apple Silicon Metal build with Homebrew:',
     '1. Open Terminal.',
@@ -582,8 +580,7 @@ function sendMacKataGoHomebrewGuidance(sender: WebContents): void {
     '3. Run: brew install katago',
     '4. Verify it with: /opt/homebrew/bin/katago version',
     '5. Restart Ulugo after installation.',
-    'If you use Intel Homebrew, the verify command may be: /usr/local/bin/katago version',
-  ].forEach((text) => sendKataGoConsole(sender, 'ulugo', 'warning', text));
+  ].join('\n'));
 }
 
 async function showMacKataGoHomebrewDialog(sender: WebContents): Promise<void> {
@@ -704,8 +701,7 @@ async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory
   const configSearchPath =
     searchDirectory ??
     (executablePath !== '' && !isInsideUlugoData(executablePath) ? ulugoDataDirectory() : executablePath);
-  const defaultConfigPath =
-    executablePath === '' ? '' : await findDefaultKataGoConfig(configSearchPath);
+  const defaultConfigPath = executablePath === '' ? '' : await findDefaultKataGoConfig(configSearchPath);
   const configPath =
     executablePath === ''
       ? ''
