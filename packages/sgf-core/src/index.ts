@@ -553,8 +553,19 @@ export function addSetupStone(
     current.data.B == null &&
     current.data.W == null &&
     (path.length === 0 || hasSetupProperties(current) || Object.keys(current.data).length === 0);
-  const targetPath =
-    canEditCurrent ? path : [...path, current.children.length];
+  const targetPath = canEditCurrent ? path : [...path, current.children.length];
+  const priorColor = stoneColorBeforePath(document, targetPath, point);
+  const currentTarget = canEditCurrent ? current : null;
+
+  if ((currentTarget?.data[prop] ?? []).includes(point)) {
+    const next = cloneDocument(document);
+    const target = getNodeAtPath(next, targetPath);
+    removePointFromProperties(target, [prop], point);
+    if (priorColor === oppositeColor(color)) addPointValue(target, 'AE', point);
+    if (nextColor != null && target.data.PL == null) setProperty(target, 'PL', [nextColor]);
+    return {document: next, path: targetPath, placed: false};
+  }
+
   const next = cloneDocument(document);
   const target =
     targetPath.length === path.length
@@ -566,21 +577,42 @@ export function addSetupStone(
           return child;
         })();
 
-  if ((target.data[prop] ?? []).includes(point)) {
-    removePointFromProperties(target, [prop], point);
-    if (nextColor != null && target.data.PL == null) setProperty(target, 'PL', [nextColor]);
-    return {document: next, path: targetPath, placed: false};
-  }
-
   removePointFromProperties(target, [prop, opposite, 'AE'], point);
   if (nextColor != null && target.data.PL == null) setProperty(target, 'PL', [nextColor]);
   if (existingColor === color) {
     addPointValue(target, 'AE', point);
     return {document: next, path: targetPath, placed: false};
   }
+  if (priorColor === color) return {document: next, path: targetPath, placed: true};
 
   addPointValue(target, prop, point);
   return {document: next, path: targetPath, placed: true};
+}
+
+function stoneColorBeforePath(document: SgfDocument, path: number[], point: SgfPoint): SgfColor | null {
+  let color: SgfColor | null = null;
+  let node = document.root;
+  if (path.length === 0) return null;
+  applyNodeStone();
+
+  for (const childIndex of path.slice(0, -1)) {
+    const child = node.children[childIndex];
+    if (child == null) break;
+    node = child;
+    applyNodeStone();
+  }
+
+  return color;
+
+  function applyNodeStone(): void {
+    if ((node.data.AE ?? []).includes(point)) color = null;
+    if ((node.data.AB ?? []).includes(point) || node.data.B?.[0] === point) color = 'B';
+    if ((node.data.AW ?? []).includes(point) || node.data.W?.[0] === point) color = 'W';
+  }
+}
+
+function oppositeColor(color: SgfColor): SgfColor {
+  return color === 'B' ? 'W' : 'B';
 }
 
 export function updateSetupNextColor(document: SgfDocument, path: number[], color: SgfColor): SgfDocument {

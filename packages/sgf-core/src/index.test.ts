@@ -180,6 +180,27 @@ describe('sgf-core', () => {
     expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
   });
 
+  it('keeps an earlier opposite-color move empty when toggling off a setup override', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AW[dd])');
+    const result = addSetupStone(document, [0, 0], 'W', 'dd', 'W');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
+  });
+
+  it('restores an earlier same-color move when toggling off a setup override', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AB[dd])');
+    const result = addSetupStone(document, [0, 0], 'B', 'dd', 'B');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];)');
+  });
+
+  it('removes add-empty instead of adding same-color setup over an earlier stone', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AE[dd])');
+    const result = addSetupStone(document, [0, 0], 'B', 'dd');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];)');
+  });
+
   it('saves the player to play on setup nodes', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const setup = addSetupStone(first.document, first.path, 'W', 'pp', null, 'W');
