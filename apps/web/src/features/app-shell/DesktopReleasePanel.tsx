@@ -53,7 +53,6 @@ export function DesktopReleasePanel({active}: {active: boolean}) {
   if (loading && release == null) {
     return (
       <div className="desktop-release-panel">
-        <DesktopReleaseTitle title={t('downloadDesktopApp')} />
         <div className="desktop-release-state">
           <Spin size="small" />
         </div>
@@ -64,7 +63,6 @@ export function DesktopReleasePanel({active}: {active: boolean}) {
   if (failed || release == null) {
     return (
       <div className="desktop-release-panel">
-        <DesktopReleaseTitle title={t('downloadDesktopApp')} />
         <div className="desktop-release-state">
           <Button href="https://github.com/rinick/ulugo/releases/latest" target="_blank" rel="noreferrer">
             {t('downloadDesktopApp')}
@@ -76,7 +74,6 @@ export function DesktopReleasePanel({active}: {active: boolean}) {
 
   return (
     <div className="desktop-release-panel">
-      <DesktopReleaseTitle title={t('downloadDesktopApp')} />
       <div className="desktop-release-header">
         <GithubOutlined />
         <div>
@@ -121,15 +118,7 @@ export function DesktopReleasePanel({active}: {active: boolean}) {
 }
 
 function displayAssetName(name: string): string {
-  return name.replace(/_AppImage\b/gi, '').replace(/\.(zip|exe)$/i, '');
-}
-
-function DesktopReleaseTitle({title}: {title: string}) {
-  return (
-    <div className="desktop-release-title">
-      <div>{title}</div>
-    </div>
-  );
+  return name.replace(/\.(zip|exe|AppImage)$/i, '');
 }
 
 function handleReleaseBodyClick(event: MouseEvent<HTMLDivElement>): void {

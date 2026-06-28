@@ -1,3 +1,4 @@
+import {CloudDownloadOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {KataGoConsoleMessage} from '@ulugo/katago-core';
 import type {RefObject} from 'react';
@@ -63,6 +64,15 @@ export function AppLeftPanel({
 
   return (
     <aside className="left-panel web-ad-panel" style={{display: open && !hidden ? 'flex' : 'none'}}>
+      <div className="desktop-download-callout">
+        <span className="desktop-download-callout-icon">
+          <CloudDownloadOutlined />
+        </span>
+        <div>{t('downloadDesktopApp')}</div>
+        <span className="desktop-download-callout-icon">
+          <CloudDownloadOutlined />
+        </span>
+      </div>
       <DesktopReleasePanel active={open && !hidden} />
       <div className="policy-links">
         <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">

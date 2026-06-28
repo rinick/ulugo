@@ -112,6 +112,7 @@ export function AppBoardRegion({
       {minimalMode ? null : (
         <Button
           className="left-panel-toggle"
+          size="medium"
           icon={leftPanelOpen ? <LeftSquareOutlined /> : <RightSquareOutlined />}
           title={t(leftPanelOpen ? 'closeLeftPanel' : 'openLeftPanel')}
           onClick={onToggleLeftPanel}
