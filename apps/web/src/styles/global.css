@@ -631,25 +631,196 @@ body.minimal .app-content > .right-region .capture-summary {
 }
 
 .web-ad-panel {
+  gap: 6px;
   padding: 12px;
   overflow: hidden;
 }
 
+.desktop-release-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.desktop-release-title {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d8dee4;
+  background: #f6f8fa;
+}
+
+.desktop-release-title div {
+  color: #1f343f;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.desktop-release-state {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.desktop-release-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d8dee4;
+}
+
+.desktop-release-header > .anticon {
+  flex: 0 0 auto;
+  color: #24292f;
+  font-size: 28px;
+}
+
+.desktop-release-header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.desktop-release-header a {
+  color: #0969da;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-release-header span {
+  color: #6e7781;
+  font-size: 12px;
+}
+
+.desktop-release-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 12px 0;
+  overflow: auto;
+  color: #24292f;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.desktop-release-body.plain {
+  white-space: pre-wrap;
+}
+
+.desktop-release-body h1,
+.desktop-release-body h2,
+.desktop-release-body h3 {
+  margin: 12px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #d8dee4;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.desktop-release-body p,
+.desktop-release-body ul,
+.desktop-release-body ol {
+  margin: 0 0 8px;
+}
+
+.desktop-release-body ul,
+.desktop-release-body ol {
+  padding-left: 20px;
+}
+
+.desktop-release-body code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: #eff1f3;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    monospace;
+  font-size: 11px;
+}
+
+.desktop-release-body pre {
+  padding: 8px;
+  overflow: auto;
+  border-radius: 4px;
+  background: #f6f8fa;
+}
+
+.desktop-release-body pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.desktop-release-body a {
+  color: #0969da;
+}
+
+.desktop-release-assets {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  background: #ffffff;
+}
+
+.desktop-release-download-button.ant-btn {
+  justify-content: space-between;
+  height: auto;
+  min-width: 0;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.desktop-release-download-button .ant-btn-icon {
+  flex: 0 0 auto;
+  color: #0969da;
+}
+
+.desktop-release-download-button.ant-btn > span:not(.ant-btn-icon):not(.desktop-release-asset-size) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.desktop-release-asset-size {
+  flex: 0 0 auto;
+  color: #6e7781;
+  font-size: 11px;
+}
+
 .web-ad {
   display: block;
-  margin: 40px 0;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 180px;
+  flex: 1 0 250px;
+  width: 335px;
+  height: 250px;
+  margin: 24px 0 0;
   overflow: hidden;
 }
 
 .policy-links {
   display: flex;
-  flex: 0 0 auto;
+  flex: 2 0 auto;
   justify-content: center;
   gap: 8px;
-  padding-top: 8px;
 }
 
 .analysis-empty {
@@ -1011,26 +1182,6 @@ body.minimal .app-content > .right-region .capture-summary {
   border-radius: 20px;
   transition: background 0.5s;
   z-index: 10;
-}
-.ant-btn.desktop-download-button {
-  gap: 0;
-  overflow: hidden;
-}
-.ant-btn.desktop-download-button:hover {
-  gap: 8px;
-}
-.desktop-download-label {
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  white-space: nowrap;
-  transition:
-    max-width 0.3s,
-    opacity 0.2s;
-}
-.ant-btn.desktop-download-button:hover .desktop-download-label {
-  max-width: 320px;
-  opacity: 1;
 }
 button.ant-btn.analysis-button-active {
   color: white;

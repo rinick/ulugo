@@ -45,8 +45,6 @@ export function GoogleAd({active}: {active: boolean}) {
       className="adsbygoogle web-ad"
       data-ad-client="ca-pub-3283235194066083"
       data-ad-slot="9855991090"
-      data-ad-format="auto"
-      data-full-width-responsive="true"
     />
   );
 }

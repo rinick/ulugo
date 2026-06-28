@@ -6,6 +6,7 @@ import privacyPolicyUrl from '../../../../../policies/privacy-policy.md?url';
 import termsOfServiceUrl from '../../../../../policies/terms-of-service.md?url';
 import {formatConsoleTime} from '../../app/katagoConsoleUtils';
 import {GoogleAd} from '../ads/GoogleAd';
+import {DesktopReleasePanel} from './DesktopReleasePanel';
 
 interface AppLeftPanelProps {
   katagoEnabled: boolean;
@@ -62,7 +63,7 @@ export function AppLeftPanel({
 
   return (
     <aside className="left-panel web-ad-panel" style={{display: open && !hidden ? 'flex' : 'none'}}>
-      <GoogleAd active={open && !hidden} />
+      <DesktopReleasePanel active={open && !hidden} />
       <div className="policy-links">
         <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
           Privacy Policy
@@ -71,6 +72,7 @@ export function AppLeftPanel({
           Terms of Service
         </Button>
       </div>
+      <GoogleAd active={open && !hidden} />
     </aside>
   );
 }

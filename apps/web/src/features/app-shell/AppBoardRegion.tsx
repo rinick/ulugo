@@ -1,9 +1,4 @@
-import {
-  CloudDownloadOutlined,
-  LeftSquareOutlined,
-  RightSquareOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import {LeftSquareOutlined, RightSquareOutlined, ThunderboltOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {AnalysisSettings, KataGoAnalysisResult} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
@@ -97,7 +92,7 @@ export function AppBoardRegion({
         onVertexClick={onBoardClick}
         onVertexRightClick={onBoardRightClick}
       />
-      {minimalMode ? null : katagoEnabled ? (
+      {!minimalMode && katagoEnabled ? (
         <Button
           className={[
             'analysis-button',
@@ -113,17 +108,7 @@ export function AppBoardRegion({
         >
           {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
         </Button>
-      ) : (
-        <Button
-          className="analysis-button desktop-download-button"
-          icon={<CloudDownloadOutlined />}
-          href="https://github.com/rinick/ulugo/releases"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span className="desktop-download-label">{t('downloadDesktopApp')}</span>
-        </Button>
-      )}
+      ) : null}
       {minimalMode ? null : (
         <Button
           className="left-panel-toggle"
