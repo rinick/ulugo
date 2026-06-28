@@ -41,18 +41,21 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
   const line = getLine(document, path);
   let moveNumber = 0;
   let lastMove: SgfPoint | null = null;
-  let lastColor: Stone | null = null;
+  let nextColor: Stone = 'B';
   const allowSuicide = isNewZealandRules(document.root.data.RU?.[0]);
 
   for (const node of line) {
     applySetup(node, stones, moveNumbers);
 
     const color: Stone | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-    if (color == null) continue;
+    if (color == null) {
+      nextColor = setupNextColor(node) ?? nextColor;
+      continue;
+    }
 
     const point = node.data[color]?.[0] ?? '';
     moveNumber += 1;
-    lastColor = color;
+    nextColor = color === 'B' ? 'W' : 'B';
     lastMove = point === '' ? null : point;
 
     if (point === '') continue;
@@ -88,7 +91,7 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
     points,
     stones,
     captures,
-    nextColor: lastColor === 'B' ? 'W' : 'B',
+    nextColor,
     lastMove,
     moveNumber,
   };
@@ -151,6 +154,11 @@ function isNewZealandRules(value: string | undefined): boolean {
     ?.trim()
     .toLowerCase()
     .replace(/[_\s]+/g, '-') === 'new-zealand';
+}
+
+function setupNextColor(node: SgfNode): Stone | null {
+  const value = node.data.PL?.[0];
+  return value === 'B' || value === 'W' ? value : null;
 }
 
 function applySetup(node: SgfNode, stones: Map<SgfPoint, Stone>, moveNumbers: Map<SgfPoint, number>): void {

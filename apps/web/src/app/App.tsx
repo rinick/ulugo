@@ -3,6 +3,7 @@ import {
   addLabel,
   addMarkup,
   addMove,
+  addSetupStone,
   createNewGame,
   deleteNode,
   eraseAllMarkup,
@@ -18,8 +19,10 @@ import {
   samePath,
   updateComment,
   updateGameInfo,
+  updateSetupNextColor,
   type SgfColor,
   type SgfDocument,
+  type SgfNode,
 } from '@ulugo/sgf-core';
 import type {BoardSize} from '@ulugo/ui-shared';
 import {useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
@@ -55,7 +58,7 @@ import {
 import type {EditorTool} from '../features/toolbar/types';
 import {isMarkupTool, nextLabelText, resolveBoardBackground, selectedPathAfterDelete} from './appEditorUtils';
 import {capabilities, isElectron} from './capabilities';
-import {addSetupStoneToPath, findChildMovePath, isCurrentSetupStone, oppositeColor, toolToMarkup} from './sgfEditUtils';
+import {findChildMovePath, oppositeColor, toolToMarkup} from './sgfEditUtils';
 import {
   findCurrentStoneMovePath,
   findFutureMovePath,
@@ -85,11 +88,12 @@ const {Header, Content} = Layout;
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   convertHiddenPassPath?: number[];
-  pendingSetupPath?: number[] | null;
+  invalidateAnalysisPath?: number[];
   replaceMoveState?: ReplaceMoveState | null;
 }
 
 const markupPropertyKeys = ['LB', 'CR', 'SQ', 'TR', 'MA'] as const;
+const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
 
 export function App() {
   const {t, i18n} = useTranslation();
@@ -121,7 +125,6 @@ export function App() {
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const labelResetPathKeyRef = useRef(pathKey([]));
-  const pendingSetupPathRef = useRef<number[] | null>(null);
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
@@ -179,7 +182,6 @@ export function App() {
     path,
     analysisPaths,
     analysisChartPaths,
-    pendingSetupPathRef,
     startFailedMessage: t('analysisStartFailed'),
   });
   const gameRecordFiles = useGameRecordFiles({
@@ -226,6 +228,13 @@ export function App() {
   }, [showMarkup, tool]);
 
   useEffect(() => {
+    if (!minimalMode) return;
+    setTool('auto');
+    setAutoColorOverride(null);
+    setReplaceMoveState(null);
+  }, [minimalMode]);
+
+  useEffect(() => {
     if (capabilities.katago || analysisSettings.stoneOverlay !== 'dot') return;
     updateAnalysisSettings({stoneOverlay: 'number', maxMoves: 'all'});
   }, [analysisSettings.stoneOverlay, capabilities.katago, updateAnalysisSettings]);
@@ -256,13 +265,11 @@ export function App() {
     } else if (tool === 'replace') {
       setTool('auto');
     }
-    pendingSetupPathRef.current = options.pendingSetupPath ?? null;
     rememberPath(normalizedPath);
   }
 
   function selectPath(nextPath: number[], options: {keepAutoColorOverride?: boolean} = {}): void {
     const normalizedPath = normalizeSelectedPath(document, nextPath);
-    pendingSetupPathRef.current = null;
 
     rememberPath(normalizedPath);
     setPath(normalizedPath);
@@ -382,6 +389,14 @@ export function App() {
 
   function handleAutoToolClick(): void {
     setReplaceMoveState(null);
+    if (isSetupNode(getNodeAtPath(document, path))) {
+      replaceDocument(updateSetupNextColor(document, path, oppositeColor(position.nextColor)), path, {
+        invalidateAnalysisPath: path,
+      });
+      setTool('auto');
+      return;
+    }
+
     if (tool !== 'auto') {
       selectPath(path);
       setTool('auto');
@@ -451,10 +466,10 @@ export function App() {
           handleToolChange('auto');
           break;
         case 'toolBlack':
-          handleToolChange('black');
+          if (!minimalMode) handleToolChange('black');
           break;
         case 'toolWhite':
-          handleToolChange('white');
+          if (!minimalMode) handleToolChange('white');
           break;
         case 'replaceMove':
           if (canReplaceMove) handleToolChange('replace');
@@ -637,29 +652,11 @@ export function App() {
 
     if (tool === 'black' || tool === 'white' || colorOverride != null) {
       const color = colorOverride ?? (tool === 'black' ? 'B' : 'W');
-      if (path.length === 0 && getNodeAtPath(document, path).children.length === 0) {
-        if (position.stones.has(point) && !isCurrentSetupStone(document, path, point)) return;
-
-        const result = addSetupStoneToPath(document, path, color, point);
-        replaceDocument(result.document, result.path, {pendingSetupPath: result.path});
-        if (result.placed) {
-          playPlaceStoneSound();
-          setAutoColorOverride(oppositeColor(color));
-        }
-        return;
-      }
-
-      if (position.stones.has(point)) return;
-      const existingChildPath = findChildMovePath(document, path, color, point);
-      if (existingChildPath != null) {
-        selectPath(existingChildPath);
-        return;
-      }
-
-      if (!isLegalMove(position, color, point, gameInfo.RU)) return;
-      const result = addMove(document, path, color, point);
-      replaceDocument(result.document, result.path);
-      playPlaceStoneSound();
+      const result = addSetupStone(document, path, color, point, position.stones.get(point) ?? null, position.nextColor);
+      replaceDocument(result.document, result.path, {
+        invalidateAnalysisPath: result.path,
+      });
+      if (result.placed) playPlaceStoneSound();
       return;
     }
 
@@ -954,6 +951,7 @@ export function App() {
                       nextColor={nextAutoColor}
                       canReplaceMove={canReplaceMove}
                       showMarkup={showMarkup}
+                      showSetupTools={false}
                       labelText={labelText}
                       shortcutLabels={shortcutLabels}
                       onToolChange={handleToolChange}
@@ -1043,6 +1041,14 @@ export function App() {
 
 function nodeHasMarkup(node: ReturnType<typeof getNodeAtPath>): boolean {
   return markupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0);
+}
+
+function isSetupNode(node: SgfNode): boolean {
+  return (
+    node.data.B == null &&
+    node.data.W == null &&
+    setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
+  );
 }
 
 function resetLabelText(value: string): string {

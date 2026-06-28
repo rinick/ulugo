@@ -1,4 +1,4 @@
-import {addMove, createNewGame, updateGameInfo} from '@ulugo/sgf-core';
+import {addMove, createNewGame, parseSgf, updateGameInfo} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
 import {buildKataGoQuery, normalizeKomi, normalizeRules} from '.';
 
@@ -31,5 +31,42 @@ describe('katago-core', () => {
     const query = buildKataGoQuery(second.document, {id: 'test', path: second.path});
 
     expect(query.analyzeTurns).toEqual([2]);
+  });
+
+  it('merges history before mid-game setup into KataGo initial stones', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];W[pd];AB[qq]AE[dd];B[cc])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0, 0, 0, 0]});
+
+    expect(query.initialStones).toEqual(
+      expect.arrayContaining([
+        ['W', 'Q16'],
+        ['B', 'R3'],
+      ])
+    );
+    expect(query.initialStones).toHaveLength(2);
+    expect(query.initialPlayer).toBe('B');
+    expect(query.moves).toEqual([['B', 'C17']]);
+    expect(query.analyzeTurns).toEqual([1]);
+  });
+
+  it('keeps moves before ordinary games when no setup node is present', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];W[pp])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0, 0]});
+
+    expect(query.initialStones).toEqual([]);
+    expect(query.initialPlayer).toBe('B');
+    expect(query.moves).toEqual([
+      ['B', 'D16'],
+      ['W', 'Q4'],
+    ]);
+    expect(query.analyzeTurns).toEqual([2]);
+  });
+
+  it('uses PL as KataGo initial player after setup', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0, 0]});
+
+    expect(query.initialPlayer).toBe('B');
+    expect(query.moves).toEqual([]);
   });
 });

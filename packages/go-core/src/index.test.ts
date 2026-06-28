@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {addLabel, addMarkup, addMove, createNewGame} from '@ulugo/sgf-core';
+import {addLabel, addMarkup, addMove, createNewGame, parseSgf} from '@ulugo/sgf-core';
 import {deriveBoardPosition, isLegalMove} from '.';
 
 describe('go-core', () => {
@@ -12,6 +12,12 @@ describe('go-core', () => {
     expect(position.stones.get('dd')).toBe('B');
     expect(position.stones.get('pp')).toBe('W');
     expect(position.moveNumber).toBe(2);
+  });
+
+  it('uses PL on setup nodes as the next color', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
+
+    expect(deriveBoardPosition(document, [0, 0]).nextColor).toBe('B');
   });
 
   it('derives labels and markup from the current node', () => {

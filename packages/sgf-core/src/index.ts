@@ -537,14 +537,54 @@ export function replaceMove(
   return {document: next, path};
 }
 
-export function addSetupStone(document: SgfDocument, path: number[], color: SgfColor, point: SgfPoint): SgfDocument {
+export function addSetupStone(
+  document: SgfDocument,
+  path: number[],
+  color: SgfColor,
+  point: SgfPoint,
+  existingColor: SgfColor | null = null,
+  nextColor: SgfColor | null = null
+): {document: SgfDocument; path: number[]; placed: boolean} {
   const prop = color === 'B' ? 'AB' : 'AW';
   const opposite = color === 'B' ? 'AW' : 'AB';
+  const current = getNodeAtPath(document, path);
+  const canEditCurrent =
+    current.children.length === 0 &&
+    current.data.B == null &&
+    current.data.W == null &&
+    (hasSetupProperties(current) || (path.length > 0 && Object.keys(current.data).length === 0));
+  const targetPath =
+    canEditCurrent ? path : [...path, current.children.length];
+  const next = cloneDocument(document);
+  const target =
+    targetPath.length === path.length
+      ? getNodeAtPath(next, targetPath)
+      : (() => {
+          const parent = getNodeAtPath(next, path);
+          const child = createNode();
+          parent.children.push(child);
+          return child;
+        })();
 
-  return updateNode(document, path, (node) => {
-    removePointFromProperties(node, [opposite, 'AE'], point);
-    addPointValue(node, prop, point);
-  });
+  if ((target.data[prop] ?? []).includes(point)) {
+    removePointFromProperties(target, [prop], point);
+    if (nextColor != null && target.data.PL == null) setProperty(target, 'PL', [nextColor]);
+    return {document: next, path: targetPath, placed: false};
+  }
+
+  removePointFromProperties(target, [prop, opposite, 'AE'], point);
+  if (nextColor != null && target.data.PL == null) setProperty(target, 'PL', [nextColor]);
+  if (existingColor === color) {
+    addPointValue(target, 'AE', point);
+    return {document: next, path: targetPath, placed: false};
+  }
+
+  addPointValue(target, prop, point);
+  return {document: next, path: targetPath, placed: true};
+}
+
+export function updateSetupNextColor(document: SgfDocument, path: number[], color: SgfColor): SgfDocument {
+  return updateNode(document, path, (node) => setProperty(node, 'PL', [color]));
 }
 
 export function erasePoint(document: SgfDocument, path: number[], point: SgfPoint): SgfDocument {
@@ -632,7 +672,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
 }
 
 function hasSetupProperties(node: SgfNode): boolean {
-  return ['AB', 'AW', 'AE'].some((key) => (node.data[key] ?? []).length > 0);
+  return ['AB', 'AW', 'AE', 'PL'].some((key) => (node.data[key] ?? []).length > 0);
 }
 
 function setupNodeColor(node: SgfNode): SgfColor | null {

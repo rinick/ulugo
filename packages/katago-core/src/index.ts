@@ -1,6 +1,6 @@
 import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
-import {getBoardSize, getGameInfo} from '@ulugo/sgf-core';
-import {getInitialStonesForPath, getMovesForPath, sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
+import {getBoardSize, getGameInfo, getLine, pointToVertex, vertexToPoint} from '@ulugo/sgf-core';
+import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 
 export interface KataGoSettings {
   executablePath: string;
@@ -29,6 +29,7 @@ export interface KataGoAnalysisQuery {
   boardYSize: number;
   komi: number;
   rules?: string;
+  initialPlayer: SgfColor;
   initialStones: Array<[SgfColor, string]>;
   moves: Array<[SgfColor, string]>;
   analyzeTurns?: number[];
@@ -95,7 +96,8 @@ export interface KataGoConsoleMessage {
 export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOptions): KataGoAnalysisQuery {
   const boardSize = getBoardSize(document);
   const gameInfo = getGameInfo(document);
-  const moves = getMovesForPath(document, options.path);
+  const history = buildKataGoHistory(document, options.path);
+  const moves = [...history.moves];
   if (options.nextMove != null) {
     moves.push([options.nextMove.color, sgfPointToGtp(options.nextMove.point, boardSize)]);
   }
@@ -106,7 +108,8 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
     boardYSize: boardSize,
     komi: normalizeKomi(gameInfo.KM),
     rules: normalizeRules(gameInfo.RU),
-    initialStones: getInitialStonesForPath(document, options.path),
+    initialPlayer: history.initialPlayer,
+    initialStones: history.initialStones,
     moves,
     analyzeTurns: options.analyzeTurns ?? [moves.length],
     maxVisits: options.maxVisits,
@@ -116,6 +119,123 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
     reportDuringSearchEvery: options.live ? 0.25 : undefined,
     overrideSettings: options.overrideSettings,
   };
+}
+
+function buildKataGoHistory(
+  document: SgfDocument,
+  path: number[]
+): {initialPlayer: SgfColor; initialStones: Array<[SgfColor, string]>; moves: Array<[SgfColor, string]>} {
+  const boardSize = getBoardSize(document);
+  const line = getLine(document, path);
+  let setupIndex = -1;
+  for (let index = line.length - 1; index >= 0; index -= 1) {
+    if (hasSetupProperties(line[index])) {
+      setupIndex = index;
+      break;
+    }
+  }
+  if (setupIndex < 0) {
+    return {
+      initialPlayer: 'B',
+      initialStones: [],
+      moves: line.flatMap((node): Array<[SgfColor, string]> => {
+        const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
+        return color == null ? [] : [[color, sgfPointToGtp(node.data[color]?.[0] ?? '', boardSize)]];
+      }),
+    };
+  }
+
+  const stones = new Map<string, SgfColor>();
+  let nextColor: SgfColor = 'B';
+  for (const node of line.slice(0, setupIndex + 1)) {
+    for (const point of node.data.AE ?? []) stones.delete(point);
+    for (const point of node.data.AB ?? []) stones.set(point, 'B');
+    for (const point of node.data.AW ?? []) stones.set(point, 'W');
+
+    const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
+    if (color == null) {
+      nextColor = setupNextColor(node) ?? nextColor;
+      continue;
+    }
+    const point = node.data[color]?.[0] ?? '';
+    nextColor = color === 'B' ? 'W' : 'B';
+    if (point === '') continue;
+    stones.set(point, color);
+    applyCaptures(point, color, stones, boardSize);
+  }
+
+  const initialStones = [...stones.entries()].map(([point, color]): [SgfColor, string] => [
+    color,
+    sgfPointToGtp(point, boardSize),
+  ]);
+  const moves = line.slice(setupIndex + 1).flatMap((node): Array<[SgfColor, string]> => {
+    const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
+    return color == null ? [] : [[color, sgfPointToGtp(node.data[color]?.[0] ?? '', boardSize)]];
+  });
+
+  return {initialPlayer: nextColor, initialStones, moves};
+}
+
+function hasSetupProperties(node: {data: Record<string, string[]>}): boolean {
+  return ['AB', 'AW', 'AE', 'PL'].some((key) => (node.data[key] ?? []).length > 0);
+}
+
+function setupNextColor(node: {data: Record<string, string[]>}): SgfColor | null {
+  const value = node.data.PL?.[0];
+  return value === 'B' || value === 'W' ? value : null;
+}
+
+function applyCaptures(point: string, color: SgfColor, stones: Map<string, SgfColor>, size: number): void {
+  const opponent = color === 'B' ? 'W' : 'B';
+  for (const neighbor of neighbors(point, size)) {
+    if (stones.get(neighbor) !== opponent) continue;
+    const group = collectGroup(neighbor, stones, size);
+    if (group.liberties === 0) {
+      for (const capturedPoint of group.points) stones.delete(capturedPoint);
+    }
+  }
+}
+
+function collectGroup(
+  start: string,
+  stones: Map<string, SgfColor>,
+  size: number
+): {points: string[]; liberties: number} {
+  const color = stones.get(start);
+  if (color == null) return {points: [], liberties: 0};
+
+  const seen = new Set<string>();
+  const liberties = new Set<string>();
+  const queue = [start];
+
+  while (queue.length > 0) {
+    const point = queue.shift();
+    if (point == null || seen.has(point)) continue;
+    seen.add(point);
+
+    for (const neighbor of neighbors(point, size)) {
+      const stone = stones.get(neighbor);
+      if (stone == null) {
+        liberties.add(neighbor);
+      } else if (stone === color && !seen.has(neighbor)) {
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  return {points: [...seen], liberties: liberties.size};
+}
+
+function neighbors(point: string, size: number): string[] {
+  const vertex = pointToVertex(point);
+  if (vertex == null) return [];
+  const [x, y] = vertex;
+  const points: string[] = [];
+  if (x > 0) points.push(vertexToPoint(x - 1, y));
+  if (x + 1 < size) points.push(vertexToPoint(x + 1, y));
+  if (y > 0) points.push(vertexToPoint(x, y - 1));
+  if (y + 1 < size) points.push(vertexToPoint(x, y + 1));
+  return points;
 }
 
 export function normalizeKomi(value: unknown): number {

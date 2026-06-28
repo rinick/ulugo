@@ -134,6 +134,7 @@ interface KataGoAnalysisQuery {
   boardYSize: number;
   komi: number;
   rules?: string;
+  initialPlayer: string;
   initialStones: Array<[string, string]>;
   moves: Array<[string, string]>;
   analyzeTurns?: number[];
@@ -926,6 +927,7 @@ function normalizeAnalysisQuery(query: KataGoAnalysisQuery): KataGoAnalysisQuery
     ...query,
     komi: normalizeKomi(query.komi),
     rules: normalizeRules(query.rules),
+    initialPlayer: query.initialPlayer === 'W' ? 'W' : 'B',
   };
 }
 

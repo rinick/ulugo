@@ -3,6 +3,7 @@ import {
   addLabel,
   addMarkup,
   addMove,
+  addSetupStone,
   buildTree,
   countMoves,
   createNewGame,
@@ -18,6 +19,7 @@ import {
   replaceMove,
   serializeSgf,
   updateComment,
+  updateSetupNextColor,
 } from '.';
 
 describe('sgf-core', () => {
@@ -143,6 +145,47 @@ describe('sgf-core', () => {
       setupColor: 'B',
     });
     expect(tree.children[0].children[0].children[0].moveNumber).toBe(3);
+  });
+
+  it('adds setup stones as setup nodes after regular moves', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const result = addSetupStone(first.document, first.path, 'W', 'pp');
+
+    expect(result.path).toEqual([0, 0]);
+    expect(serializeSgf(result.document)).toContain(';B[dd];AW[pp])');
+  });
+
+  it('keeps adding setup stones to the current setup leaf', () => {
+    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
+    const second = addSetupStone(first.document, first.path, 'W', 'pp');
+
+    expect(second.path).toEqual(first.path);
+    expect(serializeSgf(second.document)).toContain(';AB[dd]AW[pp])');
+  });
+
+  it('reuses an empty setup leaf after toggling its last setup stone off', () => {
+    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
+    const empty = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
+    const second = addSetupStone(empty.document, empty.path, 'W', 'pp');
+
+    expect(second.path).toEqual(first.path);
+    expect(serializeSgf(second.document)).toContain(';AW[pp])');
+  });
+
+  it('uses add-empty when placing the same color on an earlier stone', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const result = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
+  });
+
+  it('saves the player to play on setup nodes', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const setup = addSetupStone(first.document, first.path, 'W', 'pp', null, 'W');
+    const toggled = updateSetupNextColor(setup.document, setup.path, 'B');
+
+    expect(serializeSgf(setup.document)).toContain(';B[dd];PL[W]AW[pp])');
+    expect(serializeSgf(toggled)).toContain(';B[dd];PL[B]AW[pp])');
   });
 
   it('reorders branches', () => {

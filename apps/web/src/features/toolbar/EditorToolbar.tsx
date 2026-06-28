@@ -16,6 +16,7 @@ interface EditorToolbarProps {
   nextColor: 'B' | 'W';
   canReplaceMove: boolean;
   showMarkup: boolean;
+  showSetupTools?: boolean;
   labelText: string;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
   onToolChange: (tool: EditorTool) => void;
@@ -30,6 +31,7 @@ export function EditorToolbar({
   nextColor,
   canReplaceMove,
   showMarkup,
+  showSetupTools = true,
   labelText,
   shortcutLabels = {},
   onToolChange,
@@ -58,20 +60,24 @@ export function EditorToolbar({
         >
           <AutoPlayIcon nextColor={nextColor} onClick={onAutoToolClick} />
         </ToolButton>
-        <ToolButton
-          tool="black"
-          current={tool}
-          icon={<span className="tool-stone black" />}
-          title={withShortcut(t('placeBlackStone'), shortcutLabels.toolBlack)}
-          onToolChange={onToolChange}
-        />
-        <ToolButton
-          tool="white"
-          current={tool}
-          icon={<span className="tool-stone white" />}
-          title={withShortcut(t('placeWhiteStone'), shortcutLabels.toolWhite)}
-          onToolChange={onToolChange}
-        />
+        {showSetupTools ? (
+          <>
+            <ToolButton
+              tool="black"
+              current={tool}
+              icon={<span className="tool-stone black" />}
+              title={withShortcut(t('placeBlackStone'), shortcutLabels.toolBlack)}
+              onToolChange={onToolChange}
+            />
+            <ToolButton
+              tool="white"
+              current={tool}
+              icon={<span className="tool-stone white" />}
+              title={withShortcut(t('placeWhiteStone'), shortcutLabels.toolWhite)}
+              onToolChange={onToolChange}
+            />
+          </>
+        ) : null}
         <ToolButton
           tool="replace"
           current={tool}

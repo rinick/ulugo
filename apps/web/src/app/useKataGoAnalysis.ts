@@ -7,7 +7,7 @@ import {
   type KataGoConsoleMessage,
   type KataGoSettings,
 } from '@ulugo/katago-core';
-import {useCallback, useEffect, useMemo, useRef, useState, type RefObject} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   buildAnalysisChartData,
   buildStoneScoreDeltas,
@@ -51,13 +51,13 @@ interface UseKataGoAnalysisOptions {
   path: number[];
   analysisPaths: number[][];
   analysisChartPaths: number[][];
-  pendingSetupPathRef: RefObject<number[] | null>;
   startFailedMessage: string;
 }
 
 interface AnalysisDocumentChangeOptions {
   clearAnalysisCache?: boolean;
   convertHiddenPassPath?: number[];
+  invalidateAnalysisPath?: number[];
 }
 
 type RequestAnalysis = (
@@ -81,7 +81,6 @@ export function useKataGoAnalysis({
   path,
   analysisPaths,
   analysisChartPaths,
-  pendingSetupPathRef,
   startFailedMessage,
 }: UseKataGoAnalysisOptions) {
   const [analysisSettings, setAnalysisSettings] = useState<AnalysisSettings>(() => readStoredAnalysisSettings(enabled));
@@ -231,13 +230,24 @@ export function useKataGoAnalysis({
         if (enabled && window.ulugo != null) void window.ulugo.katago.stopAnalysis(pendingQueryIds);
       }
 
-      if (options.clearAnalysisCache === true) setAnalysisCache({});
-      else
-        setAnalysisCache((current) =>
-          options.convertHiddenPassPath == null
-            ? current
-            : convertHiddenPassAnalysisToRegularPass(current, next, options.convertHiddenPassPath)
-        );
+      if (options.clearAnalysisCache === true) {
+        setAnalysisCache({});
+      } else {
+        setAnalysisCache((current) => {
+          let updated =
+            options.convertHiddenPassPath == null
+              ? current
+              : convertHiddenPassAnalysisToRegularPass(current, next, options.convertHiddenPassPath);
+          if (options.invalidateAnalysisPath == null) return updated;
+
+          const nodeId = getNodeAtPath(next, options.invalidateAnalysisPath).id;
+          if (updated[nodeId] == null && updated[`${nodeId}:pass`] == null) return updated;
+          updated = {...updated};
+          delete updated[nodeId];
+          delete updated[`${nodeId}:pass`];
+          return updated;
+        });
+      }
     },
     [enabled]
   );
@@ -387,7 +397,6 @@ export function useKataGoAnalysis({
       if (!hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) void ulugo.katago.stopAnalysis();
       return;
     }
-    if (pendingSetupPathRef.current != null && samePath(pendingSetupPathRef.current, path)) return;
     if (fastAnalysisPendingCount > 0 || hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) {
       if (hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live')) {
         const liveQueryIds = getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'live');
@@ -465,7 +474,6 @@ export function useKataGoAnalysis({
     livePassTargetVisits,
     removePendingAnalysisQueries,
     path,
-    pendingSetupPathRef,
     requestAnalysis,
     setAnalysisModeActive,
     startFailedMessage,
