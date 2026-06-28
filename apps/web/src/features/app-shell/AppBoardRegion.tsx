@@ -21,6 +21,7 @@ interface AppBoardRegionProps {
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
+  rules: string | undefined;
   katagoEnabled: boolean;
   analysisMode: boolean;
   analysisDeepMode: boolean;
@@ -48,6 +49,7 @@ export function AppBoardRegion({
   stoneScoreDeltas,
   analysisSettings,
   boardBackground,
+  rules,
   katagoEnabled,
   analysisMode,
   analysisDeepMode,
@@ -91,6 +93,7 @@ export function AppBoardRegion({
         stoneScoreDeltas={stoneScoreDeltas}
         analysisSettings={analysisSettings}
         boardBackground={boardBackground}
+        rules={rules}
         onVertexClick={onBoardClick}
         onVertexRightClick={onBoardRightClick}
       />

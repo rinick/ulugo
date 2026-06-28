@@ -14,6 +14,7 @@ interface GoBoardProps {
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
   boardBackground: BoardBackgroundTheme;
+  rules: string | undefined;
   onVertexClick: (point: string, options: BoardVertexClickOptions) => void;
   onVertexRightClick: (point: string) => void;
 }
@@ -49,6 +50,7 @@ export function GoBoard({
   stoneScoreDeltas,
   analysisSettings,
   boardBackground,
+  rules,
   onVertexClick,
   onVertexRightClick,
 }: GoBoardProps) {
@@ -95,11 +97,12 @@ export function GoBoard({
         analysis,
         analysisSettings,
         position.nextColor,
+        rules,
         position.points,
         position.moveNumber,
         stoneScoreDeltas
       ),
-    [analysis, analysisSettings, document, path, position, stoneScoreDeltas]
+    [analysis, analysisSettings, document, path, position, rules, stoneScoreDeltas]
   );
   const moveHintMap = useMemo(
     () => buildMoveHintMap(position.size, document, path, analysis, analysisSettings),
@@ -202,6 +205,7 @@ function buildAnalysisOverlayMap(
   analysis: KataGoAnalysisResult | null,
   settings: AnalysisSettings,
   nextColor: 'B' | 'W',
+  rules: string | undefined,
   points: BoardPoint[],
   currentMoveNumber: number,
   stoneScoreDeltas: Map<string, number>
@@ -233,7 +237,7 @@ function buildAnalysisOverlayMap(
       if (vertex == null) continue;
       const [x, y] = vertex;
       const showText = index === 0 || isChildMove || hasEnoughVisits;
-      const text = showText ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor) : '';
+      const text = showText ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor, rules) : '';
       result[y][x] = {
         ...(result[y][x] ?? {}),
         strength: analysisStrength(move, analysis, nextColor),
@@ -347,10 +351,11 @@ function analysisMoveText(
   move: KataGoMoveInfo,
   mode: AnalysisSettings['moveDisplay'],
   analysis: KataGoAnalysisResult,
-  nextColor: 'B' | 'W'
+  nextColor: 'B' | 'W',
+  rules: string | undefined
 ): string {
   return mode
-    .map((item) => analysisMoveTextLine(move, item, analysis, nextColor))
+    .map((item) => analysisMoveTextLine(move, item, analysis, nextColor, rules))
     .filter(Boolean)
     .join('\n');
 }
@@ -359,7 +364,8 @@ function analysisMoveTextLine(
   move: KataGoMoveInfo,
   mode: AnalysisDisplayMode,
   analysis: KataGoAnalysisResult,
-  nextColor: 'B' | 'W'
+  nextColor: 'B' | 'W',
+  rules: string | undefined
 ): string {
   if (mode === 'winRateChange') {
     const winrateLost = moveWinrateLost(move, analysis, nextColor);
@@ -374,9 +380,14 @@ function analysisMoveTextLine(
   if (mode === 'visits') return move.visits == null ? '' : formatVisits(move.visits);
 
   const scoreDelta = moveScoreDelta(move, analysis, nextColor, mode);
-  if (scoreDelta != null) return mode === 'value' ? formatValue(scoreDelta) : formatScore(scoreDelta);
+  if (scoreDelta != null) {
+    return mode === 'value' ? formatValue(displayValue(scoreDelta, rules)) : formatScore(scoreDelta);
+  }
 
-  if (move.pointsLost != null) return mode === 'value' ? formatValue(-move.pointsLost) : formatScore(-move.pointsLost);
+  if (move.pointsLost != null) {
+    const score = -move.pointsLost;
+    return mode === 'value' ? formatValue(displayValue(score, rules)) : formatScore(score);
+  }
 
   return '';
 }
@@ -435,6 +446,15 @@ function rootScoreLead(analysis: KataGoAnalysisResult): number | null {
 
 function moveScoreLead(move: KataGoMoveInfo): number | null {
   return move.scoreLead ?? move.scoreMean ?? null;
+}
+
+function displayValue(value: number, rules: string | undefined): number {
+  return usesAreaValueOffset(rules) ? value - 1 : value;
+}
+
+function usesAreaValueOffset(rules: string | undefined): boolean {
+  const key = rules?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
+  return key === 'chinese' || key === 'aga' || key === 'newzealand' || key === 'tromptaylor' || key === 'stonescoring';
 }
 
 function normalizeWinrate(value: number): number {

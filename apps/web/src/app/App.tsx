@@ -915,6 +915,7 @@ export function App() {
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
             boardBackground={boardBackground}
+            rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}
             analysisMode={analysisMode}
             analysisDeepMode={analysisDeepMode}

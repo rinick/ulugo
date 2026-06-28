@@ -552,7 +552,7 @@ export function addSetupStone(
     current.children.length === 0 &&
     current.data.B == null &&
     current.data.W == null &&
-    (hasSetupProperties(current) || (path.length > 0 && Object.keys(current.data).length === 0));
+    (path.length === 0 || hasSetupProperties(current) || Object.keys(current.data).length === 0);
   const targetPath =
     canEditCurrent ? path : [...path, current.children.length];
   const next = cloneDocument(document);

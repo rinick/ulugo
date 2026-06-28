@@ -159,8 +159,9 @@ describe('sgf-core', () => {
     const first = addSetupStone(createNewGame(), [], 'B', 'dd');
     const second = addSetupStone(first.document, first.path, 'W', 'pp');
 
-    expect(second.path).toEqual(first.path);
-    expect(serializeSgf(second.document)).toContain(';AB[dd]AW[pp])');
+    expect(first.path).toEqual([]);
+    expect(second.path).toEqual([]);
+    expect(serializeSgf(second.document)).toContain('AB[dd]AW[pp]');
   });
 
   it('reuses an empty setup leaf after toggling its last setup stone off', () => {
@@ -168,8 +169,8 @@ describe('sgf-core', () => {
     const empty = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
     const second = addSetupStone(empty.document, empty.path, 'W', 'pp');
 
-    expect(second.path).toEqual(first.path);
-    expect(serializeSgf(second.document)).toContain(';AW[pp])');
+    expect(second.path).toEqual([]);
+    expect(serializeSgf(second.document)).toContain('AW[pp]');
   });
 
   it('uses add-empty when placing the same color on an earlier stone', () => {
