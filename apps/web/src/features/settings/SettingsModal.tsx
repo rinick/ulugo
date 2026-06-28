@@ -1,4 +1,4 @@
-import {Button, Checkbox, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
+import {Button, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
@@ -117,6 +117,19 @@ export function SettingsModal({
             />
           </div>
         </Form.Item>
+        <Form.Item label={t('boardBackground')}>
+          <Select
+            size="small"
+            value={settings.boardBackground}
+            onChange={(value) => updateSettings({boardBackground: value as AnalysisSettings['boardBackground']})}
+            options={[
+              ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('auto')}] : []),
+              {value: 'golden', label: t('golden')},
+              {value: 'natural', label: t('natural')},
+              {value: 'flat', label: t('flat')},
+            ]}
+          />
+        </Form.Item>
         <Form.Item>
           <div className="app-settings-row">
             <span>{t('showCoordinates')}</span>
@@ -139,28 +152,17 @@ export function SettingsModal({
             />
           </div>
         </Form.Item>
-        <Form.Item label={t('boardBackground')}>
-          <Select
-            size="small"
-            value={settings.boardBackground}
-            onChange={(value) => updateSettings({boardBackground: value as AnalysisSettings['boardBackground']})}
-            options={[
-              ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('auto')}] : []),
-              {value: 'golden', label: t('golden')},
-              {value: 'natural', label: t('natural')},
-              {value: 'flat', label: t('flat')},
-            ]}
-          />
-        </Form.Item>
         {showKataGoAnalysisSettings ? (
           <>
             <Form.Item>
-              <Checkbox
-                checked={settings.autoAnalyze}
-                onChange={(event) => updateSettings({autoAnalyze: event.target.checked})}
-              >
-                {t('autoAnalyze')}
-              </Checkbox>
+              <div className="app-settings-row">
+                <span>{t('autoAnalyze')}</span>
+                <Switch
+                  size="small"
+                  checked={settings.autoAnalyze}
+                  onChange={(checked) => updateSettings({autoAnalyze: checked})}
+                />
+              </div>
             </Form.Item>
             <Form.Item label={t('topMoveOverlay')}>
               <Select12
