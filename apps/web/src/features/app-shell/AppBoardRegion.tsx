@@ -65,6 +65,11 @@ export function AppBoardRegion({
   onToggleLeftPanel,
 }: AppBoardRegionProps) {
   const {t} = useTranslation();
+  const analysisButtonTitle = analysisDeepMode
+    ? t('analysisButtonDeepTitle')
+    : analysisIdle
+      ? t('analysisButtonIdleTitle')
+      : t('analysis');
 
   return (
     <main
@@ -100,7 +105,7 @@ export function AppBoardRegion({
             .join(' ')}
           icon={<ThunderboltOutlined />}
           type={analysisMode ? 'primary' : 'default'}
-          title={t('analysis')}
+          title={analysisButtonTitle}
           onClick={onAnalysisClick}
         >
           {analysisMode ? <span>{fastAnalysisPendingCount}</span> : ''}
