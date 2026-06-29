@@ -832,6 +832,7 @@ body.minimal .app-content > .right-region .capture-summary {
   flex: 1 0 250px;
   width: 335px;
   height: 250px;
+  max-height: 400px;
   margin: 24px 0 0;
   overflow: hidden;
 }

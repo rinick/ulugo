@@ -608,13 +608,19 @@ export function App() {
   }
 
   function handleBoardClick(point: string, options: BoardVertexClickOptions, colorOverride?: SgfColor): void {
-    if (options.shiftKey || options.clickCount > 1) {
+    if (options.shiftKey) {
       const nextPath = position.stones.has(point)
         ? findCurrentStoneMovePath(document, path, point)
-        : options.shiftKey
-          ? findFutureMovePath(document, path, point, branchMemoryRef.current)
-          : null;
+        : findFutureMovePath(document, path, point, branchMemoryRef.current);
       if (nextPath != null) selectPath(nextPath);
+      return;
+    }
+
+    if (options.clickCount > 1) {
+      if (tool === 'auto' && position.stones.has(point)) {
+        const nextPath = findCurrentStoneMovePath(document, path, point);
+        if (nextPath != null) selectPath(nextPath);
+      }
       return;
     }
 
