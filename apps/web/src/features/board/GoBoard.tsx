@@ -1,7 +1,7 @@
 import {Board, type AnalysisOverlay, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
 import {deriveBoardPosition, type BoardPoint} from '@ulugo/go-core';
 import {getNodeAtPath, pointToVertex, type MarkupKind, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
-import {useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
 import type {AnalysisDisplayMode, AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 
 interface GoBoardProps {
@@ -26,6 +26,10 @@ export interface BoardVertexClickOptions {
 
 export type MoveNumberLimit = 0 | 1 | 5 | 20 | 'all';
 type BoardBackgroundTheme = Exclude<AnalysisSettings['boardBackground'], 'auto'>;
+type Sign = 0 | -1 | 1;
+type PvPreviewCandidate = {triggerKey: string; pv: string[]; nextColor: 'B' | 'W'};
+type ActivePvPreview = PvPreviewCandidate & {visibleCount: number};
+type PvPreviewStone = {sign: Exclude<Sign, 0>; label: string};
 
 const markerTypes: Record<MarkupKind, Marker['type']> = {
   CR: 'circle',
@@ -55,8 +59,12 @@ export function GoBoard({
   onVertexRightClick,
 }: GoBoardProps) {
   const frameRef = useRef<HTMLDivElement>(null);
+  const hoverTimerRef = useRef<number | null>(null);
+  const pvIntervalRef = useRef<number | null>(null);
+  const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
+  const [pvPreview, setPvPreview] = useState<ActivePvPreview | null>(null);
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
     const extraSlots = showCoordinates ? coordinateTrackEm : boardPaddingWithoutCoordinatesEm;
@@ -74,6 +82,12 @@ export function GoBoard({
       ),
     [position]
   );
+  const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
+  const pvCandidateMap = useMemo(
+    () => buildPvCandidateMap(position.size, childMoves, analysis, analysisSettings, position.nextColor),
+    [analysis, analysisSettings, childMoves, position.nextColor, position.size]
+  );
+  const pvPreviewMap = useMemo(() => buildPvPreviewMap(position.size, pvPreview), [position.size, pvPreview]);
 
   const markerMap = useMemo(
     () =>
@@ -94,7 +108,7 @@ export function GoBoard({
     () =>
       buildAnalysisOverlayMap(
         position.size,
-        childMoveSet(document, path, position.size),
+        childMoves,
         analysis,
         analysisSettings,
         position.nextColor,
@@ -132,6 +146,77 @@ export function GoBoard({
       position.stones,
     ]
   );
+  const displaySignMap = useMemo(() => applyPvSignMap(signMap, pvPreviewMap), [pvPreviewMap, signMap]);
+  const displayMarkerMap = useMemo(() => applyPvMarkerMap(markerMap, pvPreviewMap), [markerMap, pvPreviewMap]);
+  const displayAnalysisOverlayMap = useMemo(
+    () => applyPvNullableMap(analysisOverlayMap, pvPreviewMap, position.size, null),
+    [analysisOverlayMap, position.size, pvPreviewMap]
+  );
+  const displayMoveHintMap = useMemo(
+    () => applyPvNullableMap(moveHintMap, pvPreviewMap, position.size, null),
+    [moveHintMap, position.size, pvPreviewMap]
+  );
+  const displayPaintMap = useMemo(
+    () => applyPvNullableMap(paintMap, pvPreviewMap, position.size, 0),
+    [paintMap, position.size, pvPreviewMap]
+  );
+  const selectedVertices = useMemo(() => {
+    if (position.lastMove == null) return [];
+    const vertex = pointToVertex(position.lastMove);
+    if (vertex == null || pvPreviewMap?.[vertex[1]]?.[vertex[0]] != null) return [];
+    return [vertex];
+  }, [position.lastMove, pvPreviewMap]);
+
+  const clearPvTimers = useCallback(() => {
+    if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current);
+    if (pvIntervalRef.current != null) window.clearInterval(pvIntervalRef.current);
+    hoverTimerRef.current = null;
+    pvIntervalRef.current = null;
+  }, []);
+
+  const clearPvPreview = useCallback(() => {
+    clearPvTimers();
+    pendingPvRef.current = null;
+    setPvPreview(null);
+  }, [clearPvTimers]);
+
+  const startPvPreview = useCallback(
+    (candidate: PvPreviewCandidate) => {
+      clearPvTimers();
+      pendingPvRef.current = null;
+      setPvPreview({...candidate, pv: [...candidate.pv], visibleCount: 1});
+
+      if (candidate.pv.length <= 1) return;
+      pvIntervalRef.current = window.setInterval(() => {
+        setPvPreview((current) => {
+          if (current == null || current.triggerKey !== candidate.triggerKey) return current;
+          const visibleCount = Math.min(current.pv.length, current.visibleCount + 1);
+          if (visibleCount >= current.pv.length && pvIntervalRef.current != null) {
+            window.clearInterval(pvIntervalRef.current);
+            pvIntervalRef.current = null;
+          }
+          return {...current, visibleCount};
+        });
+      }, 300);
+    },
+    [clearPvTimers]
+  );
+
+  const schedulePvPreview = useCallback(
+    (candidate: PvPreviewCandidate) => {
+      if (pvPreview?.triggerKey === candidate.triggerKey) return;
+      clearPvTimers();
+      const snapshot = {...candidate, pv: [...candidate.pv]};
+      pendingPvRef.current = snapshot;
+      hoverTimerRef.current = window.setTimeout(() => startPvPreview(snapshot), analysisSettings.pvPreviewDelay * 1000);
+    },
+    [analysisSettings.pvPreviewDelay, clearPvTimers, pvPreview?.triggerKey, startPvPreview]
+  );
+
+  const candidateAtVertex = useCallback(
+    (vertex: Vertex): PvPreviewCandidate | null => pvCandidateMap.get(vertexKey(vertex)) ?? null,
+    [pvCandidateMap]
+  );
   const handleVertexPointerDown = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
       if (event.button === 2) {
@@ -141,16 +226,27 @@ export function GoBoard({
       }
 
       if (event.button !== 0) return;
+      if (event.altKey) {
+        const candidate = candidateAtVertex(vertex);
+        if (candidate != null) startPvPreview(candidate);
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
       onVertexClick(vertexToPoint(vertex[0], vertex[1]), {
         shiftKey: event.shiftKey,
         clickCount: 'detail' in event ? event.detail : 1,
       });
     },
-    [onVertexClick, onVertexRightClick]
+    [candidateAtVertex, onVertexClick, onVertexRightClick, startPvPreview]
   );
   const handleVertexClick = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
+      if (event.altKey) {
+        event.preventDefault();
+        return;
+      }
+
       const clickCount = 'detail' in event ? event.detail : 1;
       if (clickCount <= 1) return;
 
@@ -161,6 +257,27 @@ export function GoBoard({
       });
     },
     [onVertexClick]
+  );
+  const handleVertexMouseEnter = useCallback(
+    (_event: VertexEvent, vertex: Vertex) => {
+      const candidate = candidateAtVertex(vertex);
+      if (candidate != null) schedulePvPreview(candidate);
+    },
+    [candidateAtVertex, schedulePvPreview]
+  );
+  const handleVertexMouseMove = useCallback(
+    (_event: VertexEvent, vertex: Vertex) => {
+      const candidate = candidateAtVertex(vertex);
+      if (candidate != null) schedulePvPreview(candidate);
+    },
+    [candidateAtVertex, schedulePvPreview]
+  );
+  const handleVertexMouseLeave = useCallback(
+    (_event: VertexEvent, vertex: Vertex) => {
+      const key = vertexKey(vertex);
+      if (pendingPvRef.current?.triggerKey === key || pvPreview?.triggerKey === key) clearPvPreview();
+    },
+    [clearPvPreview, pvPreview?.triggerKey]
   );
 
   useLayoutEffect(() => {
@@ -177,6 +294,8 @@ export function GoBoard({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => clearPvPreview, [clearPvPreview, document, path]);
+
   return (
     <div className="board-frame" ref={frameRef}>
       <div className="board-surface" onContextMenu={(event) => event.preventDefault()}>
@@ -184,13 +303,16 @@ export function GoBoard({
           className={`ulugo-board-${boardBackground}`}
           vertexSize={vertexSize}
           showCoordinates={showCoordinates}
-          signMap={signMap}
-          markerMap={markerMap}
-          analysisOverlayMap={analysisOverlayMap}
-          moveHintMap={moveHintMap}
-          paintMap={paintMap}
-          selectedVertices={position.lastMove == null ? [] : [pointToVertex(position.lastMove)!]}
+          signMap={displaySignMap}
+          markerMap={displayMarkerMap}
+          analysisOverlayMap={displayAnalysisOverlayMap}
+          moveHintMap={displayMoveHintMap}
+          paintMap={displayPaintMap}
+          selectedVertices={selectedVertices}
           onVertexClick={handleVertexClick}
+          onVertexMouseEnter={handleVertexMouseEnter}
+          onVertexMouseLeave={handleVertexMouseLeave}
+          onVertexMouseMove={handleVertexMouseMove}
           onVertexPointerDown={handleVertexPointerDown}
         />
       </div>
@@ -314,6 +436,102 @@ function buildMoveHintMap(
   }
 
   return hasHints ? result : undefined;
+}
+
+function buildPvCandidateMap(
+  size: number,
+  childMoves: Set<string>,
+  analysis: KataGoAnalysisResult | null,
+  settings: AnalysisSettings,
+  nextColor: 'B' | 'W'
+): Map<string, PvPreviewCandidate> {
+  const result = new Map<string, PvPreviewCandidate>();
+  if (!settings.showTopMoves || analysis?.moveInfos == null) return result;
+
+  const limit = analysisMoveLimit(settings.maxMoves);
+  let limitedMoveCount = 0;
+  const seenMoves = new Set<string>();
+
+  for (const move of analysis.moveInfos) {
+    const moveKey = move.move.toLowerCase();
+    if (seenMoves.has(moveKey)) continue;
+    seenMoves.add(moveKey);
+
+    const vertex = gtpMoveToVertex(move.move, size, moveKey);
+    if (vertex == null) continue;
+
+    const isChildMove = childMoves.has(moveKey);
+    const visits = move.visits ?? 0;
+    const hasEnoughVisitsForHint = visits >= 1 + (settings.minVisits >> 2);
+    const withinLimit = limit == null || limitedMoveCount < limit;
+    if (!withinLimit && !isChildMove && !hasEnoughVisitsForHint) continue;
+    if (withinLimit) limitedMoveCount += 1;
+    if (move.pv == null || move.pv.length === 0) continue;
+
+    result.set(vertexKey(vertex), {triggerKey: vertexKey(vertex), pv: move.pv, nextColor});
+  }
+
+  return result;
+}
+
+function buildPvPreviewMap(size: number, preview: ActivePvPreview | null): Array<Array<PvPreviewStone | null>> | null {
+  if (preview == null) return null;
+
+  const result = emptyMap<PvPreviewStone | null>(size, null);
+  for (let index = 0; index < Math.min(preview.visibleCount, preview.pv.length); index++) {
+    const vertex = gtpMoveToVertex(preview.pv[index], size);
+    if (vertex == null) continue;
+    const [x, y] = vertex;
+    result[y][x] = {
+      sign: colorToSign(index % 2 === 0 ? preview.nextColor : oppositeSgfColor(preview.nextColor)),
+      label: String(index + 1),
+    };
+  }
+
+  return result;
+}
+
+function applyPvSignMap(signMap: Sign[][], pvMap: Array<Array<PvPreviewStone | null>> | null): Sign[][] {
+  if (pvMap == null) return signMap;
+  return signMap.map((row, y) => row.map((sign, x) => pvMap[y][x]?.sign ?? sign));
+}
+
+function applyPvMarkerMap(
+  markerMap: Marker[][],
+  pvMap: Array<Array<PvPreviewStone | null>> | null
+): Marker[][] {
+  if (pvMap == null) return markerMap;
+  return markerMap.map((row, y) =>
+    row.map((marker, x) => (pvMap[y][x] == null ? marker : {type: 'label', label: pvMap[y][x]?.label}))
+  );
+}
+
+function applyPvNullableMap<T>(
+  map: T[][] | undefined,
+  pvMap: Array<Array<PvPreviewStone | null>> | null,
+  size: number,
+  value: T
+): T[][] | undefined {
+  if (pvMap == null) return map;
+  const result = map == null ? emptyMap(size, value) : map.map((row) => [...row]);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (pvMap[y][x] != null) result[y][x] = value;
+    }
+  }
+  return result;
+}
+
+function vertexKey(vertex: Vertex): string {
+  return `${vertex[0]},${vertex[1]}`;
+}
+
+function colorToSign(color: 'B' | 'W'): Exclude<Sign, 0> {
+  return color === 'B' ? 1 : -1;
+}
+
+function oppositeSgfColor(color: 'B' | 'W'): 'B' | 'W' {
+  return color === 'B' ? 'W' : 'B';
 }
 
 function buildOwnershipPaintMap(

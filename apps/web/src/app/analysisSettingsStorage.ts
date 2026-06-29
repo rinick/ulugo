@@ -100,6 +100,7 @@ export function normalizeAnalysisSettings(
     ...defaultAnalysisSettings,
     ...settings,
     moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
+    pvPreviewDelay: normalizePvPreviewDelay(settings.pvPreviewDelay),
     mode,
     ...activeModeSettings,
     modeSettings,
@@ -166,6 +167,12 @@ function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
   });
   const unique = [...new Set(normalized)].slice(0, 2);
   return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
+}
+
+function normalizePvPreviewDelay(value: unknown): number {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return defaultAnalysisSettings.pvPreviewDelay;
+  return Math.max(0.1, Math.min(2, numberValue));
 }
 
 function normalizeModeSettings(

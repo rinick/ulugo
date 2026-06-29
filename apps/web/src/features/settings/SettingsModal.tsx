@@ -188,6 +188,21 @@ export function SettingsModal({
                 onPressEnter={commitMinVisits}
               />
             </Form.Item>
+            <Form.Item label={t('pvPreviewDelay')}>
+              <InputNumber
+                size="small"
+                min={0.1}
+                max={2}
+                step={0.1}
+                value={settings.pvPreviewDelay}
+                addonAfter="s"
+                onChange={(value) =>
+                  updateSettings({
+                    pvPreviewDelay: Math.max(0.1, Math.min(2, Number(value) || defaultAnalysisSettings.pvPreviewDelay)),
+                  })
+                }
+              />
+            </Form.Item>
           </>
         ) : null}
         <Form.Item label={t('stoneOverlayCount')}>

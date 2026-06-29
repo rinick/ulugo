@@ -14,6 +14,7 @@ export interface KataGoRootInfo {
 
 export interface KataGoMoveInfo {
   move: string;
+  pv?: string[];
   scoreLead?: number;
   scoreMean?: number;
   winrate?: number;
@@ -52,6 +53,7 @@ export interface AnalysisSettings {
   boardBackground: BoardBackground;
   autoAnalyze: boolean;
   autoIncrementMarkupText: boolean;
+  pvPreviewDelay: number;
   modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
 }
 
@@ -120,6 +122,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   boardBackground: 'auto',
   autoAnalyze: true,
   autoIncrementMarkupText: true,
+  pvPreviewDelay: 0.5,
   modeSettings: {
     review: defaultReviewModeSettings,
     edit: defaultEditModeSettings,
