@@ -315,6 +315,9 @@ textarea,
 .auto-tool-icon.black-next .auto-stone-black,
 .auto-tool-icon.white-next .auto-stone-white {
   z-index: 2;
+  width: 16px;
+  height: 16px;
+  top: 0;
 }
 
 .auto-tool-icon.black-next .auto-stone-white,

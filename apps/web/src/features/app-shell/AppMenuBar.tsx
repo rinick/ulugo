@@ -14,9 +14,11 @@ interface AppMenuBarProps {
   showAiConfig: boolean;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
+  onOpenFromSgfText: () => void;
   onOpenFromGoogleDrive: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onSaveToClipboard: () => void;
   onSaveToGoogleDrive: () => void;
   onGameInfo: () => void;
   onAiConfig: () => void;
@@ -27,9 +29,11 @@ export function AppMenuBar({
   showAiConfig,
   onNew,
   onOpen,
+  onOpenFromSgfText,
   onOpenFromGoogleDrive,
   onSave,
   onSaveAs,
+  onSaveToClipboard,
   onSaveToGoogleDrive,
   onGameInfo,
   onAiConfig,
@@ -54,8 +58,17 @@ export function AppMenuBar({
         size="small"
         icon={<FolderOpenOutlined />}
         menu={{
-          items: [{key: 'googleDrive', label: t('openFromGoogleDrive')}],
-          onClick: onOpenFromGoogleDrive,
+          items: [
+            {key: 'sgfText', label: t('openFromSgfText')},
+            {key: 'googleDrive', label: t('openFromGoogleDrive')},
+          ],
+          onClick: (info) => {
+            if (info.key === 'sgfText') {
+              onOpenFromSgfText();
+            } else if (info.key === 'googleDrive') {
+              onOpenFromGoogleDrive();
+            }
+          },
         }}
         onClick={onOpen}
       >
@@ -67,11 +80,14 @@ export function AppMenuBar({
         menu={{
           items: [
             {key: 'saveAs', label: t('saveAs')},
+            {key: 'clipboard', label: t('saveToClipboard')},
             {key: 'googleDrive', label: t('saveToGoogleDrive')},
           ],
           onClick: (info) => {
             if (info.key === 'saveAs') {
               onSaveAs();
+            } else if (info.key === 'clipboard') {
+              onSaveToClipboard();
             } else if (info.key === 'googleDrive') {
               onSaveToGoogleDrive();
             }

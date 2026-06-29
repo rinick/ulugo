@@ -886,9 +886,11 @@ export function App() {
                 showAiConfig={capabilities.katago}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
+                onOpenFromSgfText={() => void gameRecordFiles.openFromSgfText()}
                 onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
                 onSave={() => void gameRecordFiles.save()}
                 onSaveAs={() => void gameRecordFiles.saveAs()}
+                onSaveToClipboard={() => void gameRecordFiles.saveToClipboard()}
                 onSaveToGoogleDrive={() => void gameRecordFiles.saveToGoogleDrive()}
                 onGameInfo={() => setGameInfoOpen(true)}
                 onAiConfig={() => setKataGoSettingsOpen(true)}

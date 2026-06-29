@@ -3,6 +3,7 @@ import {serializeSgf, type SgfDocument} from '@ulugo/sgf-core';
 import {useEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
+import {promptSgfText} from '../features/files/promptSgfText';
 import {
   currentSgfFileName,
   hasDraggedFiles,
@@ -30,8 +31,10 @@ interface GameRecordFiles {
   clearCurrentFile: () => void;
   save: () => Promise<void>;
   saveAs: () => Promise<void>;
+  saveToClipboard: () => Promise<void>;
   saveToGoogleDrive: () => Promise<void>;
   open: () => Promise<void>;
+  openFromSgfText: () => Promise<void>;
   openFromGoogleDrive: () => Promise<void>;
   importFile: (file: File | undefined) => Promise<void>;
   handleDragOver: (event: DragEvent<HTMLElement>) => void;
@@ -115,6 +118,15 @@ export function useGameRecordFiles({
     }
   }
 
+  async function saveToClipboard(): Promise<void> {
+    try {
+      await writeTextToClipboard(serializeSgf(document));
+      message.success(t('savedToClipboard'));
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('exportFailed'));
+    }
+  }
+
   async function exportFile(
     fileName: string,
     options: {saveAs?: boolean; electronFilePath?: string | null} = {}
@@ -183,6 +195,21 @@ export function useGameRecordFiles({
     }
   }
 
+  async function openFromSgfText(): Promise<void> {
+    const text = await promptSgfText({
+      title: t('openFromSgfText'),
+      okText: t('open'),
+      cancelText: t('cancel'),
+    });
+    if (text == null) return;
+
+    try {
+      importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('importFailed'));
+    }
+  }
+
   async function importFile(file: File | undefined): Promise<void> {
     if (file == null) return;
 
@@ -221,8 +248,10 @@ export function useGameRecordFiles({
     clearCurrentFile: () => setCurrentFile(null),
     save,
     saveAs,
+    saveToClipboard,
     saveToGoogleDrive,
     open,
+    openFromSgfText,
     openFromGoogleDrive,
     importFile,
     handleDragOver,
@@ -234,4 +263,23 @@ export function useGameRecordFiles({
 function electronFilePath(file: File): string | undefined {
   const path = window.ulugo?.getPathForFile(file) ?? (file as File & {path?: unknown}).path;
   return typeof path === 'string' && path !== '' ? path : undefined;
+}
+
+async function writeTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard != null) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const element = window.document.createElement('textarea');
+  element.value = text;
+  element.style.position = 'fixed';
+  element.style.left = '-9999px';
+  window.document.body.appendChild(element);
+  element.select();
+  try {
+    if (!window.document.execCommand('copy')) throw new Error('Clipboard copy failed.');
+  } finally {
+    element.remove();
+  }
 }
