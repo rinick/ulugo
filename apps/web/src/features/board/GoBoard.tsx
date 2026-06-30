@@ -26,7 +26,7 @@ interface GoBoardProps {
   boardBackground: BoardBackgroundTheme;
   rules: string | undefined;
   onVertexClick: (point: string, options: BoardVertexClickOptions) => void;
-  onVertexRightClick: (point: string) => void;
+  onVertexRightClick: (point: string, options: BoardVertexClickOptions) => void;
 }
 
 export interface BoardVertexClickOptions {
@@ -253,7 +253,10 @@ export function GoBoard({
     (event: VertexEvent, vertex: Vertex) => {
       if (event.button === 2) {
         event.preventDefault();
-        onVertexRightClick(vertexToPoint(vertex[0], vertex[1]));
+        onVertexRightClick(vertexToPoint(vertex[0], vertex[1]), {
+          shiftKey: event.shiftKey,
+          clickCount: 'detail' in event ? event.detail : 1,
+        });
         return;
       }
 

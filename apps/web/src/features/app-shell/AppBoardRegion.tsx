@@ -26,7 +26,7 @@ interface AppBoardRegionProps {
   leftPanelOpen: boolean;
   minimalMode: boolean;
   onBoardClick: (point: string, options: BoardVertexClickOptions) => void;
-  onBoardRightClick: (point: string) => void;
+  onBoardRightClick: (point: string, options: BoardVertexClickOptions) => void;
   onDragOver: (event: DragEvent<HTMLElement>) => void;
   onDrop: (event: DragEvent<HTMLElement>) => void;
   onPreviousMove: () => void;
