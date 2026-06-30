@@ -174,7 +174,7 @@ function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
 function normalizePvPreviewDelay(value: unknown): number {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return defaultAnalysisSettings.pvPreviewDelay;
-  return Math.max(0.1, Math.min(2, numberValue));
+  return Math.max(0, Math.min(2, numberValue));
 }
 
 function normalizeModeSettings(

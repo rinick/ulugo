@@ -189,19 +189,25 @@ export function SettingsModal({
               />
             </Form.Item>
             <Form.Item label={t('pvPreviewDelay')}>
-              <InputNumber
-                size="small"
-                min={0.1}
-                max={2}
-                step={0.1}
-                value={settings.pvPreviewDelay}
-                addonAfter="s"
-                onChange={(value) =>
-                  updateSettings({
-                    pvPreviewDelay: Math.max(0.1, Math.min(2, Number(value) || defaultAnalysisSettings.pvPreviewDelay)),
-                  })
-                }
-              />
+              <div className="app-settings-inline-help-row">
+                <InputNumber
+                  size="small"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={settings.pvPreviewDelay}
+                  addonAfter="s"
+                  onChange={(value) => {
+                    const numberValue = Number(value);
+                    updateSettings({
+                      pvPreviewDelay: Number.isFinite(numberValue)
+                        ? Math.max(0, Math.min(2, numberValue))
+                        : defaultAnalysisSettings.pvPreviewDelay,
+                    });
+                  }}
+                />
+                <span className="app-settings-inline-help">{t('pvPreviewDelayZeroHelp')}</span>
+              </div>
             </Form.Item>
           </>
         ) : null}

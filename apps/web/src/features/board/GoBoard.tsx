@@ -227,6 +227,11 @@ export function GoBoard({
 
   const schedulePvPreview = useCallback(
     (candidate: PvPreviewCandidate) => {
+      if (analysisSettings.pvPreviewDelay <= 0) {
+        clearPvTimers();
+        pendingPvRef.current = null;
+        return;
+      }
       if (pvPreview?.triggerKey === candidate.triggerKey) return;
       clearPvTimers();
       const snapshot = {...candidate, pv: [...candidate.pv]};
