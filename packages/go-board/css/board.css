@@ -295,44 +295,40 @@
   background: #f02311;
 }
 
-/* Paint map */
+/* Territory map */
 
 .ulugo-vertex .ulugo-hot-zone {
-  pointer-events: none;
-}
-.ulugo-vertex .ulugo-hot-zone::before {
-  content: '';
   box-sizing: border-box;
-  display: block;
-  position: absolute;
-  inset: 5%;
+  left: 5%;
+  top: 5%;
+  width: 90%;
+  height: 90%;
   border: 0.05em solid transparent;
   opacity: var(--ulugo-hot-zone-opacity);
   box-shadow: 0 0 0.12em #fff;
+  pointer-events: none;
 }
-.ulugo-vertex.ulugo-hot-zone_loss .ulugo-hot-zone::before {
+.ulugo-vertex.ulugo-hot-zone_loss .ulugo-hot-zone {
   border-color: #0878ff;
 }
-.ulugo-vertex.ulugo-hot-zone_gain .ulugo-hot-zone::before {
+.ulugo-vertex.ulugo-hot-zone_gain .ulugo-hot-zone {
   border-color: #762;
 }
 
-.ulugo-vertex .ulugo-paint {
+.ulugo-vertex .ulugo-territory {
+  left: 40%;
+  top: 40%;
+  width: 20%;
+  height: 20%;
+  opacity: var(--ulugo-territory-opacity);
+  background: transparent;
   pointer-events: none;
   z-index: 2;
 }
-.ulugo-vertex .ulugo-paint::before {
-  content: '';
-  display: block;
-  position: absolute;
-  inset: 40%;
-  opacity: var(--ulugo-paint-opacity);
-  background: transparent;
-}
-.ulugo-vertex.ulugo-paint_1 .ulugo-paint::before {
+.ulugo-vertex.ulugo-territory_1 .ulugo-territory {
   background: var(--ulugo-black-background-color);
 }
-.ulugo-vertex.ulugo-paint_-1 .ulugo-paint::before {
+.ulugo-vertex.ulugo-territory_-1 .ulugo-territory {
   background: var(--ulugo-white-background-color);
 }
 

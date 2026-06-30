@@ -243,7 +243,7 @@ export function vertexKey(vertex: Vertex): string {
   return `${vertex[0]},${vertex[1]}`;
 }
 
-export function buildOwnershipPaintMap(
+export function buildOwnershipMap(
   size: number,
   analysis: KataGoAnalysisResult | null,
   settings: AnalysisSettings,
@@ -254,7 +254,7 @@ export function buildOwnershipPaintMap(
   analysisOverlayMap: Array<Array<AnalysisOverlay | null>> | undefined
 ): number[][] | undefined {
   if (!settings.showExpectedTerritory || analysis?.ownership == null) return undefined;
-  const cappedPaintPoints = new Set(
+  const cappedTerritoryPoints = new Set(
     points
       .filter((point) =>
         shouldShowMoveNumber(point.moveNumber, point.stone != null, currentMoveNumber, moveNumberLimit)
@@ -265,16 +265,16 @@ export function buildOwnershipPaintMap(
   return Array.from({length: size}, (_, y) =>
     Array.from({length: size}, (_, x) => {
       const point = vertexToPoint(x, y);
-      const shouldCapPaintOpacity = cappedPaintPoints.has(point) || analysisOverlayMap?.[y]?.[x]?.text != null;
+      const shouldCapTerritoryOpacity = cappedTerritoryPoints.has(point) || analysisOverlayMap?.[y]?.[x]?.text != null;
 
       const value = analysis.ownership?.[y * size + x] ?? 0;
       if (Math.abs(value) < 0.15) return 0;
 
-      const paint = Math.max(-1, Math.min(1, value));
+      const territory = Math.max(-1, Math.min(1, value));
       const stone = stones.get(point);
-      if (stone === 'B' && paint > 0) return 0;
-      if (stone === 'W' && paint < 0) return 0;
-      return shouldCapPaintOpacity ? Math.sign(paint) * Math.min(Math.abs(paint), 0.3) : paint;
+      if (stone === 'B' && territory > 0) return 0;
+      if (stone === 'W' && territory < 0) return 0;
+      return shouldCapTerritoryOpacity ? Math.sign(territory) * Math.min(Math.abs(territory), 0.3) : territory;
     })
   );
 }

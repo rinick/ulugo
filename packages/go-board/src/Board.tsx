@@ -49,7 +49,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   animationDuration?: number;
   signMap?: Map<Sign>;
   markerMap?: Map<Marker | null>;
-  paintMap?: Map<number>;
+  territoryMap?: Map<number>;
   hotZoneMap?: Map<HotZone | null>;
   ghostStoneMap?: Map<GhostStone | null>;
   analysisOverlayMap?: Map<AnalysisOverlay | null>;
@@ -135,7 +135,7 @@ export default class Board extends Component<BoardProps, BoardState> {
       coordY,
       busy,
       signMap,
-      paintMap,
+      territoryMap,
       hotZoneMap,
       analysisOverlayMap,
       moveHintMap,
@@ -245,7 +245,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     animate: animatedVertices.some(equalsVertex),
 
                     hotZone: hotZoneMap?.[y]?.[x],
-                    paint: paintMap?.[y]?.[x],
+                    territory: territoryMap?.[y]?.[x],
 
                     selected,
                     selectedLeft: selected && selectedVertices.some((v) => vertexEquals(v, [x - 1, y])),

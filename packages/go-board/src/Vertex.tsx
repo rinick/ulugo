@@ -43,7 +43,7 @@ export interface VertexProps extends VertexEventHandlers {
   sign?: Sign;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
-  paint?: number;
+  territory?: number;
   dimmed?: boolean;
   marker?: MarkerData | null;
   ghostStone?: GhostStone | null;
@@ -68,7 +68,7 @@ function Vertex(props: VertexProps) {
     sign = 0,
     analysisOverlay,
     moveHint,
-    paint = 0,
+    territory = 0,
     dimmed,
     marker,
     ghostStone,
@@ -92,7 +92,7 @@ function Vertex(props: VertexProps) {
     );
   }
 
-  let paintOpacity = Math.abs(paint);
+  let territoryOpacity = Math.abs(territory);
 
   let markerMarkup = () =>
     !!marker &&
@@ -122,7 +122,7 @@ function Vertex(props: VertexProps) {
           'ulugo-dimmed': dimmed,
           'ulugo-animate': animate,
 
-          [`ulugo-paint_${paint > 0 ? 1 : -1}`]: !!paint,
+          [`ulugo-territory_${territory > 0 ? 1 : -1}`]: !!territory,
 
           'ulugo-selected': selected,
           'ulugo-selectedleft': selectedLeft,
@@ -188,13 +188,13 @@ function Vertex(props: VertexProps) {
         )
     ),
 
-    !!paint &&
+    !!territory &&
       h('div', {
-        key: 'paint',
-        className: 'ulugo-paint',
+        key: 'territory',
+        className: 'ulugo-territory',
         style: {
           ...absoluteStyle(),
-          '--ulugo-paint-opacity': paintOpacity,
+          '--ulugo-territory-opacity': territoryOpacity,
         } as CSSProperties,
       }),
 
@@ -263,7 +263,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     sameMarker(previous.marker, next.marker) &&
     sameGhostStone(previous.ghostStone, next.ghostStone) &&
     sameHotZone(previous.hotZone, next.hotZone) &&
-    previous.paint === next.paint &&
+    previous.territory === next.territory &&
     previous.dimmed === next.dimmed &&
     previous.animate === next.animate &&
     previous.selected === next.selected &&
