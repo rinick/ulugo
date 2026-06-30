@@ -46,6 +46,7 @@ export interface AnalysisSettings {
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showHotZone: boolean;
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
@@ -63,6 +64,7 @@ export interface AnalysisModeSettings {
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showHotZone: boolean;
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
@@ -75,6 +77,7 @@ export const defaultReviewModeSettings: AnalysisModeSettings = {
   showNextMove: true,
   showTopMoves: true,
   showExpectedTerritory: true,
+  showHotZone: false,
   showScore: true,
   showPointLoss: false,
   showWinrate: true,
@@ -87,6 +90,7 @@ export const defaultEditModeSettings: AnalysisModeSettings = {
   showNextMove: false,
   showTopMoves: false,
   showExpectedTerritory: false,
+  showHotZone: false,
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
@@ -99,6 +103,7 @@ export const defaultMinimalModeSettings: AnalysisModeSettings = {
   showNextMove: false,
   showTopMoves: false,
   showExpectedTerritory: false,
+  showHotZone: false,
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
@@ -115,6 +120,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   showNextMove: defaultEditModeSettings.showNextMove,
   showTopMoves: defaultEditModeSettings.showTopMoves,
   showExpectedTerritory: defaultEditModeSettings.showExpectedTerritory,
+  showHotZone: defaultEditModeSettings.showHotZone,
   showScore: defaultEditModeSettings.showScore,
   showPointLoss: defaultEditModeSettings.showPointLoss,
   showWinrate: defaultEditModeSettings.showWinrate,

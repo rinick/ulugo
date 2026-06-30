@@ -12,6 +12,7 @@ import {
   buildAnalysisChartData,
   buildStoneScoreDeltas,
   convertHiddenPassAnalysisToRegularPass,
+  findPassChildPath,
   getAnalysisVisits,
   getPendingAnalysisQueryIds,
   hasPendingAnalysisQuery,
@@ -109,7 +110,14 @@ export function useKataGoAnalysis({
     () => (enabled ? (analysisCache[currentNodeId]?.result ?? null) : null),
     [analysisCache, currentNodeId, enabled]
   );
+  const currentPassAnalysis = useMemo(() => {
+    if (!enabled) return null;
+    const passChildPath = findPassChildPath(document, path);
+    const nodeId = passChildPath == null ? hiddenPassAnalysisKey(document, path) : nodeKey(document, passChildPath);
+    return analysisCache[nodeId]?.result ?? null;
+  }, [analysisCache, document, enabled, path]);
   const analysisTargetVisits = Math.max(1, kataGoSettings.fastVisits || defaultKataGoSettings.fastVisits);
+  const needsPassAnalysis = analysisSettings.moveDisplay.includes('value') || analysisSettings.showHotZone;
   const analysisPendingCounts = useMemo(() => {
     if (!enabled) return {normal: 0, hiddenPass: 0};
 
@@ -118,7 +126,7 @@ export function useKataGoAnalysis({
       const cached = analysisCache[nodeId];
       return cached == null || cached.visits < analysisTargetVisits;
     }).length;
-    const hiddenPass = analysisSettings.moveDisplay.includes('value')
+    const hiddenPass = needsPassAnalysis
       ? analysisPaths.filter((movePath) =>
           shouldCountHiddenPassAnalysis(document, movePath, analysisCache, analysisTargetVisits)
         ).length
@@ -128,10 +136,10 @@ export function useKataGoAnalysis({
     analysisCache,
     analysisPaths,
     analysisQueueRevision,
-    analysisSettings.moveDisplay,
     analysisTargetVisits,
     document,
     enabled,
+    needsPassAnalysis,
   ]);
   const fastAnalysisPendingCount = analysisPendingCounts.normal + analysisPendingCounts.hiddenPass;
   const analysisIdle =
@@ -140,7 +148,7 @@ export function useKataGoAnalysis({
     !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast') &&
     !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live') &&
     (analysisCache[currentNodeId]?.visits ?? 0) >= liveAnalysisTargetVisits &&
-    (!analysisSettings.moveDisplay.includes('value') ||
+    (!needsPassAnalysis ||
       !shouldCountHiddenPassAnalysis(document, path, analysisCache, livePassTargetVisits));
   const analysisChartData = useMemo<AnalysisChartPoint[]>(
     () => (enabled ? buildAnalysisChartData(document, analysisChartPaths, analysisCache, analysisTargetVisits) : []),
@@ -408,7 +416,7 @@ export function useKataGoAnalysis({
 
     const targetVisits = liveAnalysisTargetVisits;
     const liveNodeId = currentNodeId;
-    const passRequest = analysisSettings.moveDisplay.includes('value')
+    const passRequest = needsPassAnalysis
       ? livePassAnalysisRequest(document, path, analysisCache, livePassTargetVisits)
       : null;
     const needsMain = (analysisCache[liveNodeId]?.visits ?? 0) < targetVisits;
@@ -463,7 +471,7 @@ export function useKataGoAnalysis({
     analysisQueueRevision,
     appendKataGoConsoleMessage,
     analysisCache,
-    analysisSettings.moveDisplay,
+    needsPassAnalysis,
     clearPendingAnalysisQueries,
     currentNodeId,
     document,
@@ -500,7 +508,7 @@ export function useKataGoAnalysis({
       const jobs = buildFastAnalysisJobs({
         analysisPaths,
         currentPath: path,
-        valueMode: analysisSettings.moveDisplay.includes('value'),
+        passAnalysisMode: needsPassAnalysis,
         document,
         analysisCache,
         targetVisits,
@@ -531,7 +539,7 @@ export function useKataGoAnalysis({
     analysisCache,
     analysisMode,
     analysisPaths,
-    analysisSettings.moveDisplay,
+    needsPassAnalysis,
     appendKataGoConsoleMessage,
     document,
     enabled,
@@ -557,6 +565,7 @@ export function useKataGoAnalysis({
     toggleAnalysisMode,
     toggleDeepAnalysisMode,
     currentAnalysis,
+    currentPassAnalysis,
     stoneScoreDeltas,
     analysisChartData,
     selectedChartMoveNumber,

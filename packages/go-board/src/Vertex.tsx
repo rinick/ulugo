@@ -29,6 +29,11 @@ export interface MoveHint {
   sign?: Sign;
 }
 
+export interface HotZone {
+  type: 'gain' | 'loss';
+  opacity: number;
+}
+
 export type VertexEventHandlers = Partial<Record<`on${VertexEventName}`, VertexHandler>>;
 
 export interface VertexProps extends VertexEventHandlers {
@@ -42,6 +47,7 @@ export interface VertexProps extends VertexEventHandlers {
   dimmed?: boolean;
   marker?: MarkerData | null;
   ghostStone?: GhostStone | null;
+  hotZone?: HotZone | null;
   animate?: boolean;
   selected?: boolean;
   selectedLeft?: boolean;
@@ -66,6 +72,7 @@ function Vertex(props: VertexProps) {
     dimmed,
     marker,
     ghostStone,
+    hotZone,
     animate,
     selected,
     selectedLeft,
@@ -130,6 +137,7 @@ function Vertex(props: VertexProps) {
           [`ulugo-ghost_${ghostStone?.sign}`]: !!ghostStone,
           [`ulugo-ghost_${ghostStone?.type}`]: !!ghostStone?.type,
           'ulugo-ghost_faint': !!ghostStone?.faint,
+          [`ulugo-hot-zone_${hotZone?.type}`]: !!hotZone,
         }),
       },
       ...vertexEvents.map((eventName) => ({
@@ -174,6 +182,16 @@ function Vertex(props: VertexProps) {
           sign
         )
     ),
+
+    !!hotZone &&
+      h('div', {
+        key: 'hotZone',
+        className: 'ulugo-hot-zone',
+        style: {
+          ...absoluteStyle(),
+          '--ulugo-hot-zone-opacity': hotZone.opacity,
+        } as CSSProperties,
+      }),
 
     !!paint &&
       h('div', {
@@ -249,6 +267,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     sameMoveHint(previous.moveHint, next.moveHint) &&
     sameMarker(previous.marker, next.marker) &&
     sameGhostStone(previous.ghostStone, next.ghostStone) &&
+    sameHotZone(previous.hotZone, next.hotZone) &&
     previous.paint === next.paint &&
     previous.dimmed === next.dimmed &&
     previous.animate === next.animate &&
@@ -301,4 +320,8 @@ function sameGhostStone(left: GhostStone | null | undefined, right: GhostStone |
       left.type === right.type &&
       left.faint === right.faint)
   );
+}
+
+function sameHotZone(left: HotZone | null | undefined, right: HotZone | null | undefined): boolean {
+  return left === right || (left != null && right != null && left.type === right.type && left.opacity === right.opacity);
 }

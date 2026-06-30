@@ -297,6 +297,28 @@
 
 /* Paint map */
 
+.ulugo-vertex .ulugo-hot-zone {
+  pointer-events: none;
+  z-index: 2;
+}
+.ulugo-vertex .ulugo-hot-zone::before {
+  content: '';
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  inset: 15%;
+  border-radius: 20%;
+  border: 0.05em solid transparent;
+  opacity: var(--ulugo-hot-zone-opacity);
+  box-shadow: 0 0 0.12em #fff;
+}
+.ulugo-vertex.ulugo-hot-zone_loss .ulugo-hot-zone::before {
+  border-color: #0878ff;
+}
+.ulugo-vertex.ulugo-hot-zone_gain .ulugo-hot-zone::before {
+  border-color: #762;
+}
+
 .ulugo-vertex .ulugo-paint {
   pointer-events: none;
   z-index: 2;

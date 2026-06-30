@@ -13,6 +13,7 @@ interface AppBoardRegionProps {
   showMarkup: boolean;
   moveNumberLimit: MoveNumberLimit;
   analysis: KataGoAnalysisResult | null;
+  passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
@@ -41,6 +42,7 @@ export function AppBoardRegion({
   showMarkup,
   moveNumberLimit,
   analysis,
+  passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
   boardBackground,
@@ -85,6 +87,7 @@ export function AppBoardRegion({
         showMarkup={showMarkup}
         moveNumberLimit={moveNumberLimit}
         analysis={analysis}
+        passAnalysis={passAnalysis}
         stoneScoreDeltas={stoneScoreDeltas}
         analysisSettings={analysisSettings}
         boardBackground={boardBackground}

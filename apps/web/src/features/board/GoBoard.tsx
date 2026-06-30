@@ -1,7 +1,16 @@
-import {Board, type AnalysisOverlay, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
+import {Board, type AnalysisOverlay, type HotZone, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
 import {deriveBoardPosition, type BoardPoint} from '@ulugo/go-core';
 import {getNodeAtPath, pointToVertex, type MarkupKind, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
-import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import type {AnalysisDisplayMode, AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 
 interface GoBoardProps {
@@ -11,6 +20,7 @@ interface GoBoardProps {
   showMarkup: boolean;
   moveNumberLimit: MoveNumberLimit;
   analysis: KataGoAnalysisResult | null;
+  passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
   boardBackground: BoardBackgroundTheme;
@@ -51,6 +61,7 @@ export function GoBoard({
   showMarkup,
   moveNumberLimit,
   analysis,
+  passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
   boardBackground,
@@ -83,9 +94,13 @@ export function GoBoard({
     [position]
   );
   const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
-  const pvCandidateMap = useMemo(
-    () => buildPvCandidateMap(position.size, childMoves, analysis, analysisSettings, position.nextColor),
+  const hoverPvCandidateMap = useMemo(
+    () => buildTopMovePvCandidateMap(position.size, childMoves, analysis, analysisSettings, position.nextColor),
     [analysis, analysisSettings, childMoves, position.nextColor, position.size]
+  );
+  const allPvCandidateMap = useMemo(
+    () => buildAllPvCandidateMap(position.size, analysis, position.nextColor),
+    [analysis, position.nextColor, position.size]
   );
   const pvPreviewMap = useMemo(() => buildPvPreviewMap(position.size, pvPreview), [position.size, pvPreview]);
 
@@ -146,6 +161,10 @@ export function GoBoard({
       position.stones,
     ]
   );
+  const hotZoneMap = useMemo(
+    () => buildHotZoneMap(position.size, analysis, passAnalysis, analysisSettings, position.nextColor),
+    [analysis, analysisSettings, passAnalysis, position.nextColor, position.size]
+  );
   const displaySignMap = useMemo(() => applyPvSignMap(signMap, pvPreviewMap), [pvPreviewMap, signMap]);
   const displayMarkerMap = useMemo(() => applyPvMarkerMap(markerMap, pvPreviewMap), [markerMap, pvPreviewMap]);
   const displayAnalysisOverlayMap = useMemo(
@@ -159,6 +178,10 @@ export function GoBoard({
   const displayPaintMap = useMemo(
     () => applyPvNullableMap(paintMap, pvPreviewMap, position.size, 0),
     [paintMap, position.size, pvPreviewMap]
+  );
+  const displayHotZoneMap = useMemo(
+    () => applyPvNullableMap(hotZoneMap, pvPreviewMap, position.size, null),
+    [hotZoneMap, position.size, pvPreviewMap]
   );
   const selectedVertices = useMemo(() => {
     if (position.lastMove == null) return [];
@@ -213,9 +236,13 @@ export function GoBoard({
     [analysisSettings.pvPreviewDelay, clearPvTimers, pvPreview?.triggerKey, startPvPreview]
   );
 
-  const candidateAtVertex = useCallback(
-    (vertex: Vertex): PvPreviewCandidate | null => pvCandidateMap.get(vertexKey(vertex)) ?? null,
-    [pvCandidateMap]
+  const hoverCandidateAtVertex = useCallback(
+    (vertex: Vertex): PvPreviewCandidate | null => hoverPvCandidateMap.get(vertexKey(vertex)) ?? null,
+    [hoverPvCandidateMap]
+  );
+  const altClickCandidateAtVertex = useCallback(
+    (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMap.get(vertexKey(vertex)) ?? null,
+    [allPvCandidateMap]
   );
   const handleVertexPointerDown = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
@@ -227,7 +254,7 @@ export function GoBoard({
 
       if (event.button !== 0) return;
       if (event.altKey) {
-        const candidate = candidateAtVertex(vertex);
+        const candidate = altClickCandidateAtVertex(vertex);
         if (candidate != null) startPvPreview(candidate);
         event.preventDefault();
         return;
@@ -238,7 +265,7 @@ export function GoBoard({
         clickCount: 'detail' in event ? event.detail : 1,
       });
     },
-    [candidateAtVertex, onVertexClick, onVertexRightClick, startPvPreview]
+    [altClickCandidateAtVertex, onVertexClick, onVertexRightClick, startPvPreview]
   );
   const handleVertexClick = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
@@ -260,17 +287,17 @@ export function GoBoard({
   );
   const handleVertexMouseEnter = useCallback(
     (_event: VertexEvent, vertex: Vertex) => {
-      const candidate = candidateAtVertex(vertex);
+      const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [candidateAtVertex, schedulePvPreview]
+    [hoverCandidateAtVertex, schedulePvPreview]
   );
   const handleVertexMouseMove = useCallback(
     (_event: VertexEvent, vertex: Vertex) => {
-      const candidate = candidateAtVertex(vertex);
+      const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [candidateAtVertex, schedulePvPreview]
+    [hoverCandidateAtVertex, schedulePvPreview]
   );
   const handleVertexMouseLeave = useCallback(
     (_event: VertexEvent, vertex: Vertex) => {
@@ -308,6 +335,7 @@ export function GoBoard({
           analysisOverlayMap={displayAnalysisOverlayMap}
           moveHintMap={displayMoveHintMap}
           paintMap={displayPaintMap}
+          hotZoneMap={displayHotZoneMap}
           selectedVertices={selectedVertices}
           onVertexClick={handleVertexClick}
           onVertexMouseEnter={handleVertexMouseEnter}
@@ -364,7 +392,9 @@ function buildAnalysisOverlayMap(
 
       const [x, y] = vertex;
       const showText = index === 0 || isChildMove || hasEnoughVisits;
-      const text = showText ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor, passScore, valueOffset) : '';
+      const text = showText
+        ? analysisMoveText(move, settings.moveDisplay, analysis, nextColor, passScore, valueOffset)
+        : '';
       result[y][x] = {
         ...(result[y][x] ?? {}),
         strength: analysisStrength(move, analysis, nextColor),
@@ -438,7 +468,7 @@ function buildMoveHintMap(
   return hasHints ? result : undefined;
 }
 
-function buildPvCandidateMap(
+function buildTopMovePvCandidateMap(
   size: number,
   childMoves: Set<string>,
   analysis: KataGoAnalysisResult | null,
@@ -474,6 +504,29 @@ function buildPvCandidateMap(
   return result;
 }
 
+function buildAllPvCandidateMap(
+  size: number,
+  analysis: KataGoAnalysisResult | null,
+  nextColor: 'B' | 'W'
+): Map<string, PvPreviewCandidate> {
+  const result = new Map<string, PvPreviewCandidate>();
+  if (analysis?.moveInfos == null) return result;
+
+  const seenMoves = new Set<string>();
+  for (const move of analysis.moveInfos) {
+    const moveKey = move.move.toLowerCase();
+    if (seenMoves.has(moveKey)) continue;
+    seenMoves.add(moveKey);
+    if (move.pv == null || move.pv.length === 0) continue;
+
+    const vertex = gtpMoveToVertex(move.move, size, moveKey);
+    if (vertex == null) continue;
+    result.set(vertexKey(vertex), {triggerKey: vertexKey(vertex), pv: move.pv, nextColor});
+  }
+
+  return result;
+}
+
 function buildPvPreviewMap(size: number, preview: ActivePvPreview | null): Array<Array<PvPreviewStone | null>> | null {
   if (preview == null) return null;
 
@@ -496,10 +549,7 @@ function applyPvSignMap(signMap: Sign[][], pvMap: Array<Array<PvPreviewStone | n
   return signMap.map((row, y) => row.map((sign, x) => pvMap[y][x]?.sign ?? sign));
 }
 
-function applyPvMarkerMap(
-  markerMap: Marker[][],
-  pvMap: Array<Array<PvPreviewStone | null>> | null
-): Marker[][] {
+function applyPvMarkerMap(markerMap: Marker[][], pvMap: Array<Array<PvPreviewStone | null>> | null): Marker[][] {
   if (pvMap == null) return markerMap;
   return markerMap.map((row, y) =>
     row.map((marker, x) => (pvMap[y][x] == null ? marker : {type: 'label', label: pvMap[y][x]?.label}))
@@ -568,6 +618,35 @@ function buildOwnershipPaintMap(
       return shouldCapPaintOpacity ? Math.sign(paint) * Math.min(Math.abs(paint), 0.3) : paint;
     })
   );
+}
+
+function buildHotZoneMap(
+  size: number,
+  analysis: KataGoAnalysisResult | null,
+  passAnalysis: KataGoAnalysisResult | null,
+  settings: AnalysisSettings,
+  nextColor: 'B' | 'W'
+): Array<Array<HotZone | null>> | undefined {
+  if (!settings.showHotZone || analysis?.ownership == null || passAnalysis?.ownership == null) return undefined;
+
+  let hasHotZone = false;
+  const colorSign = nextColor === 'B' ? 1 : -1;
+  const result = Array.from({length: size}, (_, y) =>
+    Array.from({length: size}, (_, x): HotZone | null => {
+      const index = y * size + x;
+      const value = ((passAnalysis.ownership?.[index] ?? 0) - (analysis.ownership?.[index] ?? 0)) * colorSign;
+      if (Math.abs(value) < 0.2) return null;
+
+      const clamped = Math.max(-1, Math.min(1, value));
+      hasHotZone = true;
+      return {
+        type: clamped < 0 ? 'loss' : 'gain',
+        opacity: Math.abs(clamped) / 1.2,
+      };
+    })
+  );
+
+  return hasHotZone ? result : undefined;
 }
 
 function analysisMoveText(

@@ -16,12 +16,12 @@ import {
 } from './helper';
 import {CoordX, CoordY} from './Coord';
 import Grid from './Grid';
-import Vertex, {type AnalysisOverlay, type GhostStone, type MoveHint, type VertexHandler} from './Vertex';
+import Vertex, {type AnalysisOverlay, type GhostStone, type HotZone, type MoveHint, type VertexHandler} from './Vertex';
 import type {Marker} from './Marker';
 
 export type Vertex = VertexPoint;
 export type Map<T> = T[][];
-export type {AnalysisOverlay, GhostStone, Marker, MoveHint};
+export type {AnalysisOverlay, GhostStone, HotZone, Marker, MoveHint};
 
 type Sign = 0 | -1 | 1;
 
@@ -50,6 +50,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   signMap?: Map<Sign>;
   markerMap?: Map<Marker | null>;
   paintMap?: Map<number>;
+  hotZoneMap?: Map<HotZone | null>;
   ghostStoneMap?: Map<GhostStone | null>;
   analysisOverlayMap?: Map<AnalysisOverlay | null>;
   moveHintMap?: Map<MoveHint | null>;
@@ -135,6 +136,7 @@ export default class Board extends Component<BoardProps, BoardState> {
       busy,
       signMap,
       paintMap,
+      hotZoneMap,
       analysisOverlayMap,
       moveHintMap,
       markerMap,
@@ -242,6 +244,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     dimmed: dimmedVertices.some(equalsVertex),
                     animate: animatedVertices.some(equalsVertex),
 
+                    hotZone: hotZoneMap?.[y]?.[x],
                     paint: paintMap?.[y]?.[x],
 
                     selected,

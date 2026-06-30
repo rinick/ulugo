@@ -73,6 +73,14 @@ export function AnalysisToolbarOptions({
           {t('territory')}
         </Checkbox>
       ) : null}
+      {katagoEnabled ? (
+        <Checkbox
+          checked={analysisSettings.showHotZone}
+          onChange={(event) => onSettingsChange({showHotZone: event.target.checked})}
+        >
+          {t('hotZone')}
+        </Checkbox>
+      ) : null}
     </Space>
   );
 }

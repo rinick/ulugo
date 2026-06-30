@@ -38,6 +38,7 @@ interface AnalysisSettings {
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showHotZone: boolean;
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
@@ -58,6 +59,7 @@ interface AnalysisModeSettings {
   showNextMove: boolean;
   showTopMoves: boolean;
   showExpectedTerritory: boolean;
+  showHotZone: boolean;
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
@@ -84,6 +86,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
   showNextMove: false,
   showTopMoves: false,
   showExpectedTerritory: false,
+  showHotZone: false,
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
@@ -98,6 +101,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showNextMove: true,
       showTopMoves: true,
       showExpectedTerritory: true,
+      showHotZone: false,
       showScore: true,
       showPointLoss: false,
       showWinrate: true,
@@ -109,6 +113,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showNextMove: false,
       showTopMoves: false,
       showExpectedTerritory: false,
+      showHotZone: false,
       showScore: false,
       showPointLoss: false,
       showWinrate: false,
@@ -120,6 +125,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showNextMove: false,
       showTopMoves: false,
       showExpectedTerritory: false,
+      showHotZone: false,
       showScore: false,
       showPointLoss: false,
       showWinrate: false,
@@ -621,6 +627,7 @@ function normalizeAnalysisSettings(
       showNextMove: settings.showNextMove,
       showTopMoves: settings.showTopMoves,
       showExpectedTerritory: settings.showExpectedTerritory,
+      showHotZone: settings.showHotZone,
       showScore: settings.showScore,
       showPointLoss: settings.showPointLoss,
       showWinrate: settings.showWinrate,

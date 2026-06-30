@@ -165,6 +165,7 @@ export function App() {
     toggleAnalysisMode,
     toggleDeepAnalysisMode,
     currentAnalysis,
+    currentPassAnalysis,
     stoneScoreDeltas,
     analysisChartData,
     selectedChartMoveNumber,
@@ -922,6 +923,7 @@ export function App() {
             showMarkup={showMarkup}
             moveNumberLimit={boardMoveNumberLimit}
             analysis={currentAnalysis}
+            passAnalysis={currentPassAnalysis}
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
             boardBackground={boardBackground}

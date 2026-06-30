@@ -19,7 +19,7 @@ export type PassAnalysisRequest = {path: number[]; passAnalysis: PassAnalysisKin
 export function buildFastAnalysisJobs({
   analysisPaths,
   currentPath,
-  valueMode,
+  passAnalysisMode,
   document,
   analysisCache,
   targetVisits,
@@ -27,7 +27,7 @@ export function buildFastAnalysisJobs({
 }: {
   analysisPaths: number[][];
   currentPath: number[];
-  valueMode: boolean;
+  passAnalysisMode: boolean;
   document: SgfDocument;
   analysisCache: Record<string, CachedAnalysis>;
   targetVisits: number;
@@ -57,7 +57,7 @@ export function buildFastAnalysisJobs({
   }
 
   function addHiddenPassJobs(paths: number[][]): void {
-    if (!valueMode) return;
+    if (!passAnalysisMode) return;
     for (const movePath of paths) {
       const passChildPath = findPassChildPath(document, movePath);
       if (passChildPath != null) {
