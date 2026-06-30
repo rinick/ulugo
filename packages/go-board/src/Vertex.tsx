@@ -162,27 +162,6 @@ function Vertex(props: VertexProps) {
       style: absoluteStyle(),
     }),
 
-    h(
-      'div',
-      {key: 'stone', className: 'ulugo-stone', style: absoluteStyle()},
-
-      !!sign &&
-        h(
-          'div',
-          {
-            key: 'inner',
-            className: classnames(
-              'ulugo-inner',
-              'ulugo-stone-image',
-              `ulugo-random_${random}`,
-              `ulugo-sign_${sign}`
-            ),
-            style: absoluteStyle(),
-          },
-          sign
-        )
-    ),
-
     !!hotZone &&
       h('div', {
         key: 'hotZone',
@@ -192,6 +171,22 @@ function Vertex(props: VertexProps) {
           '--ulugo-hot-zone-opacity': hotZone.opacity,
         } as CSSProperties,
       }),
+
+    h(
+      'div',
+      {key: 'stone', className: 'ulugo-stone', style: absoluteStyle()},
+
+      !!sign &&
+        h(
+          'div',
+          {
+            key: 'inner',
+            className: classnames('ulugo-inner', 'ulugo-stone-image', `ulugo-random_${random}`, `ulugo-sign_${sign}`),
+            style: absoluteStyle(),
+          },
+          sign
+        )
+    ),
 
     !!paint &&
       h('div', {
@@ -323,5 +318,7 @@ function sameGhostStone(left: GhostStone | null | undefined, right: GhostStone |
 }
 
 function sameHotZone(left: HotZone | null | undefined, right: HotZone | null | undefined): boolean {
-  return left === right || (left != null && right != null && left.type === right.type && left.opacity === right.opacity);
+  return (
+    left === right || (left != null && right != null && left.type === right.type && left.opacity === right.opacity)
+  );
 }

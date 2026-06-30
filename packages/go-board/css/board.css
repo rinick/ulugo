@@ -299,15 +299,13 @@
 
 .ulugo-vertex .ulugo-hot-zone {
   pointer-events: none;
-  z-index: 2;
 }
 .ulugo-vertex .ulugo-hot-zone::before {
   content: '';
   box-sizing: border-box;
   display: block;
   position: absolute;
-  inset: 15%;
-  border-radius: 20%;
+  inset: 5%;
   border: 0.05em solid transparent;
   opacity: var(--ulugo-hot-zone-opacity);
   box-shadow: 0 0 0.12em #fff;
