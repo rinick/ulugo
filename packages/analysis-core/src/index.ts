@@ -141,5 +141,4 @@ export interface AnalysisChartPoint {
   series: 'score' | 'winrate';
   value: number;
   color?: 'B' | 'W';
-  hiddenPassReady?: boolean;
 }

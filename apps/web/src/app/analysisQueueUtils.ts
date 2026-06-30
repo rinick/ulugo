@@ -1,4 +1,4 @@
-import {getNodeAtPath, samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
   findPassChildPath,
   hasPendingAnalysisQuery,
@@ -52,26 +52,13 @@ export function buildFastAnalysisJobs({
       const cached = analysisCache[nodeId];
       if (cached != null && cached.visits >= targetVisits) continue;
       if (hasPendingAnalysisQuery(pendingQueries, 'fast', nodeId, null)) continue;
-      addJob({path: movePath, passAnalysis: isPassMovePath(document, movePath) ? 'regular' : undefined});
+      addJob({path: movePath});
     }
   }
 
-  function addHiddenPassJobs(paths: number[][]): void {
-    if (!passAnalysisMode) return;
-    for (const movePath of paths) {
-      const passChildPath = findPassChildPath(document, movePath);
-      if (passChildPath != null) {
-        const passNodeId = nodeKey(document, passChildPath);
-        const cached = analysisCache[passNodeId];
-        if ((cached?.visits ?? cached?.result.rootInfo?.visits ?? 0) >= targetVisits) continue;
-        if (hasPendingAnalysisQuery(pendingQueries, 'fast', passNodeId, null)) continue;
-        addJob({path: passChildPath, passAnalysis: 'regular'});
-        continue;
-      }
-      if (!shouldRequestHiddenPassAnalysis(document, movePath, analysisCache, targetVisits)) continue;
-      if (hasPendingAnalysisQuery(pendingQueries, 'fast', hiddenPassAnalysisKey(document, movePath), 'pass')) continue;
-      addJob({path: movePath, passAnalysis: 'hidden'});
-    }
+  function addPassJob(movePath: number[]): void {
+    const job = passAnalysisJobForPath(document, movePath, analysisCache, targetVisits, pendingQueries);
+    if (job != null) addJob(job);
   }
 
   function addJob(job: FastAnalysisJob): void {
@@ -82,11 +69,32 @@ export function buildFastAnalysisJobs({
   }
 
   addNormalJobs(currentPaths);
-  addHiddenPassJobs(currentPaths);
+  if (passAnalysisMode && currentPaths[0] != null) addPassJob(currentPaths[0]);
   addNormalJobs(nextPaths);
-  addHiddenPassJobs(nextPaths);
   addNormalJobs(otherPaths);
-  addHiddenPassJobs(otherPaths);
+
+  return jobs;
+}
+
+export function buildBackgroundPassAnalysisJobs({
+  analysisPaths,
+  document,
+  analysisCache,
+  targetVisits,
+  pendingQueries,
+}: {
+  analysisPaths: number[][];
+  document: SgfDocument;
+  analysisCache: Record<string, CachedAnalysis>;
+  targetVisits: number;
+  pendingQueries: Map<string, AnalysisQueryContext>;
+}): FastAnalysisJob[] {
+  const jobs: FastAnalysisJob[] = [];
+
+  for (const movePath of analysisPaths) {
+    const job = passAnalysisJobForPath(document, movePath, analysisCache, targetVisits, pendingQueries);
+    if (job != null) jobs.push(job);
+  }
 
   return jobs;
 }
@@ -143,8 +151,23 @@ export function getStaleLiveQueryIds(
     .map(([queryId]) => queryId);
 }
 
-function isPassMovePath(document: SgfDocument, path: number[]): boolean {
-  if (path.length === 0) return false;
-  const node = getNodeAtPath(document, path);
-  return node.data.B?.[0] === '' || node.data.W?.[0] === '';
+function passAnalysisJobForPath(
+  document: SgfDocument,
+  movePath: number[],
+  analysisCache: Record<string, CachedAnalysis>,
+  targetVisits: number,
+  pendingQueries: Map<string, AnalysisQueryContext>
+): FastAnalysisJob | null {
+  const passChildPath = findPassChildPath(document, movePath);
+  if (passChildPath != null) {
+    const passNodeId = nodeKey(document, passChildPath);
+    const cached = analysisCache[passNodeId];
+    if ((cached?.visits ?? cached?.result.rootInfo?.visits ?? 0) >= targetVisits) return null;
+    if (hasPendingAnalysisQuery(pendingQueries, 'fast', passNodeId, null)) return null;
+    return {path: passChildPath, passAnalysis: 'regular'};
+  }
+
+  if (!shouldRequestHiddenPassAnalysis(document, movePath, analysisCache, targetVisits)) return null;
+  if (hasPendingAnalysisQuery(pendingQueries, 'fast', hiddenPassAnalysisKey(document, movePath), 'pass')) return null;
+  return {path: movePath, passAnalysis: 'hidden'};
 }

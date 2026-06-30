@@ -36,7 +36,6 @@ interface PlotPoint {
   y: number;
   value: number;
   moveNumber: number;
-  hiddenPassReady?: boolean;
 }
 
 interface PointLoss {
@@ -49,11 +48,6 @@ interface PointLossPoint extends PointLoss {
   x: number;
   y1: number;
   y2: number;
-}
-
-interface ScoreLineRun {
-  pending: boolean;
-  points: PlotPoint[];
 }
 
 export function CommentsPanel({
@@ -329,9 +323,7 @@ function AnalysisChart({
           <path className="analysis-chart-line winrate" d={pointsPath(winratePoints)} />
         ) : null}
 
-        {scorePoints.length > 0 ? (
-          <ScoreLine points={scorePoints} useHiddenPassColor={moveDisplay.includes('value')} />
-        ) : null}
+        {scorePoints.length > 0 ? <ScoreLine points={scorePoints} /> : null}
 
         {pointLossPoints.length > 0 ? <PointLossLines points={pointLossPoints} /> : null}
 
@@ -403,7 +395,6 @@ function makePoints(
       y: yForValue(item.value),
       value: item.value,
       moveNumber: item.moveNumber,
-      hiddenPassReady: item.hiddenPassReady,
     }));
 }
 
@@ -442,41 +433,10 @@ function makePointLossPoints(
   }));
 }
 
-function ScoreLine({points, useHiddenPassColor}: {points: PlotPoint[]; useHiddenPassColor: boolean}) {
+function ScoreLine({points}: {points: PlotPoint[]}) {
   if (points.length < 2) return null;
 
-  const runs = scoreLineRuns(points, useHiddenPassColor);
-
-  return (
-    <>
-      {runs.map((run) => (
-        <path
-          key={`${run.points[0].moveNumber}-${run.points.at(-1)?.moveNumber}-${run.pending ? 'pending' : 'ready'}`}
-          className={`analysis-chart-line score ${run.pending ? 'pending' : 'ready'}`}
-          d={pointsPath(run.points)}
-        />
-      ))}
-    </>
-  );
-}
-
-function scoreLineRuns(points: PlotPoint[], useHiddenPassColor: boolean): ScoreLineRun[] {
-  const runs: ScoreLineRun[] = [];
-
-  points.slice(1).forEach((point, index) => {
-    const previous = points[index];
-    const pending = useHiddenPassColor && point.hiddenPassReady === false;
-    const lastRun = runs.at(-1);
-
-    if (lastRun == null || lastRun.pending !== pending) {
-      runs.push({pending, points: [previous, point]});
-      return;
-    }
-
-    lastRun.points.push(point);
-  });
-
-  return runs;
+  return <path className="analysis-chart-line score" d={pointsPath(points)} />;
 }
 
 function PointLossLines({points}: {points: PointLossPoint[]}) {

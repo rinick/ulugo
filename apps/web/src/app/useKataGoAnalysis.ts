@@ -27,6 +27,7 @@ import {
 import {nodeKey} from './sgfPathUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
 import {
+  buildBackgroundPassAnalysisJobs,
   buildFastAnalysisJobs,
   getFastQueryIdsOutsidePaths,
   getStaleLiveQueryIds,
@@ -141,18 +142,22 @@ export function useKataGoAnalysis({
     enabled,
     needsPassAnalysis,
   ]);
-  const fastAnalysisPendingCount = analysisPendingCounts.normal + analysisPendingCounts.hiddenPass;
+  const normalFastPendingCount = analysisPendingCounts.normal;
+  const currentPassPendingCount =
+    needsPassAnalysis && shouldCountHiddenPassAnalysis(document, path, analysisCache, analysisTargetVisits) ? 1 : 0;
   const analysisIdle =
     analysisMode &&
-    fastAnalysisPendingCount === 0 &&
-    !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast') &&
+    normalFastPendingCount === 0 &&
     !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live') &&
     (analysisCache[currentNodeId]?.visits ?? 0) >= liveAnalysisTargetVisits &&
     (!needsPassAnalysis ||
       !shouldCountHiddenPassAnalysis(document, path, analysisCache, livePassTargetVisits));
+  const backgroundPassPendingCount = Math.max(0, analysisPendingCounts.hiddenPass - currentPassPendingCount);
+  const fastAnalysisPendingCount =
+    normalFastPendingCount + currentPassPendingCount + (analysisIdle ? backgroundPassPendingCount : 0);
   const analysisChartData = useMemo<AnalysisChartPoint[]>(
-    () => (enabled ? buildAnalysisChartData(document, analysisChartPaths, analysisCache, analysisTargetVisits) : []),
-    [analysisCache, analysisChartPaths, analysisTargetVisits, document, enabled]
+    () => (enabled ? buildAnalysisChartData(document, analysisChartPaths, analysisCache) : []),
+    [analysisCache, analysisChartPaths, document, enabled]
   );
   const selectedChartMoveNumber = useMemo(() => {
     if (!enabled) return null;
@@ -405,7 +410,7 @@ export function useKataGoAnalysis({
       if (!hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) void ulugo.katago.stopAnalysis();
       return;
     }
-    if (fastAnalysisPendingCount > 0 || hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) {
+    if (normalFastPendingCount > 0 || hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) {
       if (hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live')) {
         const liveQueryIds = getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'live');
         clearPendingAnalysisQueries('live');
@@ -476,10 +481,10 @@ export function useKataGoAnalysis({
     currentNodeId,
     document,
     enabled,
-    fastAnalysisPendingCount,
     kataGoSettings.maxVisits,
     liveAnalysisTargetVisits,
     livePassTargetVisits,
+    normalFastPendingCount,
     removePendingAnalysisQueries,
     path,
     requestAnalysis,
@@ -514,6 +519,17 @@ export function useKataGoAnalysis({
         targetVisits,
         pendingQueries: analysisQueryContextRef.current,
       });
+      if (jobs.length === 0 && analysisIdle && needsPassAnalysis) {
+        jobs.push(
+          ...buildBackgroundPassAnalysisJobs({
+            analysisPaths,
+            document,
+            analysisCache,
+            targetVisits,
+            pendingQueries: analysisQueryContextRef.current,
+          })
+        );
+      }
 
       for (const job of jobs) {
         if (availableSlots <= 0 || !analysisModeRef.current || runVersion !== documentVersionRef.current) break;
@@ -537,6 +553,7 @@ export function useKataGoAnalysis({
     }
   }, [
     analysisCache,
+    analysisIdle,
     analysisMode,
     analysisPaths,
     needsPassAnalysis,

@@ -923,10 +923,6 @@ body.minimal .app-content > .right-region .capture-summary {
   stroke: #129568;
 }
 
-.analysis-chart-line.score.pending {
-  stroke: #4e5653;
-}
-
 .analysis-chart-line.winrate {
   stroke: #5580fb;
 }

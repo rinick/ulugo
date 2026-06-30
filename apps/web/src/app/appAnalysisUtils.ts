@@ -266,8 +266,7 @@ function mergeMoveInfo(existing: KataGoMoveInfo | undefined, incoming: KataGoMov
 export function buildAnalysisChartData(
   document: SgfDocument,
   paths: number[][],
-  cache: Record<string, CachedAnalysis>,
-  targetVisits: number
+  cache: Record<string, CachedAnalysis>
 ): AnalysisChartPoint[] {
   const data: AnalysisChartPoint[] = [];
 
@@ -281,7 +280,6 @@ export function buildAnalysisChartData(
         series: 'score',
         value: rootInfo.scoreLead,
         color,
-        hiddenPassReady: !shouldCountHiddenPassAnalysis(document, path, cache, targetVisits),
       });
     if (rootInfo?.winrate != null)
       data.push({moveNumber: index, series: 'winrate', value: normalizeWinratePercent(rootInfo.winrate)});
