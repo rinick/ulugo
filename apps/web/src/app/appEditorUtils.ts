@@ -1,6 +1,5 @@
 import type {AnalysisSettings} from '@ulugo/analysis-core';
 import {samePath} from '@ulugo/sgf-core';
-import type {EditorTool} from '../features/toolbar/types';
 
 export function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {
   if (samePath(selectedPath.slice(0, deletedPath.length), deletedPath)) {
@@ -27,10 +26,6 @@ export function resolveBoardBackground(
 ): Exclude<AnalysisSettings['boardBackground'], 'auto'> {
   if (boardBackground === 'auto') return useNaturalBackground ? 'natural' : 'golden';
   return boardBackground;
-}
-
-export function isMarkupTool(tool: EditorTool): boolean {
-  return tool === 'alphabet' || tool === 'circle' || tool === 'square' || tool === 'triangle' || tool === 'cross';
 }
 
 export function nextLabelText(value: string): string {

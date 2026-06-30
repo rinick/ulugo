@@ -1,18 +1,14 @@
 import {ConfigProvider, Layout, Modal} from 'antd';
 import {
-  addLabel,
-  addMarkup,
   addMove,
   addSetupStone,
   createNewGame,
   deleteNode,
   eraseAllMarkup,
-  eraseMarkup,
   getComment,
   getBoardSize,
   getGameInfo,
   getNodeAtPath,
-  pointToVertex,
   buildTree,
   moveBranch,
   moveBranchToMain,
@@ -21,8 +17,6 @@ import {
   updateComment,
   updateGameInfo,
   updateSetupNextColor,
-  vertexToPoint,
-  type MarkupKind,
   type SgfColor,
   type SgfDocument,
   type SgfNode,
@@ -59,9 +53,9 @@ import {
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
 import type {EditorTool} from '../features/toolbar/types';
-import {isMarkupTool, nextLabelText, resolveBoardBackground, selectedPathAfterDelete} from './appEditorUtils';
+import {nextLabelText, resolveBoardBackground, selectedPathAfterDelete} from './appEditorUtils';
 import {capabilities, isElectron} from './capabilities';
-import {findChildMovePath, oppositeColor, toolToMarkup} from './sgfEditUtils';
+import {findChildMovePath, oppositeColor} from './sgfEditUtils';
 import {
   findCurrentStoneMovePath,
   findFutureMovePath,
@@ -85,6 +79,7 @@ import {
 import {useAppPreferences} from './useAppPreferences';
 import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
+import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
 
 const {Header, Content} = Layout;
 
@@ -95,11 +90,7 @@ interface ReplaceDocumentOptions {
   replaceMoveState?: ReplaceMoveState | null;
 }
 
-const markupPropertyKeys = ['LB', 'CR', 'SQ', 'TR', 'MA'] as const;
 const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
-type PointMarkup = {kind: 'LB'; label: string} | {kind: MarkupKind};
-type MarkupAction = {pathKey: string; point: string; action: 'draw' | 'erase'; markup: PointMarkup; time: number};
-const markupRepeatMs = 600;
 
 export function App() {
   const {t, i18n} = useTranslation();
@@ -675,7 +666,7 @@ export function App() {
     }
 
     if (tool === 'erase') {
-      applyEraseMarkupTool(point, options.clickCount);
+      applyMarkupTool(point, false, options.clickCount);
       return;
     }
 
@@ -695,184 +686,24 @@ export function App() {
   }
 
   function applyMarkupTool(point: string, rightClick: boolean, clickCount: number): void {
-    const node = getNodeAtPath(document, path);
-    if (applyRepeatedMarkupAction(node, point, rightClick, clickCount)) return;
+    const result = applyMarkupEdit({
+      document,
+      path,
+      point,
+      clickCount,
+      rightClick,
+      tool,
+      labelText,
+      stones: position.stones,
+      boardSize: position.size,
+      previousAction: markupActionRef.current,
+      autoIncrementText: analysisSettings.autoIncrementMarkupText,
+    });
+    if (result == null) return;
 
-    const currentMarkup = pointMarkup(node, point);
-    if (rightClick && currentMarkup != null) {
-      replaceDocument(eraseMarkupPoints(document, path, eraseMarkupTargets(node, point, clickCount)), path);
-      rememberMarkupAction(point, 'erase', currentMarkup);
-      return;
-    }
-
-    if (tool === 'alphabet') {
-      const value = labelText.trim();
-      if (value === '') return;
-      if (!rightClick && currentMarkup?.kind === 'LB') {
-        replaceDocument(eraseMarkupPoints(document, path, eraseMarkupTargets(node, point, clickCount)), path);
-        rememberMarkupAction(point, 'erase', currentMarkup);
-        return;
-      }
-
-      const points = drawMarkupTargets(node, point, clickCount);
-      replaceDocument(addLabelPoints(eraseMarkupPoints(document, path, points), path, points, value), path);
-      if (!rightClick && analysisSettings.autoIncrementMarkupText) setLabelText(nextLabelText(value));
-      rememberMarkupAction(point, 'draw', {kind: 'LB', label: value});
-      return;
-    }
-
-    const markup = toolToMarkup(tool);
-    if (markup == null) return;
-    if (!rightClick && currentMarkup?.kind === markup) {
-      replaceDocument(eraseMarkupPoints(document, path, eraseMarkupTargets(node, point, clickCount)), path);
-      rememberMarkupAction(point, 'erase', currentMarkup);
-      return;
-    }
-
-    const points = drawMarkupTargets(node, point, clickCount);
-    replaceDocument(addMarkupPoints(eraseMarkupPoints(document, path, points), path, markup, points), path);
-    rememberMarkupAction(point, 'draw', {kind: markup});
-  }
-
-  function applyEraseMarkupTool(point: string, clickCount: number): void {
-    const node = getNodeAtPath(document, path);
-    if (applyRepeatedEraseAction(node, point, clickCount)) return;
-
-    const currentMarkup = pointMarkup(node, point);
-    replaceDocument(eraseMarkupPoints(document, path, eraseMarkupTargets(node, point, clickCount)), path);
-    if (currentMarkup != null) rememberMarkupAction(point, 'erase', currentMarkup);
-  }
-
-  function applyRepeatedMarkupAction(
-    node: SgfNode,
-    point: string,
-    rightClick: boolean,
-    clickCount: number
-  ): boolean {
-    const action = markupActionRef.current;
-    if (!isRepeatedMarkupAction(action, point, clickCount)) return false;
-
-    if (action.action === 'draw') {
-      if (!toolMatchesMarkup(action.markup)) return false;
-      const points = drawConnectedUnmarkedStoneTargets(node, point);
-      if (points.length > 0) {
-        replaceDocument(drawMarkupPoints(document, path, points, action.markup), path);
-      }
-      return true;
-    }
-
-    if (rightClick) return applyRepeatedEraseAction(node, point, clickCount);
-    return false;
-  }
-
-  function applyRepeatedEraseAction(node: SgfNode, point: string, clickCount: number): boolean {
-    const action = markupActionRef.current;
-    if (!isRepeatedMarkupAction(action, point, clickCount) || action.action !== 'erase') return false;
-
-    const points = connectedMatchingMarkupAroundErasedPoint(node, point, action.markup);
-    if (points.length > 0) replaceDocument(eraseMarkupPoints(document, path, points), path);
-    return true;
-  }
-
-  function isRepeatedMarkupAction(action: MarkupAction | null, point: string, clickCount: number): action is MarkupAction {
-    if (action == null || action.pathKey !== pathKey(path) || action.point !== point) return false;
-    return clickCount > 1 || Date.now() - action.time <= markupRepeatMs;
-  }
-
-  function toolMatchesMarkup(markup: PointMarkup): boolean {
-    if (markup.kind === 'LB') return tool === 'alphabet';
-    return toolToMarkup(tool) === markup.kind;
-  }
-
-  function drawMarkupTargets(node: SgfNode, point: string, clickCount: number): string[] {
-    if (clickCount <= 1 || pointMarkup(node, point) != null) return [point];
-    const color = position.stones.get(point);
-    if (color == null) return [point];
-    return drawConnectedUnmarkedStoneTargets(node, point);
-  }
-
-  function eraseMarkupTargets(node: SgfNode, point: string, clickCount: number): string[] {
-    if (clickCount <= 1) return [point];
-    const markup = pointMarkup(node, point);
-    if (markup == null) return [point];
-    return connectedMarkupPoints(node, point, markup);
-  }
-
-  function connectedStonePoints(start: string, color: SgfColor): string[] {
-    const result: string[] = [];
-    const seen = new Set<string>();
-    const queue = [start];
-    while (queue.length > 0) {
-      const point = queue.shift();
-      if (point == null || seen.has(point) || position.stones.get(point) !== color) continue;
-      seen.add(point);
-      result.push(point);
-      queue.push(...neighborPoints(point));
-    }
-    return result;
-  }
-
-  function drawConnectedUnmarkedStoneTargets(node: SgfNode, point: string): string[] {
-    const color = position.stones.get(point);
-    if (color == null) return [];
-    return connectedStonePoints(point, color).filter((target) => pointMarkup(node, target) == null);
-  }
-
-  function connectedMarkupPoints(node: SgfNode, start: string, markup: PointMarkup): string[] {
-    const result: string[] = [];
-    const seen = new Set<string>();
-    const queue = [start];
-    while (queue.length > 0) {
-      const point = queue.shift();
-      if (point == null || seen.has(point) || !samePointMarkup(pointMarkup(node, point), markup)) continue;
-      seen.add(point);
-      result.push(point);
-      queue.push(...neighborPoints(point));
-    }
-    return result;
-  }
-
-  function connectedMatchingMarkupAroundErasedPoint(node: SgfNode, point: string, markup: PointMarkup): string[] {
-    const seen = new Set<string>();
-    const result: string[] = [];
-    for (const neighbor of neighborPoints(point)) {
-      if (seen.has(neighbor) || !samePointMarkup(pointMarkup(node, neighbor), markup)) continue;
-      for (const connected of connectedMarkupPoints(node, neighbor, markup)) {
-        if (seen.has(connected)) continue;
-        seen.add(connected);
-        result.push(connected);
-      }
-    }
-    return result;
-  }
-
-  function neighborPoints(point: string): string[] {
-    const vertex = pointToVertex(point);
-    if (vertex == null) return [];
-    const [x, y] = vertex;
-    return [
-      [x - 1, y],
-      [x + 1, y],
-      [x, y - 1],
-      [x, y + 1],
-    ].flatMap(([nx, ny]) =>
-      nx >= 0 && nx < position.size && ny >= 0 && ny < position.size ? [vertexToPoint(nx, ny)] : []
-    );
-  }
-
-  function drawMarkupPoints(
-    document: SgfDocument,
-    path: number[],
-    points: string[],
-    markup: PointMarkup
-  ): SgfDocument {
-    return markup.kind === 'LB'
-      ? addLabelPoints(eraseMarkupPoints(document, path, points), path, points, markup.label)
-      : addMarkupPoints(eraseMarkupPoints(document, path, points), path, markup.kind, points);
-  }
-
-  function rememberMarkupAction(point: string, action: MarkupAction['action'], markup: PointMarkup): void {
-    markupActionRef.current = {pathKey: pathKey(path), point, action, markup, time: Date.now()};
+    replaceDocument(result.document, path);
+    markupActionRef.current = result.nextAction;
+    if (result.incrementTextFrom != null) setLabelText(nextLabelText(result.incrementTextFrom));
   }
 
   function handleEraseAllMarkup(): void {
@@ -1234,41 +1065,6 @@ export function App() {
       />
     </ConfigProvider>
   );
-}
-
-function nodeHasMarkup(node: ReturnType<typeof getNodeAtPath>): boolean {
-  return markupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0);
-}
-
-function pointMarkup(node: SgfNode, point: string): PointMarkup | null {
-  const label = (node.data.LB ?? []).find((value) => value.split(':', 1)[0] === point);
-  if (label != null) return {kind: 'LB', label: label.slice(point.length + 1)};
-  for (const key of ['CR', 'SQ', 'TR', 'MA'] as const) {
-    if ((node.data[key] ?? []).includes(point)) return {kind: key};
-  }
-  return null;
-}
-
-function samePointMarkup(left: PointMarkup | null, right: PointMarkup): boolean {
-  if (left == null || left.kind !== right.kind) return false;
-  return left.kind !== 'LB' || left.label === (right as {kind: 'LB'; label: string}).label;
-}
-
-function eraseMarkupPoints(document: SgfDocument, path: number[], points: string[]): SgfDocument {
-  return points.reduce((current, point) => eraseMarkup(current, path, point), document);
-}
-
-function addLabelPoints(document: SgfDocument, path: number[], points: string[], value: string): SgfDocument {
-  return points.reduce((current, point) => addLabel(current, path, point, value), document);
-}
-
-function addMarkupPoints(
-  document: SgfDocument,
-  path: number[],
-  markup: MarkupKind,
-  points: string[]
-): SgfDocument {
-  return points.reduce((current, point) => addMarkup(current, path, markup, point), document);
 }
 
 function isSetupNode(node: SgfNode): boolean {
