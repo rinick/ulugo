@@ -7,10 +7,8 @@ This package uses the original SabakiHQ board rendering model and visual behavio
 ## Exports
 
 - `Board`
-- `BoundedBoard`
 - `BoardProps`
-- `BoundedBoardProps`
-- board data types such as `Vertex`, `Marker`, `GhostStone`, and `AnalysisOverlay`
+- board data types such as `Vertex`, `Marker`, `HotZone`, and `AnalysisOverlay`
 
 Import the stylesheet separately:
 

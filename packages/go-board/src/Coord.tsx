@@ -5,17 +5,15 @@ import {alpha} from './helper';
 interface CoordXProps {
   style?: CSSProperties;
   xs: number[];
-  coordX?: (x: number) => string | number;
 }
 
 interface CoordYProps {
   style?: CSSProperties;
   height: number;
   ys: number[];
-  coordY?: (y: number) => string | number;
 }
 
-export function CoordX({style, xs, coordX = (i) => alpha[i] || alpha[alpha.length - 1]}: CoordXProps) {
+export function CoordX({style, xs}: CoordXProps) {
   return h(
     'div',
     {
@@ -27,11 +25,13 @@ export function CoordX({style, xs, coordX = (i) => alpha[i] || alpha[alpha.lengt
       },
     },
 
-    xs.map((i) => h('div', {key: i, style: {width: '1em'}}, h('span', {style: {display: 'block'}}, coordX(i))))
+    xs.map((i) =>
+      h('div', {key: i, style: {width: '1em'}}, h('span', {style: {display: 'block'}}, alpha[i] || alpha[alpha.length - 1]))
+    )
   );
 }
 
-export function CoordY({style, height, ys, coordY = (i) => height - i}: CoordYProps) {
+export function CoordY({style, height, ys}: CoordYProps) {
   return h(
     'div',
     {
@@ -42,6 +42,6 @@ export function CoordY({style, height, ys, coordY = (i) => height - i}: CoordYPr
       },
     },
 
-    ys.map((i) => h('div', {key: i, style: {height: '1em'}}, h('span', {style: {display: 'block'}}, coordY(i))))
+    ys.map((i) => h('div', {key: i, style: {height: '1em'}}, h('span', {style: {display: 'block'}}, height - i)))
   );
 }

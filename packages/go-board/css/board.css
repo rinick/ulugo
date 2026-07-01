@@ -64,26 +64,6 @@
   z-index: 3;
 }
 
-/* Busy screen */
-
-.ulugo-board.ulugo-busy::after {
-  animation: 2s linear -0.5s ulugo-busy infinite;
-  background-color: rgba(23, 10, 2, 0.1);
-  background-image: linear-gradient(to right, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
-  background-size: 19em 100%;
-  background-repeat: no-repeat;
-  pointer-events: all;
-}
-
-@keyframes ulugo-busy {
-  from {
-    background-position: -19em 0;
-  }
-  to {
-    background-position: calc(100% + 19em) 0;
-  }
-}
-
 /* Board grid */
 
 .ulugo-gridline,
@@ -117,9 +97,6 @@
 .ulugo-vertex .ulugo-inner {
   text-indent: -9999rem;
 }
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-dimmed .ulugo-stone {
-  opacity: 0.6;
-}
 .ulugo-stone-image {
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -129,36 +106,6 @@
 }
 .ulugo-stone-image.ulugo-sign_-1 {
   background-image: url('./stone_-1.svg');
-}
-
-/* Fuzzy stone placement */
-
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-animate .ulugo-stone {
-  transition: transform 0.2s;
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_1 .ulugo-stone {
-  transform: translate(-0.07em, 0);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_2 .ulugo-stone {
-  transform: translate(0, -0.07em);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_3 .ulugo-stone {
-  transform: translate(0.07em, 0);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_4 .ulugo-stone {
-  transform: translate(0, 0.07em);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_5 .ulugo-stone {
-  transform: translate(-0.04em, -0.04em);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_6 .ulugo-stone {
-  transform: translate(0.04em, -0.04em);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_7 .ulugo-stone {
-  transform: translate(0.04em, 0.04em);
-}
-.ulugo-vertex:not(.ulugo-sign_0).ulugo-shift_8 .ulugo-stone {
-  transform: translate(-0.04em, 0.04em);
 }
 
 /* Markers */
@@ -201,20 +148,6 @@
   fill: var(--ulugo-white-foreground-color);
 }
 
-.ulugo-vertex.ulugo-marker_loader .ulugo-marker {
-  stroke-dasharray: 1em;
-  animation: 1.5s linear 0s ulugo-rotation infinite;
-}
-
-@keyframes ulugo-rotation {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .ulugo-vertex.ulugo-marker_label .ulugo-marker {
   display: inline-block;
   width: auto;
@@ -245,54 +178,6 @@
   max-height: 2.7em;
   max-width: 2.7em;
   font-size: 0.36em;
-}
-
-/* Ghost stones */
-
-.ulugo-vertex .ulugo-ghost {
-  left: 50%;
-  top: 50%;
-  width: 0.4em;
-  height: 0.4em;
-  opacity: 0.5;
-  transform: translate(calc(-50% + 0.5px), calc(-50% + 0.5px));
-}
-.ulugo-vertex .ulugo-ghost::before {
-  content: '';
-  box-sizing: border-box;
-  display: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0.4em;
-  height: 0.4em;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-.ulugo-vertex.ulugo-ghost_faint .ulugo-ghost {
-  opacity: 0.3;
-}
-.ulugo-vertex.ulugo-sign_0.ulugo-ghost_1 .ulugo-ghost::before,
-.ulugo-vertex.ulugo-sign_0.ulugo-ghost_-1 .ulugo-ghost::before {
-  display: block;
-}
-.ulugo-vertex.ulugo-ghost_1 .ulugo-ghost::before {
-  background: rgba(0, 0, 0, 0.8);
-}
-.ulugo-vertex.ulugo-ghost_-1 .ulugo-ghost::before {
-  background: white;
-}
-.ulugo-vertex.ulugo-ghost_good .ulugo-ghost::before {
-  background: #59a80f;
-}
-.ulugo-vertex.ulugo-ghost_interesting .ulugo-ghost::before {
-  background: #4886d5;
-}
-.ulugo-vertex.ulugo-ghost_doubtful .ulugo-ghost::before {
-  background: #92278f;
-}
-.ulugo-vertex.ulugo-ghost_bad .ulugo-ghost::before {
-  background: #f02311;
 }
 
 /* Territory map */

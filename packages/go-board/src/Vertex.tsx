@@ -9,12 +9,6 @@ type Sign = 0 | -1 | 1;
 type VertexHandlerEvent = MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>;
 export type VertexHandler = (evt: VertexHandlerEvent, vertex: VertexPoint) => void;
 
-export interface GhostStone {
-  sign: Sign;
-  type?: 'good' | 'interesting' | 'doubtful' | 'bad' | null;
-  faint?: boolean | null;
-}
-
 export interface AnalysisOverlay {
   strength: number;
   halo?: boolean;
@@ -38,17 +32,13 @@ export type VertexEventHandlers = Partial<Record<`on${VertexEventName}`, VertexH
 
 export interface VertexProps extends VertexEventHandlers {
   position: VertexPoint;
-  shift?: number;
   random?: number;
   sign?: Sign;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
   territory?: number;
-  dimmed?: boolean;
   marker?: MarkerData | null;
-  ghostStone?: GhostStone | null;
   hotZone?: HotZone | null;
-  animate?: boolean;
   selected?: boolean;
   selectedLeft?: boolean;
   selectedRight?: boolean;
@@ -63,17 +53,13 @@ const absoluteStyle = (): CSSProperties => ({
 function Vertex(props: VertexProps) {
   let {
     position,
-    shift,
     random,
     sign = 0,
     analysisOverlay,
     moveHint,
     territory = 0,
-    dimmed,
     marker,
-    ghostStone,
     hotZone,
-    animate,
     selected,
     selectedLeft,
     selectedRight,
@@ -114,13 +100,10 @@ function Vertex(props: VertexProps) {
           position: 'relative',
         } satisfies CSSProperties,
         'className': classnames('ulugo-vertex', `ulugo-random_${random}`, `ulugo-sign_${sign}`, {
-          [`ulugo-shift_${shift}`]: !!shift,
           [`ulugo-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
           'ulugo-bestmove': !!moveHint?.best,
           [`ulugo-nextmove_${moveHint?.branch}`]: !!moveHint?.branch,
           [`ulugo-nextmove-sign_${moveHint?.sign}`]: !!moveHint?.sign,
-          'ulugo-dimmed': dimmed,
-          'ulugo-animate': animate,
 
           [`ulugo-territory_${territory > 0 ? 1 : -1}`]: !!territory,
 
@@ -133,10 +116,6 @@ function Vertex(props: VertexProps) {
           [`ulugo-marker_${marker?.type}`]: !!marker?.type,
           'ulugo-smalllabel':
             marker?.type === 'label' && ((marker.label ?? '').includes('\n') || (marker.label ?? '').length >= 3),
-
-          [`ulugo-ghost_${ghostStone?.sign}`]: !!ghostStone,
-          [`ulugo-ghost_${ghostStone?.type}`]: !!ghostStone?.type,
-          'ulugo-ghost_faint': !!ghostStone?.faint,
           [`ulugo-hot-zone_${hotZone?.type}`]: !!hotZone,
         }),
       },
@@ -144,15 +123,6 @@ function Vertex(props: VertexProps) {
         [`on${eventName}`]: eventHandlers[eventName],
       }))
     ),
-
-    !sign &&
-      !!ghostStone &&
-      h('div', {
-        key: 'ghost',
-        className: 'ulugo-ghost',
-        style: absoluteStyle(),
-      }),
-
     h('div', {
       key: 'analysisOverlay',
       className: classnames('ulugo-analysis-overlay', {
@@ -255,17 +225,13 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
   return (
     previous.position[0] === next.position[0] &&
     previous.position[1] === next.position[1] &&
-    previous.shift === next.shift &&
     previous.random === next.random &&
     previous.sign === next.sign &&
     sameAnalysisOverlay(previous.analysisOverlay, next.analysisOverlay) &&
     sameMoveHint(previous.moveHint, next.moveHint) &&
     sameMarker(previous.marker, next.marker) &&
-    sameGhostStone(previous.ghostStone, next.ghostStone) &&
     sameHotZone(previous.hotZone, next.hotZone) &&
     previous.territory === next.territory &&
-    previous.dimmed === next.dimmed &&
-    previous.animate === next.animate &&
     previous.selected === next.selected &&
     previous.selectedLeft === next.selectedLeft &&
     previous.selectedRight === next.selectedRight &&
@@ -304,17 +270,6 @@ function sameMoveHint(left: MoveHint | null | undefined, right: MoveHint | null 
 
 function sameMarker(left: MarkerData | null | undefined, right: MarkerData | null | undefined): boolean {
   return left === right || (left != null && right != null && left.type === right.type && left.label === right.label);
-}
-
-function sameGhostStone(left: GhostStone | null | undefined, right: GhostStone | null | undefined): boolean {
-  return (
-    left === right ||
-    (left != null &&
-      right != null &&
-      left.sign === right.sign &&
-      left.type === right.type &&
-      left.faint === right.faint)
-  );
 }
 
 function sameHotZone(left: HotZone | null | undefined, right: HotZone | null | undefined): boolean {

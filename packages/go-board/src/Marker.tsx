@@ -1,7 +1,7 @@
 import {createElement as h} from 'react';
 
 export interface Marker {
-  type?: 'circle' | 'cross' | 'triangle' | 'square' | 'point' | 'loader' | 'label' | null;
+  type?: 'circle' | 'cross' | 'triangle' | 'square' | 'point' | 'label' | null;
   label?: string | null;
 }
 
@@ -26,7 +26,7 @@ export default function Marker({sign, type, label}: MarkerProps) {
           viewBox: '0 0 1 1',
         },
 
-        type === 'circle' || type === 'loader' || type === 'point'
+        type === 'circle' || type === 'point'
           ? h('circle', {
               'cx': 0.5,
               'cy': 0.5,
