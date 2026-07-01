@@ -386,8 +386,11 @@ export function GoBoard({
   useEffect(() => clearPvPreview, [clearPvPreview, document, path]);
 
   return (
-    <div className="board-frame" ref={frameRef}>
-      <div className="board-surface" onContextMenu={(event) => event.preventDefault()}>
+    <div className={`board-frame board-frame-${boardBackground}`} ref={frameRef}>
+      <div
+        className={`board-surface board-surface-${boardBackground}`}
+        onContextMenu={(event) => event.preventDefault()}
+      >
         <Board
           className={`ulugo-board-${boardBackground}`}
           vertexSize={vertexSize}

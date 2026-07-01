@@ -1110,6 +1110,9 @@ body.minimal .app-content > .right-region .capture-summary {
   background: #999999;
   overflow: hidden;
 }
+.board-frame-flat {
+  background: #f8f8f8;
+}
 
 .board-surface {
   position: relative;
@@ -1141,6 +1144,10 @@ body.minimal .app-content > .right-region .capture-summary {
   filter: invert(1);
   z-index: 0;
 }
+.board-surface-flat::before,
+.board-surface-flat::after {
+  display: none;
+}
 
 .ulugo-board {
   --ulugo-board-foreground-color: #503819;
@@ -1150,6 +1157,11 @@ body.minimal .app-content > .right-region .capture-summary {
   --ulugo-white-foreground-color: #14171a;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
   z-index: 1;
+}
+.ulugo-board-flat {
+  --ulugo-board-foreground-color: #111111;
+  --ulugo-white-background-color: #ffffff;
+  box-shadow: none;
 }
 
 .ulugo-board .ulugo-vertex.ulugo-marker_label .ulugo-marker {

@@ -32,7 +32,9 @@
 }
 .ulugo-board-flat {
   --ulugo-board-border-color: #cec8c0;
-  --ulugo-board-background-color: #eee8e0;
+  --ulugo-board-background-color: #ffffff;
+  --ulugo-board-foreground-color: #111111;
+  --ulugo-white-background-color: #ffffff;
   background-image: none;
 }
 
@@ -62,6 +64,9 @@
     linear-gradient(to bottom, transparent, rgba(23, 10, 2, 0.05));
   pointer-events: none;
   z-index: 3;
+}
+.ulugo-board-flat::after {
+  display: none;
 }
 
 /* Board grid */
@@ -107,7 +112,39 @@
 .ulugo-stone-image.ulugo-sign_-1 {
   background-image: url('./stone_-1.svg');
 }
+.ulugo-board-flat .ulugo-vertex:not(.ulugo-sign_0) .ulugo-stone::before {
+  display: none;
+}
+.ulugo-board-flat .ulugo-stone-image {
+  box-sizing: border-box;
+  border-radius: 50%;
+  background-image: none;
+}
+.ulugo-board-flat .ulugo-stone-image.ulugo-sign_1 {
+  background: var(--ulugo-black-background-color);
+}
+.ulugo-board-flat .ulugo-stone-image.ulugo-sign_-1 {
+  border: 0.04em solid var(--ulugo-white-foreground-color);
+  background: var(--ulugo-white-background-color);
+}
 
+.ulugo-board-flat .ulugo-vertex.ulugo-sign_1 .ulugo-selection {
+  box-shadow: 0 0 0 1px black;
+}
+.ulugo-board-flat .ulugo-vertex.ulugo-sign_-1 .ulugo-selection {
+  border-color: var(--ulugo-black-foreground-color);
+  box-shadow:
+    0 0 0 1px black,
+    inset 0 0 0 1px black;
+}
+
+.ulugo-board-flat .ulugo-vertex.ulugo-nextmove-sign_-1 .ulugo-movehint-next {
+  border-color: #111;
+}
+
+.ulugo-board-flat .ulugo-vertex.ulugo-ownership_-1 .ulugo-ownership {
+  border: 0.01em solid rgba(0, 0, 0, 0.2);
+}
 /* Markers */
 
 .ulugo-vertex .ulugo-marker {
