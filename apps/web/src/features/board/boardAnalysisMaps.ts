@@ -1,6 +1,6 @@
 import {type AnalysisOverlay, type HotZone, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
 import {type BoardPoint} from '@ulugo/go-core';
-import {getNodeAtPath, pointToVertex, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
+import {getNodeAtPath, normalizeMovePoint, pointToVertex, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
 import type {AnalysisDisplayMode, AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 
 export type MoveNumberLimit = 0 | 1 | 5 | 20 | 'all';
@@ -108,7 +108,7 @@ export function buildMoveHintMap(
   if (settings.showNextMove) {
     node.children.forEach((child, index) => {
       const color = child.data.B != null ? 1 : child.data.W != null ? -1 : 0;
-      const point = child.data.B?.[0] ?? child.data.W?.[0];
+      const point = normalizeMovePoint(child.data.B?.[0] ?? child.data.W?.[0] ?? '', size);
       if (point == null || point === '') return;
       const vertex = pointToVertex(point);
       if (vertex == null) return;
@@ -317,7 +317,7 @@ export function childMoveSet(document: SgfDocument, path: number[], size: number
   const node = getNodeAtPath(document, path);
   return new Set(
     node.children.flatMap((child) => {
-      const point = child.data.B?.[0] ?? child.data.W?.[0];
+      const point = normalizeMovePoint(child.data.B?.[0] ?? child.data.W?.[0] ?? '', size);
       if (point == null || point === '') return [];
       const move = pointToGtp(point, size);
       return move == null ? [] : [move.toLowerCase()];
@@ -502,7 +502,9 @@ function gtpMoveToVertex(move: string, size: number, moveKey = move.toLowerCase(
 }
 
 function pointToGtp(point: string, size: number): string | null {
-  const vertex = pointToVertex(point);
+  const normalizedPoint = normalizeMovePoint(point, size);
+  if (normalizedPoint === '') return null;
+  const vertex = pointToVertex(normalizedPoint);
   if (vertex == null) return null;
   const [x, y] = vertex;
   const letter = 'ABCDEFGHJKLMNOPQRSTUVWXYZ'[x];

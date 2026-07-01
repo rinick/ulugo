@@ -14,6 +14,16 @@ describe('go-core', () => {
     expect(position.moveNumber).toBe(2);
   });
 
+  it('treats old out-of-board SGF move points as pass moves', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[tt];W[dd])');
+    const position = deriveBoardPosition(document, [0, 0]);
+
+    expect(position.moveNumber).toBe(2);
+    expect(position.lastMove).toBe('dd');
+    expect(position.stones.has('tt')).toBe(false);
+    expect(position.stones.get('dd')).toBe('W');
+  });
+
   it('uses PL on setup nodes as the next color', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
 

@@ -1,6 +1,7 @@
 import {
   getBoardSize,
   getLine,
+  normalizeMovePoint,
   pointToVertex,
   type MarkupKind,
   type SgfColor,
@@ -53,7 +54,7 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
       continue;
     }
 
-    const point = node.data[color]?.[0] ?? '';
+    const point = normalizeMovePoint(node.data[color]?.[0] ?? '', size);
     moveNumber += 1;
     nextColor = color === 'B' ? 'W' : 'B';
     lastMove = point === '' ? null : point;

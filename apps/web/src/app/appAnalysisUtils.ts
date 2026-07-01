@@ -1,6 +1,6 @@
 import type {AnalysisChartPoint, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 import {deriveBoardPosition} from '@ulugo/go-core';
-import {getBoardSize, getNodeAtPath, type SgfColor, type SgfDocument} from '@ulugo/sgf-core';
+import {getBoardSize, getNodeAtPath, normalizeMovePoint, type SgfColor, type SgfDocument} from '@ulugo/sgf-core';
 import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 import {getLinePaths, nodeKey} from './sgfPathUtils';
 
@@ -83,7 +83,11 @@ export function shouldCountHiddenPassAnalysis(
 
 export function findPassChildPath(document: SgfDocument, path: number[]): number[] | null {
   const parent = getNodeAtPath(document, path);
-  const index = parent.children.findIndex((child) => child.data.B?.[0] === '' || child.data.W?.[0] === '');
+  const boardSize = getBoardSize(document);
+  const index = parent.children.findIndex((child) => {
+    const color = child.data.B != null ? 'B' : child.data.W != null ? 'W' : null;
+    return color != null && normalizeMovePoint(child.data[color]?.[0] ?? '', boardSize) === '';
+  });
   return index < 0 ? null : [...path, index];
 }
 
@@ -176,7 +180,7 @@ function updateParentMoveAnalysis(
 
   const node = getNodeAtPath(document, path);
   const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-  const point = color == null ? null : (node.data[color]?.[0] ?? '');
+  const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', getBoardSize(document));
   if (color == null || point == null) return cache;
 
   const parentPath = path.slice(0, -1);
@@ -299,7 +303,7 @@ export function buildStoneScoreDeltas(
   for (const movePath of getLinePaths(path)) {
     const node = getNodeAtPath(document, movePath);
     const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-    const point = color == null ? null : (node.data[color]?.[0] ?? '');
+    const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     if (color == null || point == null || point === '') continue;
 
     const parentPath = movePath.slice(0, -1);

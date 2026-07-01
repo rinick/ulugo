@@ -132,8 +132,18 @@ describe('sgf-core', () => {
     expect(formatPoint('ii', 13)).toBe('J5');
   });
 
+  it('formats old out-of-board pass moves as pass', () => {
+    expect(formatPoint('tt', 19)).toBe('pass');
+    expect(formatPoint('tt', 20)).toBe('U1');
+  });
+
   it('counts moves across variations', () => {
     expect(countMoves(parseSgf('(;GM[1]SZ[19];B[dd](;W[pp])(;W[dp];B[pq]))'))).toBe(4);
+  });
+
+  it('shows old out-of-board pass moves as pass in the tree', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19];B[tt])'))[0];
+    expect(tree.children[0]).toMatchObject({point: '', label: 'B1 pass'});
   });
 
   it('gives setup nodes their own tree step after moves', () => {

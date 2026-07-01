@@ -62,6 +62,16 @@ describe('katago-core', () => {
     expect(query.analyzeTurns).toEqual([2]);
   });
 
+  it('sends old out-of-board SGF move points to KataGo as pass', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[tt];W[dd])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0, 0]});
+
+    expect(query.moves).toEqual([
+      ['B', 'pass'],
+      ['W', 'D16'],
+    ]);
+  });
+
   it('uses PL as KataGo initial player after setup', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
     const query = buildKataGoQuery(document, {id: 'test', path: [0, 0]});

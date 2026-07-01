@@ -1,4 +1,12 @@
-import {getBoardSize, getLine, pointToVertex, type SgfColor, type SgfDocument, type SgfPoint} from '@ulugo/sgf-core';
+import {
+  getBoardSize,
+  getLine,
+  normalizeMovePoint,
+  pointToVertex,
+  type SgfColor,
+  type SgfDocument,
+  type SgfPoint,
+} from '@ulugo/sgf-core';
 
 const gtpLetters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
 
@@ -24,8 +32,9 @@ export function getInitialStonesForPath(document: SgfDocument, path: number[]): 
 }
 
 export function sgfPointToGtp(point: SgfPoint, boardSize: number): string {
-  if (point === '') return 'pass';
-  const vertex = pointToVertex(point);
+  const normalizedPoint = normalizeMovePoint(point, boardSize);
+  if (normalizedPoint === '') return 'pass';
+  const vertex = pointToVertex(normalizedPoint);
   if (vertex == null) return 'pass';
   const [x, y] = vertex;
   return `${gtpLetters[x] ?? 'A'}${boardSize - y}`;

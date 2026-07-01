@@ -1,5 +1,5 @@
 import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
-import {getBoardSize, getGameInfo, getLine, pointToVertex, vertexToPoint} from '@ulugo/sgf-core';
+import {getBoardSize, getGameInfo, getLine, normalizeMovePoint, pointToVertex, vertexToPoint} from '@ulugo/sgf-core';
 import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 
 export interface KataGoSettings {
@@ -157,7 +157,7 @@ function buildKataGoHistory(
       nextColor = setupNextColor(node) ?? nextColor;
       continue;
     }
-    const point = node.data[color]?.[0] ?? '';
+    const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     nextColor = color === 'B' ? 'W' : 'B';
     if (point === '') continue;
     stones.set(point, color);
