@@ -1,4 +1,4 @@
-import {getNodeAtPath, samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {getNodeAtPath, isScoringNode, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {type AnalysisChartPoint, type AnalysisSettings} from '@ulugo/analysis-core';
 import {
   buildKataGoQuery,
@@ -98,6 +98,8 @@ export function useKataGoAnalysis({
   const analysisModeRef = useRef(false);
   const analysisDeepModeRef = useRef(false);
   const kataGoConsoleRef = useRef<HTMLDivElement>(null);
+  const currentNode = getNodeAtPath(document, path);
+  const currentPathSupportsAnalysis = path.length === 0 || !isScoringNode(currentNode);
   const currentNodeId = nodeKey(document, path);
   const liveAnalysisTargetVisits = analysisDeepMode
     ? deepAnalysisVisits
@@ -108,15 +110,15 @@ export function useKataGoAnalysis({
     : Math.max(1, Math.ceil(normalAnalysisTargetVisits * 0.5));
 
   const currentAnalysis = useMemo(
-    () => (enabled ? (analysisCache[currentNodeId]?.result ?? null) : null),
-    [analysisCache, currentNodeId, enabled]
+    () => (enabled && currentPathSupportsAnalysis ? (analysisCache[currentNodeId]?.result ?? null) : null),
+    [analysisCache, currentNodeId, currentPathSupportsAnalysis, enabled]
   );
   const currentPassAnalysis = useMemo(() => {
-    if (!enabled) return null;
+    if (!enabled || !currentPathSupportsAnalysis) return null;
     const passChildPath = findPassChildPath(document, path);
     const nodeId = passChildPath == null ? hiddenPassAnalysisKey(document, path) : nodeKey(document, passChildPath);
     return analysisCache[nodeId]?.result ?? null;
-  }, [analysisCache, document, enabled, path]);
+  }, [analysisCache, currentPathSupportsAnalysis, document, enabled, path]);
   const analysisTargetVisits = Math.max(1, kataGoSettings.fastVisits || defaultKataGoSettings.fastVisits);
   const needsPassAnalysis = analysisSettings.moveDisplay.includes('value') || analysisSettings.showHotZone;
   const analysisPendingCounts = useMemo(() => {
@@ -133,25 +135,23 @@ export function useKataGoAnalysis({
         ).length
       : 0;
     return {normal, hiddenPass};
-  }, [
-    analysisCache,
-    analysisPaths,
-    analysisQueueRevision,
-    analysisTargetVisits,
-    document,
-    enabled,
-    needsPassAnalysis,
-  ]);
+  }, [analysisCache, analysisPaths, analysisQueueRevision, analysisTargetVisits, document, enabled, needsPassAnalysis]);
   const normalFastPendingCount = analysisPendingCounts.normal;
   const currentPassPendingCount =
-    needsPassAnalysis && shouldCountHiddenPassAnalysis(document, path, analysisCache, analysisTargetVisits) ? 1 : 0;
+    currentPathSupportsAnalysis &&
+    needsPassAnalysis &&
+    shouldCountHiddenPassAnalysis(document, path, analysisCache, analysisTargetVisits)
+      ? 1
+      : 0;
+  const currentLiveAnalysisReady =
+    !currentPathSupportsAnalysis ||
+    ((analysisCache[currentNodeId]?.visits ?? 0) >= liveAnalysisTargetVisits &&
+      (!needsPassAnalysis || !shouldCountHiddenPassAnalysis(document, path, analysisCache, livePassTargetVisits)));
   const analysisIdle =
     analysisMode &&
     normalFastPendingCount === 0 &&
     !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live') &&
-    (analysisCache[currentNodeId]?.visits ?? 0) >= liveAnalysisTargetVisits &&
-    (!needsPassAnalysis ||
-      !shouldCountHiddenPassAnalysis(document, path, analysisCache, livePassTargetVisits));
+    currentLiveAnalysisReady;
   const backgroundPassPendingCount = Math.max(0, analysisPendingCounts.hiddenPass - currentPassPendingCount);
   const fastAnalysisPendingCount =
     normalFastPendingCount + currentPassPendingCount + (analysisIdle ? backgroundPassPendingCount : 0);
@@ -410,6 +410,14 @@ export function useKataGoAnalysis({
       if (!hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) void ulugo.katago.stopAnalysis();
       return;
     }
+    if (!currentPathSupportsAnalysis) {
+      if (hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live')) {
+        const liveQueryIds = getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'live');
+        clearPendingAnalysisQueries('live');
+        void ulugo.katago.stopAnalysis(liveQueryIds);
+      }
+      return;
+    }
     if (normalFastPendingCount > 0 || hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) {
       if (hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live')) {
         const liveQueryIds = getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'live');
@@ -479,6 +487,7 @@ export function useKataGoAnalysis({
     needsPassAnalysis,
     clearPendingAnalysisQueries,
     currentNodeId,
+    currentPathSupportsAnalysis,
     document,
     enabled,
     kataGoSettings.maxVisits,

@@ -1,6 +1,13 @@
 import {type AnalysisOverlay, type HotZone, type Marker, type MoveHint, type Vertex} from '@ulugo/go-board';
 import {type BoardPoint} from '@ulugo/go-core';
-import {getNodeAtPath, normalizeMovePoint, pointToVertex, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
+import {
+  getNodeAtPath,
+  normalizeMovePoint,
+  pointToVertex,
+  type SgfDocument,
+  type SgfNode,
+  vertexToPoint,
+} from '@ulugo/sgf-core';
 import type {AnalysisDisplayMode, AnalysisSettings, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 
 export type MoveNumberLimit = 0 | 1 | 5 | 20 | 'all';
@@ -213,10 +220,7 @@ export function applyPvSignMap(signMap: Sign[][], pvMap: Array<Array<PvPreviewSt
   return signMap.map((row, y) => row.map((sign, x) => pvMap[y][x]?.sign ?? sign));
 }
 
-export function applyPvMarkerMap(
-  markerMap: Marker[][],
-  pvMap: Array<Array<PvPreviewStone | null>> | null
-): Marker[][] {
+export function applyPvMarkerMap(markerMap: Marker[][], pvMap: Array<Array<PvPreviewStone | null>> | null): Marker[][] {
   if (pvMap == null) return markerMap;
   return markerMap.map((row, y) =>
     row.map((marker, x) => (pvMap[y][x] == null ? marker : {type: 'label', label: pvMap[y][x]?.label}))
@@ -277,6 +281,25 @@ export function buildOwnershipMap(
       return shouldCapTerritoryOpacity ? Math.sign(territory) * Math.min(Math.abs(territory), 0.3) : territory;
     })
   );
+}
+
+export function buildScoringTerritoryMap(size: number, node: SgfNode): number[][] | undefined {
+  const result = emptyMap(size, 0);
+  let hasTerritory = false;
+
+  for (const [points, value] of [
+    [node.data.TB ?? [], 1],
+    [node.data.TW ?? [], -1],
+  ] as const) {
+    for (const point of points) {
+      const vertex = pointToVertex(point);
+      if (vertex == null || vertex[0] >= size || vertex[1] >= size) continue;
+      result[vertex[1]][vertex[0]] = value;
+      hasTerritory = true;
+    }
+  }
+
+  return hasTerritory ? result : undefined;
 }
 
 export function buildHotZoneMap(

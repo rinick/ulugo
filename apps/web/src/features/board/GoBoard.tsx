@@ -1,6 +1,13 @@
 import {Board, type Marker, type Vertex} from '@ulugo/go-board';
 import {deriveBoardPosition} from '@ulugo/go-core';
-import {pointToVertex, type MarkupKind, type SgfDocument, vertexToPoint} from '@ulugo/sgf-core';
+import {
+  getNodeAtPath,
+  isScoringNode,
+  pointToVertex,
+  type MarkupKind,
+  type SgfDocument,
+  vertexToPoint,
+} from '@ulugo/sgf-core';
 import {
   useCallback,
   useEffect,
@@ -22,6 +29,7 @@ import {
   buildMoveHintMap,
   buildOwnershipMap,
   buildPvPreviewMap,
+  buildScoringTerritoryMap,
   buildTopMovePvCandidateMap,
   childMoveSet,
   shouldShowMoveNumber,
@@ -89,6 +97,8 @@ export function GoBoard({
   const hoverTimerRef = useRef<number | null>(null);
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
+  const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
+  const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
   const [pvPreview, setPvPreview] = useState<ActivePvPreview | null>(null);
@@ -111,19 +121,24 @@ export function GoBoard({
   );
   const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
   const hoverPvCandidateMap = useMemo(
-    () => buildTopMovePvCandidateMap(position.size, childMoves, analysis, analysisSettings, position.nextColor),
-    [analysis, analysisSettings, childMoves, position.nextColor, position.size]
+    () =>
+      scoringNode
+        ? new Map<string, PvPreviewCandidate>()
+        : buildTopMovePvCandidateMap(position.size, childMoves, analysis, analysisSettings, position.nextColor),
+    [analysis, analysisSettings, childMoves, position.nextColor, position.size, scoringNode]
   );
   const allPvCandidateMap = useMemo(
-    () => buildAllPvCandidateMap(position.size, analysis, position.nextColor),
-    [analysis, position.nextColor, position.size]
+    () =>
+      scoringNode
+        ? new Map<string, PvPreviewCandidate>()
+        : buildAllPvCandidateMap(position.size, analysis, position.nextColor),
+    [analysis, position.nextColor, position.size, scoringNode]
   );
   const pvPreviewMap = useMemo(() => buildPvPreviewMap(position.size, pvPreview), [position.size, pvPreview]);
 
   const markerMap = useMemo(() => {
-    const result = Array.from({length: position.size}, () =>
-      Array.from({length: position.size}, (): Marker => ({}))
-    );
+    const result = Array.from({length: position.size}, () => Array.from({length: position.size}, (): Marker => ({})));
+    if (scoringNode) return result;
 
     for (const point of position.points) {
       if (showMarkup && point.label != null) {
@@ -136,20 +151,22 @@ export function GoBoard({
     }
 
     return result;
-  }, [moveNumberLimit, position.moveNumber, position.points, position.size, showMarkup]);
+  }, [moveNumberLimit, position.moveNumber, position.points, position.size, scoringNode, showMarkup]);
   const analysisOverlayMap = useMemo(
     () =>
-      buildAnalysisOverlayMap(
-        position.size,
-        childMoves,
-        analysis,
-        analysisSettings,
-        position.nextColor,
-        valueOffset,
-        position.points,
-        position.moveNumber,
-        stoneScoreDeltas
-      ),
+      scoringNode
+        ? undefined
+        : buildAnalysisOverlayMap(
+            position.size,
+            childMoves,
+            analysis,
+            analysisSettings,
+            position.nextColor,
+            valueOffset,
+            position.points,
+            position.moveNumber,
+            stoneScoreDeltas
+          ),
     [
       analysis,
       analysisSettings,
@@ -158,40 +175,48 @@ export function GoBoard({
       position.nextColor,
       position.points,
       position.size,
+      scoringNode,
       stoneScoreDeltas,
       valueOffset,
     ]
   );
   const moveHintMap = useMemo(
-    () => buildMoveHintMap(position.size, document, path, analysis, analysisSettings),
-    [analysis, analysisSettings, document, path, position.size]
+    () => (scoringNode ? undefined : buildMoveHintMap(position.size, document, path, analysis, analysisSettings)),
+    [analysis, analysisSettings, document, path, position.size, scoringNode]
   );
   const territoryMap = useMemo(
     () =>
-      buildOwnershipMap(
-        position.size,
-        analysis,
-        analysisSettings,
-        position.stones,
-        position.points,
-        position.moveNumber,
-        moveNumberLimit,
-        analysisOverlayMap
-      ),
+      scoringNode
+        ? buildScoringTerritoryMap(position.size, currentNode)
+        : buildOwnershipMap(
+            position.size,
+            analysis,
+            analysisSettings,
+            position.stones,
+            position.points,
+            position.moveNumber,
+            moveNumberLimit,
+            analysisOverlayMap
+          ),
     [
       analysis,
       analysisSettings,
       analysisOverlayMap,
+      currentNode,
       moveNumberLimit,
       position.moveNumber,
       position.points,
       position.size,
       position.stones,
+      scoringNode,
     ]
   );
   const hotZoneMap = useMemo(
-    () => buildHotZoneMap(position.size, analysis, passAnalysis, analysisSettings, position.nextColor),
-    [analysis, analysisSettings, passAnalysis, position.nextColor, position.size]
+    () =>
+      scoringNode
+        ? undefined
+        : buildHotZoneMap(position.size, analysis, passAnalysis, analysisSettings, position.nextColor),
+    [analysis, analysisSettings, passAnalysis, position.nextColor, position.size, scoringNode]
   );
   const displaySignMap = useMemo(() => applyPvSignMap(signMap, pvPreviewMap), [pvPreviewMap, signMap]);
   const displayMarkerMap = useMemo(() => applyPvMarkerMap(markerMap, pvPreviewMap), [markerMap, pvPreviewMap]);
@@ -212,11 +237,12 @@ export function GoBoard({
     [hotZoneMap, position.size, pvPreviewMap]
   );
   const selectedVertices = useMemo(() => {
+    if (scoringNode) return [];
     if (position.lastMove == null) return [];
     const vertex = pointToVertex(position.lastMove);
     if (vertex == null || pvPreviewMap?.[vertex[1]]?.[vertex[0]] != null) return [];
     return [vertex];
-  }, [position.lastMove, pvPreviewMap]);
+  }, [position.lastMove, pvPreviewMap, scoringNode]);
 
   const clearPvTimers = useCallback(() => {
     if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current);

@@ -1075,6 +1075,13 @@ body.minimal .app-content > .right-region .capture-summary {
   font-size: 14px;
 }
 
+.move-tree-node.score {
+  border-radius: 0;
+  width: 18px;
+  height: 18px;
+  transform: rotate(45deg);
+}
+
 .move-tree-node.has-comment {
   border-bottom-left-radius: 0;
 }

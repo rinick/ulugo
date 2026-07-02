@@ -10,6 +10,7 @@ import {
   getGameInfo,
   getNodeAtPath,
   buildTree,
+  isScoringNode,
   moveBranch,
   moveBranchToMain,
   pruneBranch,
@@ -126,6 +127,8 @@ export function App() {
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
+  const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
+  const selectedScoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const treeLayout = useMemo(() => layoutTree(buildTree(document)[0], boardSize), [boardSize, document]);
   const nextAutoColor = autoColorOverride ?? position.nextColor;
@@ -192,7 +195,7 @@ export function App() {
       replaceDocument(importedDocument, [], {clearAnalysisCache: true});
     },
   });
-  const showMarkup = analysisSettings.showMarkup;
+  const showMarkup = analysisSettings.showMarkup && !selectedScoringNode;
   const stoneOverlayDisplay =
     !capabilities.katago && analysisSettings.stoneOverlay === 'dot' ? 'number' : analysisSettings.stoneOverlay;
   const boardMoveNumberLimit = stoneOverlayDisplay === 'number' ? analysisSettings.maxMoves : 0;
@@ -225,6 +228,13 @@ export function App() {
   useEffect(() => {
     if (!showMarkup && isMarkupTool(tool)) setTool('auto');
   }, [showMarkup, tool]);
+
+  useEffect(() => {
+    if (!selectedScoringNode || tool === 'auto') return;
+    setTool('auto');
+    setAutoColorOverride(null);
+    setReplaceMoveState(null);
+  }, [selectedScoringNode, tool]);
 
   useEffect(() => {
     if (!minimalMode) return;
@@ -306,6 +316,7 @@ export function App() {
   }
 
   function handleCommentChange(value: string): void {
+    if (selectedScoringNode) return;
     replaceDocument(updateComment(document, path, value), path);
   }
 
@@ -362,6 +373,7 @@ export function App() {
   );
 
   function handleToolChange(nextTool: EditorTool): void {
+    if (selectedScoringNode && nextTool !== 'auto') return;
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
@@ -387,6 +399,7 @@ export function App() {
   }
 
   function handleAutoToolClick(): void {
+    if (selectedScoringNode) return;
     setReplaceMoveState(null);
     if (isSetupNode(getNodeAtPath(document, path))) {
       replaceDocument(updateSetupNextColor(document, path, oppositeColor(position.nextColor)), path, {
@@ -409,11 +422,12 @@ export function App() {
   }
 
   const canNavigatePrevious = path.length > 0;
-  const canNavigateNext = getNodeAtPath(document, path).children.length > 0;
+  const canNavigateNext = currentNode.children.length > 0;
   const canReplaceMove =
-    tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
+    !selectedScoringNode &&
+    (tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
       ? hasReplaceableContinuation(document, replaceMoveState.originalPath, branchMemoryRef.current)
-      : hasReplaceableContinuation(document, path, branchMemoryRef.current);
+      : hasReplaceableContinuation(document, path, branchMemoryRef.current));
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -456,10 +470,10 @@ export function App() {
           navigateBranch(1, steps);
           break;
         case 'playBestMove':
-          handlePlayBestAnalysisMove();
+          if (!selectedScoringNode) handlePlayBestAnalysisMove();
           break;
         case 'pass':
-          handlePass();
+          if (!selectedScoringNode) handlePass();
           break;
         case 'toolAuto':
           handleToolChange('auto');
@@ -492,19 +506,19 @@ export function App() {
           handleToolChange('erase');
           break;
         case 'moveBranchToMain':
-          if (path.length > 0) handleMoveBranchToMain();
+          if (path.length > 0 && !selectedScoringNode) handleMoveBranchToMain();
           break;
         case 'moveBranchLeft':
-          if (path.length > 0) handleMoveBranchLeft();
+          if (path.length > 0 && !selectedScoringNode) handleMoveBranchLeft();
           break;
         case 'moveBranchRight':
-          if (path.length > 0) handleMoveBranchRight();
+          if (path.length > 0 && !selectedScoringNode) handleMoveBranchRight();
           break;
         case 'pruneBranch':
-          if (path.length > 0) handlePruneBranch();
+          if (path.length > 0 && !selectedScoringNode) handlePruneBranch();
           break;
         case 'deleteBranch':
-          if (path.length > 0) handleDeleteNode();
+          if (path.length > 0 && !selectedScoringNode) handleDeleteNode();
           break;
         case 'toggleShowCoordinates':
           setShowCoordinates((current) => !current);
@@ -586,6 +600,7 @@ export function App() {
     navigatePrevious,
     path,
     position.nextColor,
+    selectedScoringNode,
     tool,
     toggleDeepAnalysisMode,
     toggleAnalysisMode,
@@ -614,6 +629,8 @@ export function App() {
       if (nextPath != null) selectPath(nextPath);
       return;
     }
+
+    if (selectedScoringNode) return;
 
     if (options.clickCount > 1) {
       if (tool === 'auto' && position.stones.has(point)) {
@@ -657,7 +674,14 @@ export function App() {
 
     if (tool === 'black' || tool === 'white' || colorOverride != null) {
       const color = colorOverride ?? (tool === 'black' ? 'B' : 'W');
-      const result = addSetupStone(document, path, color, point, position.stones.get(point) ?? null, position.nextColor);
+      const result = addSetupStone(
+        document,
+        path,
+        color,
+        point,
+        position.stones.get(point) ?? null,
+        position.nextColor
+      );
       replaceDocument(result.document, result.path, {
         invalidateAnalysisPath: result.path,
       });
@@ -675,6 +699,7 @@ export function App() {
   }
 
   function handleBoardRightClick(point: string, options: BoardVertexClickOptions): void {
+    if (selectedScoringNode) return;
     if (isMarkupTool(tool)) {
       if (!showMarkup) return;
       applyMarkupTool(point, true, options.clickCount);
@@ -686,6 +711,7 @@ export function App() {
   }
 
   function applyMarkupTool(point: string, rightClick: boolean, clickCount: number): void {
+    if (selectedScoringNode) return;
     const result = applyMarkupEdit({
       document,
       path,
@@ -707,6 +733,7 @@ export function App() {
   }
 
   function handleEraseAllMarkup(): void {
+    if (selectedScoringNode) return;
     replaceDocument(eraseAllMarkup(document, path), path);
   }
 
@@ -721,6 +748,7 @@ export function App() {
   }
 
   function handlePlayBestAnalysisMove(): void {
+    if (selectedScoringNode) return;
     const bestMove = currentAnalysis?.moveInfos?.[0]?.move;
     if (bestMove == null) return;
 
@@ -740,6 +768,7 @@ export function App() {
   }
 
   function handlePass(): void {
+    if (selectedScoringNode) return;
     if (tool === 'replace') {
       const result = replaceNextMoveBranch({
         document,
@@ -769,21 +798,25 @@ export function App() {
   }
 
   function handleMoveBranchToMain(targetPath = path): void {
+    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranchToMain(document, targetPath);
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchLeft(targetPath = path): void {
+    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranch(document, targetPath, -1);
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchRight(targetPath = path): void {
+    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranch(document, targetPath, 1);
     replaceDocument(result.document, result.path);
   }
 
   function handleDeleteNode(targetPath = path): void {
+    if (isReadOnlyNodePath(targetPath)) return;
     const deleteTarget = () => {
       const result = deleteNode(document, targetPath);
       replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
@@ -806,6 +839,7 @@ export function App() {
   }
 
   function handlePruneBranch(targetPath = path): void {
+    if (isReadOnlyNodePath(targetPath)) return;
     Modal.confirm({
       centered: true,
       title: t('pruneBranchConfirmTitle'),
@@ -819,6 +853,10 @@ export function App() {
         replaceDocument(result.document, result.path);
       },
     });
+  }
+
+  function isReadOnlyNodePath(targetPath: number[]): boolean {
+    return isScoringNode(getNodeAtPath(document, targetPath));
   }
 
   function handleLanguageChange(language: AppLanguage): void {
@@ -937,8 +975,8 @@ export function App() {
             showCoordinates={showCoordinates}
             showMarkup={showMarkup}
             moveNumberLimit={boardMoveNumberLimit}
-            analysis={currentAnalysis}
-            passAnalysis={currentPassAnalysis}
+            analysis={selectedScoringNode ? null : currentAnalysis}
+            passAnalysis={selectedScoringNode ? null : currentPassAnalysis}
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
             boardBackground={boardBackground}
@@ -971,13 +1009,14 @@ export function App() {
               analysisSettings={analysisSettings}
               showAnalysisControls={capabilities.katago}
               hideCommentsPanel={minimalMode}
+              commentReadOnly={selectedScoringNode}
               basicTools={
                 minimalMode && minimalBasicToolsOpen ? (
                   <div className="minimal-basic-tools">
                     <EditorToolbar
                       tool={tool}
                       nextColor={nextAutoColor}
-                      canReplaceMove={canReplaceMove}
+                      canReplaceMove={canReplaceMove && !selectedScoringNode}
                       showMarkup={showMarkup}
                       showSetupTools={false}
                       labelText={labelText}
@@ -1069,9 +1108,7 @@ export function App() {
 
 function isSetupNode(node: SgfNode): boolean {
   return (
-    node.data.B == null &&
-    node.data.W == null &&
-    setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
+    node.data.B == null && node.data.W == null && setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
   );
 }
 

@@ -9,6 +9,7 @@ export interface TreeCell {
   text: string;
   isSetup: boolean;
   isPass: boolean;
+  isScoring: boolean;
   hasMetadata: boolean;
   hasComment: boolean;
   hasDrawing: boolean;
@@ -102,22 +103,25 @@ function treeCell(item: TreeItem, column: number, boardSize: number): TreeCell {
     path: item.path,
     row: item.moveNumber,
     column,
-    color: item.path.length === 0 ? rootCellColor(item) : (item.color ?? item.setupColor),
+    color: item.path.length === 0 ? rootCellColor(item) : (item.color ?? item.setupColor ?? item.scoreColor),
     text:
       item.path.length === 0
         ? item.isSetup
           ? '+'
           : ''
-        : item.isSetup
-          ? '+'
-          : item.point === ''
-            ? ''
-            : formatPoint(item.point, boardSize),
+        : item.isScoring
+          ? ''
+          : item.isSetup
+            ? '+'
+            : item.point === ''
+              ? ''
+              : formatPoint(item.point, boardSize),
     isSetup: item.isSetup,
-    isPass: item.path.length > 0 && !item.isSetup && item.point === '',
+    isPass: item.path.length > 0 && !item.isSetup && !item.isScoring && item.point === '',
+    isScoring: item.isScoring,
     hasMetadata: item.hasMetadata,
-    hasComment: item.hasComment,
-    hasDrawing: item.hasDrawing,
+    hasComment: !item.isScoring && item.hasComment,
+    hasDrawing: !item.isScoring && item.hasDrawing,
   };
 }
 

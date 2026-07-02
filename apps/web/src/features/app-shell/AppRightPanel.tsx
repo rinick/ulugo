@@ -1,10 +1,7 @@
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
 import type {ReactNode} from 'react';
-import {
-  CommentsPanel,
-  type AnalysisChartSummary,
-} from '../comments/CommentsPanel';
+import {CommentsPanel, type AnalysisChartSummary} from '../comments/CommentsPanel';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {SgfTreePanel} from '../sgf-tree/SgfTreePanel';
 
@@ -19,6 +16,7 @@ interface AppRightPanelProps {
   analysisSettings: AnalysisSettings;
   showAnalysisControls: boolean;
   hideCommentsPanel: boolean;
+  commentReadOnly?: boolean;
   basicTools?: ReactNode;
   chartData: AnalysisChartPoint[];
   selectedMoveNumber: number | null;
@@ -48,6 +46,7 @@ export function AppRightPanel({
   analysisSettings,
   showAnalysisControls,
   hideCommentsPanel,
+  commentReadOnly = false,
   basicTools,
   chartData,
   selectedMoveNumber,
@@ -86,6 +85,7 @@ export function AppRightPanel({
           onChange={onCommentChange}
           showAnalysisControls={showAnalysisControls}
           chartData={chartData}
+          commentReadOnly={commentReadOnly}
           moveDisplay={analysisSettings.moveDisplay}
           showScore={analysisSettings.showScore}
           showPointLoss={analysisSettings.showPointLoss}

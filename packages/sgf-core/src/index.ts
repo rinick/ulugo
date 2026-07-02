@@ -19,8 +19,10 @@ export interface TreeItem {
   moveNumber: number;
   color: SgfColor | null;
   setupColor: SgfColor | null;
+  scoreColor: SgfColor | null;
   point: SgfPoint | null;
   isSetup: boolean;
+  isScoring: boolean;
   hasMetadata: boolean;
   hasComment: boolean;
   hasDrawing: boolean;
@@ -675,23 +677,40 @@ export function getGameInfo(document: SgfDocument): Record<string, string> {
   return Object.fromEntries(keys.map((key) => [key, document.root.data[key]?.[0] ?? '']));
 }
 
+export function isScoringNode(node: SgfNode): boolean {
+  return (
+    node.data.B == null && node.data.W == null && ((node.data.TB?.length ?? 0) > 0 || (node.data.TW?.length ?? 0) > 0)
+  );
+}
+
+export function resultWinnerColor(document: SgfDocument): SgfColor | null {
+  const result = document.root.data.RE?.[0]?.trim().toUpperCase() ?? '';
+  if (result.startsWith('B+')) return 'B';
+  if (result.startsWith('W+')) return 'W';
+  return null;
+}
+
 export function buildTree(document: SgfDocument): TreeItem[] {
   const items: TreeItem[] = [];
   const boardSize = getBoardSize(document);
+  const winnerColor = resultWinnerColor(document);
 
   function walk(node: SgfNode, path: number[], moveNumber: number): TreeItem {
     const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     const isRoot = path.length === 0;
     const isSetup = color == null && hasSetupProperties(node);
+    const isScoring = !isRoot && isScoringNode(node);
     const setupColor = setupNodeColor(node);
-    const nextMoveNumber = color != null || (isSetup && !isRoot) ? moveNumber + 1 : moveNumber;
+    const nextMoveNumber = color != null || (isSetup && !isRoot) || isScoring ? moveNumber + 1 : moveNumber;
     const displayMoveNumber = isRoot ? 0 : nextMoveNumber;
     const label =
       color == null
-        ? isSetup
-          ? `${displayMoveNumber} +`
-          : '0 Root'
+        ? isScoring
+          ? `${displayMoveNumber} Score`
+          : isSetup
+            ? `${displayMoveNumber} +`
+            : '0 Root'
         : `${color}${nextMoveNumber} ${formatPoint(point, boardSize)}`;
 
     return {
@@ -701,8 +720,10 @@ export function buildTree(document: SgfDocument): TreeItem[] {
       moveNumber: displayMoveNumber,
       color,
       setupColor,
+      scoreColor: isScoring ? winnerColor : null,
       point: color == null ? null : point,
       isSetup,
+      isScoring,
       hasMetadata: hasNodeMetadata(node),
       hasComment: hasNodeComment(node),
       hasDrawing: hasNodeDrawing(node),

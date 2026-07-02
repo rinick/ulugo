@@ -157,6 +157,17 @@ describe('sgf-core', () => {
     expect(tree.children[0].children[0].children[0].moveNumber).toBe(3);
   });
 
+  it('gives final scoring nodes their own tree step with winner color', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp])'))[0];
+    const scoringNode = tree.children[0].children[0].children[0];
+
+    expect(scoringNode).toMatchObject({
+      moveNumber: 3,
+      isScoring: true,
+      scoreColor: 'B',
+    });
+  });
+
   it('adds setup stones as setup nodes after regular moves', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const result = addSetupStone(first.document, first.path, 'W', 'pp');
