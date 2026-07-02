@@ -180,7 +180,7 @@
   font-size: 0.36em;
 }
 
-/* Territory map */
+/* Ownership map */
 
 .ulugo-vertex .ulugo-hot-zone {
   box-sizing: border-box;
@@ -200,20 +200,20 @@
   border-color: #762;
 }
 
-.ulugo-vertex .ulugo-territory {
+.ulugo-vertex .ulugo-ownership {
   left: 40%;
   top: 40%;
   width: 20%;
   height: 20%;
-  opacity: var(--ulugo-territory-opacity);
+  opacity: var(--ulugo-ownership-opacity);
   background: transparent;
   pointer-events: none;
   z-index: 2;
 }
-.ulugo-vertex.ulugo-territory_1 .ulugo-territory {
+.ulugo-vertex.ulugo-ownership_1 .ulugo-ownership {
   background: var(--ulugo-black-background-color);
 }
-.ulugo-vertex.ulugo-territory_-1 .ulugo-territory {
+.ulugo-vertex.ulugo-ownership_-1 .ulugo-ownership {
   background: var(--ulugo-white-background-color);
 }
 

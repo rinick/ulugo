@@ -36,7 +36,7 @@ export interface VertexProps extends VertexEventHandlers {
   sign?: Sign;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
-  territory?: number;
+  ownership?: number;
   marker?: MarkerData | null;
   hotZone?: HotZone | null;
   selected?: boolean;
@@ -57,7 +57,7 @@ function Vertex(props: VertexProps) {
     sign = 0,
     analysisOverlay,
     moveHint,
-    territory = 0,
+    ownership = 0,
     marker,
     hotZone,
     selected,
@@ -78,7 +78,7 @@ function Vertex(props: VertexProps) {
     );
   }
 
-  let territoryOpacity = Math.abs(territory);
+  let ownershipOpacity = Math.abs(ownership);
 
   let markerMarkup = () =>
     !!marker &&
@@ -105,7 +105,7 @@ function Vertex(props: VertexProps) {
           [`ulugo-nextmove_${moveHint?.branch}`]: !!moveHint?.branch,
           [`ulugo-nextmove-sign_${moveHint?.sign}`]: !!moveHint?.sign,
 
-          [`ulugo-territory_${territory > 0 ? 1 : -1}`]: !!territory,
+          [`ulugo-ownership_${ownership > 0 ? 1 : -1}`]: !!ownership,
 
           'ulugo-selected': selected,
           'ulugo-selectedleft': selectedLeft,
@@ -158,13 +158,13 @@ function Vertex(props: VertexProps) {
         )
     ),
 
-    !!territory &&
+    !!ownership &&
       h('div', {
-        key: 'territory',
-        className: 'ulugo-territory',
+        key: 'ownership',
+        className: 'ulugo-ownership',
         style: {
           ...absoluteStyle(),
-          '--ulugo-territory-opacity': territoryOpacity,
+          '--ulugo-ownership-opacity': ownershipOpacity,
         } as CSSProperties,
       }),
 
@@ -231,7 +231,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     sameMoveHint(previous.moveHint, next.moveHint) &&
     sameMarker(previous.marker, next.marker) &&
     sameHotZone(previous.hotZone, next.hotZone) &&
-    previous.territory === next.territory &&
+    previous.ownership === next.ownership &&
     previous.selected === next.selected &&
     previous.selectedLeft === next.selectedLeft &&
     previous.selectedRight === next.selectedRight &&

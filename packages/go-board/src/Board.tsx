@@ -33,7 +33,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   showCoordinates?: boolean;
   signMap?: Map<Sign>;
   markerMap?: Map<Marker | null>;
-  territoryMap?: Map<number>;
+  ownershipMap?: Map<number>;
   hotZoneMap?: Map<HotZone | null>;
   analysisOverlayMap?: Map<AnalysisOverlay | null>;
   moveHintMap?: Map<MoveHint | null>;
@@ -75,7 +75,7 @@ export default class Board extends Component<BoardProps, BoardState> {
     let {
       vertexSize = 24,
       signMap,
-      territoryMap,
+      ownershipMap,
       hotZoneMap,
       analysisOverlayMap,
       moveHintMap,
@@ -173,7 +173,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     marker: markerMap?.[y]?.[x],
 
                     hotZone: hotZoneMap?.[y]?.[x],
-                    territory: territoryMap?.[y]?.[x],
+                    ownership: ownershipMap?.[y]?.[x],
 
                     selected,
                     selectedLeft: selected && selectedVertices.some((v) => vertexEquals(v, [x - 1, y])),

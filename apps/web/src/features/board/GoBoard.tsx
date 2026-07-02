@@ -29,7 +29,7 @@ import {
   buildMoveHintMap,
   buildOwnershipMap,
   buildPvPreviewMap,
-  buildScoringTerritoryMap,
+  buildScoringOwnershipMap,
   buildTopMovePvCandidateMap,
   childMoveSet,
   shouldShowMoveNumber,
@@ -184,10 +184,10 @@ export function GoBoard({
     () => (scoringNode ? undefined : buildMoveHintMap(position.size, document, path, analysis, analysisSettings)),
     [analysis, analysisSettings, document, path, position.size, scoringNode]
   );
-  const territoryMap = useMemo(
+  const ownershipMap = useMemo(
     () =>
       scoringNode
-        ? buildScoringTerritoryMap(position.size, currentNode)
+        ? buildScoringOwnershipMap(position.size, currentNode)
         : buildOwnershipMap(
             position.size,
             analysis,
@@ -228,9 +228,9 @@ export function GoBoard({
     () => applyPvNullableMap(moveHintMap, pvPreviewMap, position.size, null),
     [moveHintMap, position.size, pvPreviewMap]
   );
-  const displayTerritoryMap = useMemo(
-    () => applyPvNullableMap(territoryMap, pvPreviewMap, position.size, 0),
-    [territoryMap, position.size, pvPreviewMap]
+  const displayOwnershipMap = useMemo(
+    () => applyPvNullableMap(ownershipMap, pvPreviewMap, position.size, 0),
+    [ownershipMap, position.size, pvPreviewMap]
   );
   const displayHotZoneMap = useMemo(
     () => applyPvNullableMap(hotZoneMap, pvPreviewMap, position.size, null),
@@ -396,7 +396,7 @@ export function GoBoard({
           markerMap={displayMarkerMap}
           analysisOverlayMap={displayAnalysisOverlayMap}
           moveHintMap={displayMoveHintMap}
-          territoryMap={displayTerritoryMap}
+          ownershipMap={displayOwnershipMap}
           hotZoneMap={displayHotZoneMap}
           selectedVertices={selectedVertices}
           onVertexClick={handleVertexClick}

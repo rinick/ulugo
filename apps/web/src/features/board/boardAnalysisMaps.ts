@@ -258,7 +258,7 @@ export function buildOwnershipMap(
   analysisOverlayMap: Array<Array<AnalysisOverlay | null>> | undefined
 ): number[][] | undefined {
   if (!settings.showExpectedTerritory || analysis?.ownership == null) return undefined;
-  const cappedTerritoryPoints = new Set(
+  const cappedOwnershipPoints = new Set(
     points
       .filter((point) =>
         shouldShowMoveNumber(point.moveNumber, point.stone != null, currentMoveNumber, moveNumberLimit)
@@ -269,23 +269,23 @@ export function buildOwnershipMap(
   return Array.from({length: size}, (_, y) =>
     Array.from({length: size}, (_, x) => {
       const point = vertexToPoint(x, y);
-      const shouldCapTerritoryOpacity = cappedTerritoryPoints.has(point) || analysisOverlayMap?.[y]?.[x]?.text != null;
+      const shouldCapOwnershipOpacity = cappedOwnershipPoints.has(point) || analysisOverlayMap?.[y]?.[x]?.text != null;
 
       const value = analysis.ownership?.[y * size + x] ?? 0;
       if (Math.abs(value) < 0.15) return 0;
 
-      const territory = Math.max(-1, Math.min(1, value));
+      const ownership = Math.max(-1, Math.min(1, value));
       const stone = stones.get(point);
-      if (stone === 'B' && territory > 0) return 0;
-      if (stone === 'W' && territory < 0) return 0;
-      return shouldCapTerritoryOpacity ? Math.sign(territory) * Math.min(Math.abs(territory), 0.3) : territory;
+      if (stone === 'B' && ownership > 0) return 0;
+      if (stone === 'W' && ownership < 0) return 0;
+      return shouldCapOwnershipOpacity ? Math.sign(ownership) * Math.min(Math.abs(ownership), 0.3) : ownership;
     })
   );
 }
 
-export function buildScoringTerritoryMap(size: number, node: SgfNode): number[][] | undefined {
+export function buildScoringOwnershipMap(size: number, node: SgfNode): number[][] | undefined {
   const result = emptyMap(size, 0);
-  let hasTerritory = false;
+  let hasOwnership = false;
 
   for (const [points, value] of [
     [node.data.TB ?? [], 1],
@@ -295,11 +295,11 @@ export function buildScoringTerritoryMap(size: number, node: SgfNode): number[][
       const vertex = pointToVertex(point);
       if (vertex == null || vertex[0] >= size || vertex[1] >= size) continue;
       result[vertex[1]][vertex[0]] = value;
-      hasTerritory = true;
+      hasOwnership = true;
     }
   }
 
-  return hasTerritory ? result : undefined;
+  return hasOwnership ? result : undefined;
 }
 
 export function buildHotZoneMap(
