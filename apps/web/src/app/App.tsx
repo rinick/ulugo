@@ -798,25 +798,21 @@ export function App() {
   }
 
   function handleMoveBranchToMain(targetPath = path): void {
-    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranchToMain(document, targetPath);
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchLeft(targetPath = path): void {
-    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranch(document, targetPath, -1);
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchRight(targetPath = path): void {
-    if (isReadOnlyNodePath(targetPath)) return;
     const result = moveBranch(document, targetPath, 1);
     replaceDocument(result.document, result.path);
   }
 
   function handleDeleteNode(targetPath = path): void {
-    if (isReadOnlyNodePath(targetPath)) return;
     const deleteTarget = () => {
       const result = deleteNode(document, targetPath);
       replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
@@ -839,7 +835,6 @@ export function App() {
   }
 
   function handlePruneBranch(targetPath = path): void {
-    if (isReadOnlyNodePath(targetPath)) return;
     Modal.confirm({
       centered: true,
       title: t('pruneBranchConfirmTitle'),
@@ -853,10 +848,6 @@ export function App() {
         replaceDocument(result.document, result.path);
       },
     });
-  }
-
-  function isReadOnlyNodePath(targetPath: number[]): boolean {
-    return isScoringNode(getNodeAtPath(document, targetPath));
   }
 
   function handleLanguageChange(language: AppLanguage): void {
