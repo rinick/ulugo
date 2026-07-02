@@ -89,6 +89,7 @@ interface ReplaceDocumentOptions {
   convertHiddenPassPath?: number[];
   invalidateAnalysisPath?: number[];
   replaceMoveState?: ReplaceMoveState | null;
+  resetSelectionMoved?: boolean;
 }
 
 const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
@@ -118,6 +119,7 @@ export function App() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
+  const [selectionMoved, setSelectionMoved] = useState(false);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
@@ -184,6 +186,7 @@ export function App() {
     path,
     analysisPaths,
     analysisChartPaths,
+    skipEmptyInitialBoardLiveAnalysis: !selectionMoved,
     startFailedMessage: t('analysisStartFailed'),
   });
   const gameRecordFiles = useGameRecordFiles({
@@ -192,7 +195,7 @@ export function App() {
     onImport: (importedDocument) => {
       branchMemoryRef.current.clear();
       setAnalysisModeActive(capabilities.katago && analysisSettings.mode === 'review' && analysisSettings.autoAnalyze);
-      replaceDocument(importedDocument, [], {clearAnalysisCache: true});
+      replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
     },
   });
   const showMarkup = analysisSettings.showMarkup && !selectedScoringNode;
@@ -266,6 +269,9 @@ export function App() {
     resetAnalysisForDocumentChange(next, options);
     setDocument(next);
     setPath(normalizedPath);
+    setSelectionMoved(
+      options.resetSelectionMoved === true ? false : (current) => current || !samePath(path, normalizedPath)
+    );
     resetLabelTextForUnmarkedSelection(next, normalizedPath);
     setAutoColorOverride(null);
     setReplaceMoveState(options.replaceMoveState ?? null);
@@ -282,6 +288,7 @@ export function App() {
 
     rememberPath(normalizedPath);
     setPath(normalizedPath);
+    if (!samePath(path, normalizedPath)) setSelectionMoved(true);
     resetLabelTextForUnmarkedSelection(document, normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
     setReplaceMoveState(null);
@@ -301,7 +308,7 @@ export function App() {
     branchMemoryRef.current.clear();
     gameRecordFiles.clearCurrentFile();
     setAnalysisModeActive(false);
-    replaceDocument(createNewGame(size), [], {clearAnalysisCache: true});
+    replaceDocument(createNewGame(size), [], {clearAnalysisCache: true, resetSelectionMoved: true});
   }
 
   function handleModeChange(mode: AnalysisSettings['mode']): void {
