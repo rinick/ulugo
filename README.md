@@ -26,6 +26,13 @@ Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an s
 - Focus on the board, hide unecessary UI elements
 ![](/screenshot/minimal.webp)
 
+#### Hot Zone
+- Highlight the critical areas on the board.
+- Blue squares: Areas to secure. You may lose these areas if you make a mistake.
+- Gray squares: Areas to sacrifice. You will likely need to give up these areas in order to secure the blue ones.
+![](/screenshot/hot-zone.webp)
+
+
 ## Development
 
 Requires [Node.js](https://nodejs.org/en/download)
