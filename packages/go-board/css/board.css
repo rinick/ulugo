@@ -422,3 +422,32 @@
 .ulugo-vertex.ulugo-nextmove-sign_-1 .ulugo-movehint-next {
   border-color: #fff;
 }
+
+@media print {
+  .ulugo-board,
+  .ulugo-board * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .ulugo-board::after,
+  .ulugo-vertex:not(.ulugo-sign_0) .ulugo-stone::before {
+    display: none !important;
+  }
+
+  .ulugo-stone-image {
+    box-sizing: border-box;
+    border-radius: 50%;
+    background-image: none !important;
+  }
+
+  .ulugo-stone-image.ulugo-sign_1 {
+    border: 0.04em solid #000000;
+    background: #000000 !important;
+  }
+
+  .ulugo-stone-image.ulugo-sign_-1 {
+    border: 0.04em solid #000000;
+    background: #ffffff !important;
+  }
+}

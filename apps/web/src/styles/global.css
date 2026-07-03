@@ -1173,6 +1173,65 @@ body.minimal .app-content > .right-region .capture-summary {
   font-size: 0.4em;
 }
 
+@media print {
+  html,
+  body,
+  #root,
+  .app-shell {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .app-header,
+  .left-panel,
+  .right-region,
+  .analysis-button,
+  .left-panel-toggle,
+  .minimal-control {
+    display: none !important;
+  }
+
+  .app-content,
+  .board-region,
+  .board-frame {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .board-region,
+  .board-surface,
+  .ulugo-board {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .board-surface {
+    display: block;
+    width: max-content;
+    margin: 0 auto;
+  }
+
+  .board-surface::before,
+  .board-surface::after {
+    display: none !important;
+  }
+
+  .ulugo-board {
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
 .game-info-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1305,5 +1364,22 @@ button.ant-btn.left-panel-toggle {
     position: fixed !important;
     inset: 52px 12px auto auto !important;
     min-width: max-content !important;
+  }
+}
+
+@media print {
+  body.platform-web.minimal {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    transform: none !important;
+    transform-origin: initial !important;
+  }
+
+  body.platform-web.minimal .minimal-control-dropdown {
+    position: static !important;
+    inset: auto !important;
+    min-width: 0 !important;
   }
 }
