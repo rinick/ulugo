@@ -41,6 +41,7 @@ import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
+import {PrintPreview} from '../features/print/PrintPreview';
 import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
 import {EditorToolbar} from '../features/toolbar/EditorToolbar';
 import {ModeToolbarOptions} from '../features/toolbar/ModeToolbarOptions';
@@ -117,6 +118,7 @@ export function App() {
   const [kataGoSettingsOpen, setKataGoSettingsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
   const [selectionMoved, setSelectionMoved] = useState(false);
@@ -215,10 +217,11 @@ export function App() {
     window.document.body.classList.toggle('platform-web', capabilities.platform === 'web');
     window.document.body.classList.toggle('platform-electron', capabilities.platform === 'electron');
     window.document.body.classList.toggle('minimal', minimalMode);
+    window.document.body.classList.toggle('print-preview-open', printPreviewOpen);
     return () => {
-      window.document.body.classList.remove('platform-web', 'platform-electron', 'minimal');
+      window.document.body.classList.remove('platform-web', 'platform-electron', 'minimal', 'print-preview-open');
     };
-  }, [minimalMode]);
+  }, [minimalMode, printPreviewOpen]);
 
   useEffect(() => {
     for (const item of kataGoConsoleMessages) {
@@ -438,6 +441,7 @@ export function App() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
+      if (printPreviewOpen) return;
       if (isModalOpen() || isPopupOpen()) return;
 
       const shortcutAction = shortcutActionForEvent(event, keyboardShortcuts);
@@ -606,6 +610,7 @@ export function App() {
     navigateNext,
     navigatePrevious,
     path,
+    printPreviewOpen,
     position.nextColor,
     selectedScoringNode,
     tool,
@@ -944,6 +949,7 @@ export function App() {
                 onSaveAs={() => void gameRecordFiles.saveAs()}
                 onSaveToClipboard={() => void gameRecordFiles.saveToClipboard()}
                 onSaveToGoogleDrive={() => void gameRecordFiles.saveToGoogleDrive()}
+                onPrint={() => setPrintPreviewOpen(true)}
                 onGameInfo={() => setGameInfoOpen(true)}
                 onAiConfig={() => setKataGoSettingsOpen(true)}
                 onSettings={() => setSettingsOpen(true)}
@@ -1100,6 +1106,9 @@ export function App() {
           setGameInfoOpen(false);
         }}
       />
+      {printPreviewOpen ? (
+        <PrintPreview document={document} selectedPath={path} onClose={() => setPrintPreviewOpen(false)} />
+      ) : null}
     </ConfigProvider>
   );
 }

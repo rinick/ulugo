@@ -76,6 +76,11 @@
   fill: var(--ulugo-board-foreground-color);
 }
 
+.ulugo-gridline {
+  stroke: var(--ulugo-board-foreground-color);
+  stroke-width: 1;
+}
+
 /* Stone render */
 
 .ulugo-vertex .ulugo-stone {
