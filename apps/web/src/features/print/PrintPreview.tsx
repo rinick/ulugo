@@ -54,6 +54,7 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
   const {t} = useTranslation();
   const [mode, setMode] = useState<PrintMode>('all');
   const [movesPerPage, setMovesPerPage] = useState(50);
+  const [movesPerPageDraft, setMovesPerPageDraft] = useState<number | null>(50);
   const [showTitle, setShowTitle] = useState(true);
   const [customTitle, setCustomTitle] = useState('');
   const boardSize = useMemo(() => getBoardSize(document), [document]);
@@ -73,6 +74,12 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
   const titlePrefix = customTitle.trim();
   const defaultTitlePrefix = `Black:${gameInfo.PB?.trim() || t('black')} vs White:${gameInfo.PW?.trim() || t('white')}`;
 
+  function commitMovesPerPageDraft(): void {
+    const nextValue = Math.max(0, Number(movesPerPageDraft) || 0);
+    setMovesPerPage(nextValue);
+    setMovesPerPageDraft(nextValue);
+  }
+
   return (
     <div className="print-preview-overlay" role="dialog" aria-modal="true" aria-label={t('printPreview')}>
       <div className="print-preview-toolbar">
@@ -91,8 +98,10 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
           <InputNumber
             min={0}
             precision={0}
-            value={movesPerPage}
-            onChange={(value) => setMovesPerPage(Math.max(0, Number(value) || 0))}
+            value={movesPerPageDraft}
+            onBlur={commitMovesPerPageDraft}
+            onChange={setMovesPerPageDraft}
+            onPressEnter={commitMovesPerPageDraft}
           />
           <Checkbox checked={showTitle} onChange={(event) => setShowTitle(event.target.checked)}>
             {t('showTitle')}

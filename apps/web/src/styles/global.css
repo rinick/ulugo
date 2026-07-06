@@ -68,6 +68,7 @@ textarea,
 
 .app-header-left {
   flex: 0 1 auto;
+  position: relative;
 }
 
 .app-header-middle {
@@ -314,6 +315,8 @@ textarea,
 
 .navigation-tools {
   flex: 0 0 auto;
+  z-index: 10;
+  background: white;
 }
 
 .navigation-tools .ant-btn {
@@ -697,6 +700,7 @@ body.minimal .app-content > .right-region .capture-summary {
 }
 
 .tree-panel {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -1538,5 +1542,24 @@ button.ant-btn.left-panel-toggle {
     position: static !important;
     inset: auto !important;
     min-width: 0 !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .app-header, .app-content {
+    overflow: auto;
+  }
+  .app-content > * {
+    min-height: 256px;
+  }
+  .left-panel, .left-panel-toggle {
+    display: none;
+  }
+  .right-region {
+    flex-basis: 250px;
+    width: 250px;
+  }
+  .comments-panel {
+    max-height: 30%;
   }
 }

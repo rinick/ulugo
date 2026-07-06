@@ -29,12 +29,12 @@ export function AppLeftPanel({
   onClearConsole,
 }: AppLeftPanelProps) {
   const {t} = useTranslation();
+  const panelHidden = !open || hidden;
+  const panelClassName = ['left-panel', panelHidden ? 'left-panel-hidden' : ''].filter(Boolean).join(' ');
 
   if (katagoEnabled) {
-    if (hidden) return null;
-
     return (
-      <aside className="left-panel" style={{display: open ? 'flex' : 'none'}}>
+      <aside className={panelClassName}>
         <div className="katago-console-header">
           <h2>{t('katagoConsole')}</h2>
           <Button size="small" onClick={onClearConsole}>
@@ -63,7 +63,7 @@ export function AppLeftPanel({
   if (platform !== 'web') return null;
 
   return (
-    <aside className="left-panel web-ad-panel" style={{display: open && !hidden ? 'flex' : 'none'}}>
+    <aside className={`${panelClassName} web-ad-panel`}>
       <div className="desktop-download-callout">
         <span className="desktop-download-callout-icon">
           <CloudDownloadOutlined />
