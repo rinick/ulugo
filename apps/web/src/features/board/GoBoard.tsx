@@ -97,6 +97,8 @@ export function GoBoard({
   const hoverTimerRef = useRef<number | null>(null);
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
+  const appContentScrollableRef = useRef(false);
+  const primaryInputUsesClickRef = useRef(false);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
@@ -303,6 +305,41 @@ export function GoBoard({
     (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMap.get(vertexKey(vertex)) ?? null,
     [allPvCandidateMap]
   );
+  const refreshAppContentScrollability = useCallback(() => {
+    const appContent = window.document.querySelector<HTMLElement>('.app-content');
+    if (appContent == null) {
+      appContentScrollableRef.current = false;
+      return;
+    }
+
+    const style = window.getComputedStyle(appContent);
+    const canScrollX = style.overflowX === 'auto' || style.overflowX === 'scroll';
+    const canScrollY = style.overflowY === 'auto' || style.overflowY === 'scroll';
+    appContentScrollableRef.current =
+      (canScrollX && appContent.scrollWidth > appContent.clientWidth) ||
+      (canScrollY && appContent.scrollHeight > appContent.clientHeight);
+  }, []);
+  const shouldUseClickForPrimaryInput = useCallback(
+    () => (window.visualViewport?.scale ?? 1) > 1 || appContentScrollableRef.current,
+    []
+  );
+  const handlePrimaryVertexInput = useCallback(
+    (event: VertexEvent, vertex: Vertex) => {
+      if (event.altKey) {
+        const candidate = altClickCandidateAtVertex(vertex);
+        if (candidate != null) startPvPreview(candidate);
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      onVertexClick(vertexToPoint(vertex[0], vertex[1]), {
+        shiftKey: event.shiftKey,
+        clickCount: 'detail' in event ? event.detail : 1,
+      });
+    },
+    [altClickCandidateAtVertex, onVertexClick, startPvPreview]
+  );
   const handleVertexPointerDown = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
       if (event.button === 2) {
@@ -315,22 +352,23 @@ export function GoBoard({
       }
 
       if (event.button !== 0) return;
-      if (event.altKey) {
-        const candidate = altClickCandidateAtVertex(vertex);
-        if (candidate != null) startPvPreview(candidate);
-        event.preventDefault();
+      primaryInputUsesClickRef.current = shouldUseClickForPrimaryInput();
+      if (primaryInputUsesClickRef.current) {
         return;
       }
-      event.preventDefault();
-      onVertexClick(vertexToPoint(vertex[0], vertex[1]), {
-        shiftKey: event.shiftKey,
-        clickCount: 'detail' in event ? event.detail : 1,
-      });
+      handlePrimaryVertexInput(event, vertex);
     },
-    [altClickCandidateAtVertex, onVertexClick, onVertexRightClick, startPvPreview]
+    [handlePrimaryVertexInput, onVertexRightClick, shouldUseClickForPrimaryInput]
   );
   const handleVertexClick = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
+      const primaryInputUsesClick = primaryInputUsesClickRef.current || shouldUseClickForPrimaryInput();
+      primaryInputUsesClickRef.current = false;
+      if (primaryInputUsesClick) {
+        handlePrimaryVertexInput(event, vertex);
+        return;
+      }
+
       if (event.altKey) {
         event.preventDefault();
         return;
@@ -345,7 +383,7 @@ export function GoBoard({
         clickCount,
       });
     },
-    [onVertexClick]
+    [handlePrimaryVertexInput, onVertexClick, shouldUseClickForPrimaryInput]
   );
   const handleVertexMouseEnter = useCallback(
     (_event: VertexEvent, vertex: Vertex) => {
@@ -370,18 +408,25 @@ export function GoBoard({
   );
 
   useLayoutEffect(() => {
+    refreshAppContentScrollability();
+    window.addEventListener('resize', refreshAppContentScrollability);
+    return () => window.removeEventListener('resize', refreshAppContentScrollability);
+  }, [refreshAppContentScrollability]);
+
+  useLayoutEffect(() => {
     const element = frameRef.current;
     if (element == null) return;
 
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
       if (rect == null) return;
+      refreshAppContentScrollability();
       setAvailableSize({width: rect.width, height: rect.height});
     });
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [refreshAppContentScrollability]);
 
   useEffect(() => clearPvPreview, [clearPvPreview, document, path]);
 
