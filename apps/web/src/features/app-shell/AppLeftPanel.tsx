@@ -6,7 +6,6 @@ import {useTranslation} from 'react-i18next';
 import privacyPolicyUrl from '../../../../../policies/privacy-policy.md?url';
 import termsOfServiceUrl from '../../../../../policies/terms-of-service.md?url';
 import {formatConsoleTime} from '../../app/katagoConsoleUtils';
-import {GoogleAd} from '../ads/GoogleAd';
 import {DesktopReleasePanel} from './DesktopReleasePanel';
 
 interface AppLeftPanelProps {
@@ -63,7 +62,7 @@ export function AppLeftPanel({
   if (platform !== 'web') return null;
 
   return (
-    <aside className={`${panelClassName} web-ad-panel`}>
+    <aside className={`${panelClassName} web-left-panel`}>
       <div className="desktop-download-callout">
         <span className="desktop-download-callout-icon">
           <CloudDownloadOutlined />
@@ -82,7 +81,6 @@ export function AppLeftPanel({
           Terms of Service
         </Button>
       </div>
-      <GoogleAd active={open && !hidden} />
     </aside>
   );
 }

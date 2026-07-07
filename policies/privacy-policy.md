@@ -84,24 +84,6 @@ We use reasonable measures to protect information. However, no method of transmi
 
 Ulugo can be used by children, including children under 13, but Ulugo does not knowingly collect personal information from children.
 
-## Advertising
-
-Ulugo’s website may display ads through Google AdSense or similar advertising services.
-
-Advertising providers, including Google, may use cookies, local storage, web beacons, device identifiers, or similar technologies to show ads, measure ad performance, prevent fraud and abuse, limit how often ads are shown, and, where allowed, personalize ads.
-
-Google and its advertising partners may collect or receive information from your browser or device as a result of ad serving on Ulugo’s website. This information is handled by Google and its partners according to their own privacy policies.
-
-You can learn more about how Google uses information from sites and apps that use Google services at:
-
-https://policies.google.com/technologies/partner-sites
-
-You can manage or opt out of personalized Google ads at:
-
-https://adssettings.google.com
-
-Where required by law, Ulugo will ask for consent before using cookies or similar technologies for advertising purposes.
-
 ## Changes
 
 We may update this Privacy Policy from time to time. If we make changes, we will update the effective date above.

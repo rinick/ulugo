@@ -509,6 +509,10 @@ textarea,
   color: #262626;
 }
 
+.left-panel-hidden {
+  display: none;
+}
+
 .katago-console-header {
   display: flex;
   flex: 0 0 auto;
@@ -768,7 +772,7 @@ body.minimal .app-content > .right-region .capture-summary {
   resize: none !important;
 }
 
-.web-ad-panel {
+.web-left-panel {
   gap: 6px;
   padding: 12px;
   overflow: hidden;
@@ -966,18 +970,9 @@ body.minimal .app-content > .right-region .capture-summary {
   font-size: 11px;
 }
 
-.web-ad {
-  display: block;
-  flex: 1 0 250px;
-  width: 335px;
-  height: 250px;
-  max-height: 400px;
-  margin: 24px 0 0;
-  overflow: hidden;
-}
-
 .policy-links {
   display: flex;
+  align-items: end;
   flex: 2 0 auto;
   justify-content: center;
   gap: 8px;
