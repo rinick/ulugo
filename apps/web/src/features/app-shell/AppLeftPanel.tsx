@@ -1,7 +1,7 @@
 import {CloudDownloadOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {KataGoConsoleMessage} from '@ulugo/katago-core';
-import type {RefObject} from 'react';
+import {useEffect, useState, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import privacyPolicyUrl from '../../../../../policies/privacy-policy.md?url';
 import termsOfServiceUrl from '../../../../../policies/terms-of-service.md?url';
@@ -30,6 +30,11 @@ export function AppLeftPanel({
   const {t} = useTranslation();
   const panelHidden = !open || hidden;
   const panelClassName = ['left-panel', panelHidden ? 'left-panel-hidden' : ''].filter(Boolean).join(' ');
+  const [hasOpened, setHasOpened] = useState(() => open && !hidden);
+
+  useEffect(() => {
+    if (open && !hidden) setHasOpened(true);
+  }, [hidden, open]);
 
   if (katagoEnabled) {
     return (
@@ -72,7 +77,7 @@ export function AppLeftPanel({
           <CloudDownloadOutlined />
         </span>
       </div>
-      <DesktopReleasePanel active={open && !hidden} />
+      <DesktopReleasePanel active={hasOpened} />
       <div className="policy-links">
         <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
           Privacy Policy

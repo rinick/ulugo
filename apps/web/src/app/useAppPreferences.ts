@@ -9,7 +9,9 @@ export function useAppPreferences() {
   const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
-  const [leftPanelOpen, setLeftPanelOpen] = useState(() => readStoredBoolean(leftPanelOpenStorageKey, true));
+  const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
+    readStoredBoolean(leftPanelOpenStorageKey, defaultLeftPanelOpen())
+  );
 
   useEffect(() => {
     const root = globalThis.document.getElementById('root');
@@ -60,6 +62,11 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
   } catch {
     return fallback;
   }
+}
+
+function defaultLeftPanelOpen(): boolean {
+  if (typeof window === 'undefined') return true;
+  return window.innerWidth >= 1200;
 }
 
 function writeStoredValue(key: string, value: boolean | number): void {
