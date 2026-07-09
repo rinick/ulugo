@@ -256,6 +256,26 @@ textarea,
   font-size: 12px;
 }
 
+.app-language-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-language-flag {
+  width: 18px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  object-fit: cover;
+}
+
+.app-language-dropdown-button {
+  justify-content: center;
+  width: 22px;
+  padding-inline: 0;
+}
+
 .ant-modal {
   padding-bottom: 0;
 }

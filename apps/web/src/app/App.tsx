@@ -941,6 +941,7 @@ export function App() {
             <section className="app-header-right">
               <AppMenuBar
                 showAiConfig={capabilities.katago}
+                language={currentLanguage}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
                 onOpenFromSgfText={() => void gameRecordFiles.openFromSgfText()}
@@ -953,6 +954,7 @@ export function App() {
                 onGameInfo={() => setGameInfoOpen(true)}
                 onAiConfig={() => setKataGoSettingsOpen(true)}
                 onSettings={() => setSettingsOpen(true)}
+                onLanguageChange={handleLanguageChange}
               />
               <AnalysisToolbarOptions
                 katagoEnabled={capabilities.katago}

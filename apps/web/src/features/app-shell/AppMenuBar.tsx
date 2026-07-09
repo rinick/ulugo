@@ -12,9 +12,12 @@ import {Button, Dropdown, Space, type MenuProps} from 'antd';
 import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import type {AppLanguage} from '../../app/localizationUtils';
+import {LanguageDropdown} from '../../components/LanguageSelect';
 
 interface AppMenuBarProps {
   showAiConfig: boolean;
+  language: AppLanguage;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
   onOpenFromSgfText: () => void;
@@ -27,10 +30,12 @@ interface AppMenuBarProps {
   onGameInfo: () => void;
   onAiConfig: () => void;
   onSettings: () => void;
+  onLanguageChange: (language: AppLanguage) => void;
 }
 
 export function AppMenuBar({
   showAiConfig,
+  language,
   onNew,
   onOpen,
   onOpenFromSgfText,
@@ -43,6 +48,7 @@ export function AppMenuBar({
   onGameInfo,
   onAiConfig,
   onSettings,
+  onLanguageChange,
 }: AppMenuBarProps) {
   const {t} = useTranslation();
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -142,6 +148,12 @@ export function AppMenuBar({
       <Button size="small" icon={<SettingOutlined />} onClick={onSettings}>
         {t('settings')}
       </Button>
+      <LanguageDropdown
+        ariaLabel={t('language')}
+        size="small"
+        value={language}
+        onChange={onLanguageChange}
+      />
     </Space>
   );
 }

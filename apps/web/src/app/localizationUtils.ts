@@ -5,16 +5,13 @@ import jaJP from 'antd/locale/ja_JP';
 import koKR from 'antd/locale/ko_KR';
 import ruRU from 'antd/locale/ru_RU';
 import zhCN from 'antd/locale/zh_CN';
-
-export const languageOptions = [
-  {value: 'en', label: 'English'},
-  {value: 'zh', label: '中文'},
-  {value: 'ja', label: '日本語'},
-  {value: 'ko', label: '한국어'},
-  {value: 'fr', label: 'Français'},
-  {value: 'de', label: 'Deutsch'},
-  {value: 'ru', label: 'Русский'},
-];
+import deFlagUrl from '../assets/flags/de.svg';
+import enUsFlagUrl from '../assets/flags/en-us.svg';
+import frFlagUrl from '../assets/flags/fr.svg';
+import jaFlagUrl from '../assets/flags/ja.svg';
+import koFlagUrl from '../assets/flags/ko.svg';
+import ruFlagUrl from '../assets/flags/ru.svg';
+import zhCnFlagUrl from '../assets/flags/zh-cn.svg';
 
 export const antdLocales = {
   de: deDE,
@@ -27,6 +24,16 @@ export const antdLocales = {
 } as const;
 
 export type AppLanguage = keyof typeof antdLocales;
+
+export const languageOptions: {value: AppLanguage; label: string; flagSrc: string}[] = [
+  {value: 'en', label: 'English', flagSrc: enUsFlagUrl},
+  {value: 'zh', label: '中文', flagSrc: zhCnFlagUrl},
+  {value: 'ja', label: '日本語', flagSrc: jaFlagUrl},
+  {value: 'ko', label: '한국어', flagSrc: koFlagUrl},
+  {value: 'fr', label: 'Français', flagSrc: frFlagUrl},
+  {value: 'de', label: 'Deutsch', flagSrc: deFlagUrl},
+  {value: 'ru', label: 'Русский', flagSrc: ruFlagUrl},
+];
 
 const languageStorageKey = 'ulugo.language';
 

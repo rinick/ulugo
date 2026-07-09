@@ -2,7 +2,8 @@ import {Button, Form, InputNumber, Modal, Select, Slider, Switch, message} from 
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
-import {type AppLanguage, languageOptions} from '../../app/localizationUtils';
+import type {AppLanguage} from '../../app/localizationUtils';
+import {LanguageSelect} from '../../components/LanguageSelect';
 import {Select12} from '../../components/Select12';
 
 interface SettingsModalProps {
@@ -94,13 +95,7 @@ export function SettingsModal({
       </Button>
       <Form form={form} layout="vertical" disabled={loading} initialValues={defaultAnalysisSettings}>
         <Form.Item label={t('language')}>
-          <Select
-            size="small"
-            value={language}
-            popupMatchSelectWidth={false}
-            onChange={(value) => onLanguageChange(value as AppLanguage)}
-            options={languageOptions}
-          />
+          <LanguageSelect size="small" value={language} onChange={onLanguageChange} />
         </Form.Item>
         <Form.Item label={t('uiScale')}>
           <div className="app-settings-scale-row">
