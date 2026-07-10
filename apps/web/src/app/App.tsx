@@ -431,16 +431,17 @@ export function App() {
   function handleAutoToolClick(): void {
     if (selectedScoringNode) return;
     setReplaceMoveState(null);
-    if (isSetupNode(getNodeAtPath(document, path))) {
-      replaceDocument(updateSetupNextColor(document, path, oppositeColor(position.nextColor)), path, {
-        invalidateAnalysisPath: path,
-      });
+
+    if (tool !== 'auto') {
+      selectPath(path);
       setTool('auto');
       return;
     }
 
-    if (tool !== 'auto') {
-      selectPath(path);
+    if (isSetupNode(getNodeAtPath(document, path))) {
+      replaceDocument(updateSetupNextColor(document, path, oppositeColor(position.nextColor)), path, {
+        invalidateAnalysisPath: path,
+      });
       setTool('auto');
       return;
     }
