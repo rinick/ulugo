@@ -1,16 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">
-  <path fill="#fff" d="M0 0h24v16H0z"/>
-  <path fill="#b22234" d="M0 0h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24v1.24H0zm0 2.47h24v1.23H0zm0 2.46h24v1.23H0zm0 2.46h24V16H0z"/>
-  <path fill="#3c3b6e" d="M0 0h10.56v8.62H0z"/>
-  <g fill="#fff">
-    <circle cx="1.1" cy="0.9" r=".18"/><circle cx="2.6" cy="0.9" r=".18"/><circle cx="4.1" cy="0.9" r=".18"/><circle cx="5.6" cy="0.9" r=".18"/><circle cx="7.1" cy="0.9" r=".18"/><circle cx="8.6" cy="0.9" r=".18"/>
-    <circle cx="1.85" cy="1.7" r=".18"/><circle cx="3.35" cy="1.7" r=".18"/><circle cx="4.85" cy="1.7" r=".18"/><circle cx="6.35" cy="1.7" r=".18"/><circle cx="7.85" cy="1.7" r=".18"/>
-    <circle cx="1.1" cy="2.5" r=".18"/><circle cx="2.6" cy="2.5" r=".18"/><circle cx="4.1" cy="2.5" r=".18"/><circle cx="5.6" cy="2.5" r=".18"/><circle cx="7.1" cy="2.5" r=".18"/><circle cx="8.6" cy="2.5" r=".18"/>
-    <circle cx="1.85" cy="3.3" r=".18"/><circle cx="3.35" cy="3.3" r=".18"/><circle cx="4.85" cy="3.3" r=".18"/><circle cx="6.35" cy="3.3" r=".18"/><circle cx="7.85" cy="3.3" r=".18"/>
-    <circle cx="1.1" cy="4.1" r=".18"/><circle cx="2.6" cy="4.1" r=".18"/><circle cx="4.1" cy="4.1" r=".18"/><circle cx="5.6" cy="4.1" r=".18"/><circle cx="7.1" cy="4.1" r=".18"/><circle cx="8.6" cy="4.1" r=".18"/>
-    <circle cx="1.85" cy="4.9" r=".18"/><circle cx="3.35" cy="4.9" r=".18"/><circle cx="4.85" cy="4.9" r=".18"/><circle cx="6.35" cy="4.9" r=".18"/><circle cx="7.85" cy="4.9" r=".18"/>
-    <circle cx="1.1" cy="5.7" r=".18"/><circle cx="2.6" cy="5.7" r=".18"/><circle cx="4.1" cy="5.7" r=".18"/><circle cx="5.6" cy="5.7" r=".18"/><circle cx="7.1" cy="5.7" r=".18"/><circle cx="8.6" cy="5.7" r=".18"/>
-    <circle cx="1.85" cy="6.5" r=".18"/><circle cx="3.35" cy="6.5" r=".18"/><circle cx="4.85" cy="6.5" r=".18"/><circle cx="6.35" cy="6.5" r=".18"/><circle cx="7.85" cy="6.5" r=".18"/>
-    <circle cx="1.1" cy="7.3" r=".18"/><circle cx="2.6" cy="7.3" r=".18"/><circle cx="4.1" cy="7.3" r=".18"/><circle cx="5.6" cy="7.3" r=".18"/><circle cx="7.1" cy="7.3" r=".18"/><circle cx="8.6" cy="7.3" r=".18"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><mask id="a"><circle cx="256" cy="256" r="256" fill="#fff"/></mask><g mask="url(#a)"><path fill="#eee" d="M256 0h256v64l-32 32 32 32v64l-32 32 32 32v64l-32 32 32 32v64l-256 32L0 448v-64l32-32-32-32v-64z"/><path fill="#d80027" d="M224 64h288v64H224Zm0 128h288v64H256ZM0 320h512v64H0Zm0 128h512v64H0Z"/><path fill="#0052b4" d="M0 0h256v256H0Z"/><path fill="#eee" d="m187 243 57-41h-70l57 41-22-67zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67zm162-81 57-41h-70l57 41-22-67zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67Zm162-82 57-41h-70l57 41-22-67Zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67Z"/></g></svg>
