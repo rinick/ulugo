@@ -11,6 +11,7 @@ interface CommentsPanelProps {
   showAnalysisControls?: boolean;
   chartData?: AnalysisChartPoint[];
   commentReadOnly?: boolean;
+  commentRows?: number;
   moveDisplay?: AnalysisSettings['moveDisplay'];
   showScore: boolean;
   showPointLoss: boolean;
@@ -57,6 +58,7 @@ export function CommentsPanel({
   showAnalysisControls = false,
   chartData = [],
   commentReadOnly = false,
+  commentRows,
   moveDisplay = ['scoreChange'],
   showScore,
   showPointLoss,
@@ -157,6 +159,7 @@ export function CommentsPanel({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             autoSize={false}
+            rows={commentRows}
             readOnly={commentReadOnly}
           />
         ) : (

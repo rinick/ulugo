@@ -1,7 +1,14 @@
-import {LeftOutlined, RightOutlined, DeleteOutlined, DoubleLeftOutlined, ScissorOutlined} from '@ant-design/icons';
+import {
+  QuestionCircleOutlined,
+  DeleteOutlined,
+  DoubleLeftOutlined,
+  LeftOutlined,
+  RightOutlined,
+  ScissorOutlined,
+} from '@ant-design/icons';
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
-import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {buildTree, getBoardSize, getNodeAtPath, isScoringNode, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
   useCallback,
   useEffect,
@@ -37,6 +44,7 @@ interface SgfTreePanelProps {
   onMoveRight: (path?: number[]) => void;
   onPrune: (path?: number[]) => void;
   onDelete: (path?: number[]) => void;
+  onEstimateScore: (path: number[]) => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
@@ -51,6 +59,7 @@ export function SgfTreePanel({
   onMoveRight,
   onPrune,
   onDelete,
+  onEstimateScore,
   onPreviousMove,
   onNextMove,
   shortcutLabels = {},
@@ -153,6 +162,12 @@ export function SgfTreePanel({
     [onNextMove, onPreviousMove]
   );
 
+  const canEstimateScore = useMemo(() => {
+    if (contextPath == null) return false;
+    const node = getNodeAtPath(document, contextPath);
+    return !isScoringNode(node) && !node.children.some(isScoringNode);
+  }, [contextPath, document]);
+
   const contextMenuItems = useMemo<MenuProps['items']>(
     () => [
       {
@@ -173,6 +188,15 @@ export function SgfTreePanel({
         icon: <RightOutlined />,
         disabled: contextPath == null || contextPath.length === 0,
       },
+      ...(canEstimateScore
+        ? [
+            {
+              key: 'estimateScore',
+              label: t('estimateScore'),
+              icon: <QuestionCircleOutlined />,
+            },
+          ]
+        : []),
       {
         key: 'pruneBranch',
         label: t('pruneBranch'),
@@ -188,7 +212,7 @@ export function SgfTreePanel({
         disabled: contextPath == null || contextPath.length === 0,
       },
     ],
-    [contextPath, t]
+    [canEstimateScore, contextPath, t]
   );
 
   const handleContextMenu = useCallback(
@@ -204,23 +228,31 @@ export function SgfTreePanel({
 
   const handleContextMenuClick: MenuProps['onClick'] = ({key}) => {
     const targetPath = contextPathRef.current;
-    if (targetPath == null || targetPath.length === 0) return;
+    if (targetPath == null) return;
 
     setContextMenuOpen(false);
     switch (key) {
+      case 'estimateScore':
+        onEstimateScore(targetPath);
+        break;
       case 'moveBranchToMain':
+        if (targetPath.length === 0) return;
         onMoveToMain(targetPath);
         break;
       case 'moveBranchLeft':
+        if (targetPath.length === 0) return;
         onMoveLeft(targetPath);
         break;
       case 'moveBranchRight':
+        if (targetPath.length === 0) return;
         onMoveRight(targetPath);
         break;
       case 'pruneBranch':
+        if (targetPath.length === 0) return;
         onPrune(targetPath);
         break;
       case 'deleteBranch':
+        if (targetPath.length === 0) return;
         onDelete(targetPath);
         break;
     }

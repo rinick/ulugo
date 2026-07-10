@@ -3,6 +3,7 @@ import {
   addLabel,
   addMarkup,
   addMove,
+  addScoringNode,
   addSetupStone,
   buildTree,
   countMoves,
@@ -19,6 +20,7 @@ import {
   replaceMove,
   serializeSgf,
   updateComment,
+  updateScoringPoints,
   updateSetupNextColor,
 } from '.';
 
@@ -166,6 +168,15 @@ describe('sgf-core', () => {
       isScoring: true,
       scoreColor: 'B',
     });
+  });
+
+  it('adds and updates scoring nodes', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const scoring = addScoringNode(first.document, first.path, ['aa', 'aa'], ['bb']);
+    const updated = updateScoringPoints(scoring.document, scoring.path, ['cc'], []);
+
+    expect(scoring.path).toEqual([0, 0]);
+    expect(serializeSgf(updated)).toContain(';B[dd];TB[cc])');
   });
 
   it('adds setup stones as setup nodes after regular moves', () => {

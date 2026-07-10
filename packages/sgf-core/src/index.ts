@@ -440,6 +440,31 @@ export function addMove(
   return {document: next, path: [...path, parent.children.length - 1]};
 }
 
+export function addScoringNode(
+  document: SgfDocument,
+  path: number[],
+  blackPoints: SgfPoint[],
+  whitePoints: SgfPoint[]
+): {document: SgfDocument; path: number[]} {
+  const next = cloneDocument(document);
+  const parent = getNodeAtPath(next, path);
+  const child = createNode(scoringNodeData(blackPoints, whitePoints));
+  parent.children.push(child);
+  return {document: next, path: [...path, parent.children.length - 1]};
+}
+
+export function updateScoringPoints(
+  document: SgfDocument,
+  path: number[],
+  blackPoints: SgfPoint[],
+  whitePoints: SgfPoint[]
+): SgfDocument {
+  return updateNode(document, path, (node) => {
+    setProperty(node, 'TB', uniquePoints(blackPoints));
+    setProperty(node, 'TW', uniquePoints(whitePoints));
+  });
+}
+
 export function countMoves(document: SgfDocument): number {
   let count = 0;
 
@@ -801,6 +826,19 @@ function setProperty(node: SgfNode, key: string, values: string[]): void {
   } else {
     node.data[key] = values;
   }
+}
+
+function scoringNodeData(blackPoints: SgfPoint[], whitePoints: SgfPoint[]): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries({
+      TB: uniquePoints(blackPoints),
+      TW: uniquePoints(whitePoints),
+    }).filter(([, values]) => values.length > 0)
+  );
+}
+
+function uniquePoints(points: SgfPoint[]): SgfPoint[] {
+  return [...new Set(points)];
 }
 
 function addPointValue(node: SgfNode, key: string, value: string): void {

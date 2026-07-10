@@ -1,6 +1,7 @@
 import {ConfigProvider, Layout, Modal} from 'antd';
 import {
   addMove,
+  addScoringNode,
   addSetupStone,
   createNewGame,
   deleteNode,
@@ -17,6 +18,7 @@ import {
   samePath,
   updateComment,
   updateGameInfo,
+  updateScoringPoints,
   updateSetupNextColor,
   type SgfColor,
   type SgfDocument,
@@ -82,6 +84,12 @@ import {useAppPreferences} from './useAppPreferences';
 import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
+import {
+  estimateScoringPoints,
+  formatScoringValue,
+  scoringSummaryForNode,
+  toggleScoringGroup,
+} from './scoringUtils';
 
 const {Header, Content} = Layout;
 
@@ -134,6 +142,18 @@ export function App() {
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const selectedScoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
+  const scoringSummary = useMemo(
+    () => (selectedScoringNode ? scoringSummaryForNode(document, currentNode, position) : null),
+    [currentNode, document, position, selectedScoringNode]
+  );
+  const displayedComment = useMemo(() => {
+    if (scoringSummary == null) return getComment(document, path);
+    return [
+      `${t('blackScore')}: ${formatScoringValue(scoringSummary.blackScore)}`,
+      `${t('whiteScore')}: ${formatScoringValue(scoringSummary.whiteScore)}`,
+      `${t('finalResult')}: ${scoringSummary.result}`,
+    ].join('\n');
+  }, [document, path, scoringSummary, t]);
   const treeLayout = useMemo(() => layoutTree(buildTree(document)[0], boardSize), [boardSize, document]);
   const nextAutoColor = autoColorOverride ?? position.nextColor;
   const currentLanguage = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
@@ -642,7 +662,12 @@ export function App() {
       return;
     }
 
-    if (selectedScoringNode) return;
+    if (selectedScoringNode) {
+      const scoringPoints = toggleScoringGroup(position, currentNode, point);
+      if (scoringPoints == null) return;
+      replaceDocument(updateScoringPoints(document, path, scoringPoints.blackPoints, scoringPoints.whitePoints), path);
+      return;
+    }
 
     if (options.clickCount > 1) {
       if (tool === 'auto' && position.stones.has(point)) {
@@ -862,6 +887,16 @@ export function App() {
     });
   }
 
+  function handleEstimateScore(targetPath: number[]): void {
+    const targetNode = getNodeAtPath(document, targetPath);
+    if (isScoringNode(targetNode) || targetNode.children.some(isScoringNode)) return;
+
+    const scoringPosition = deriveBoardPosition(document, targetPath);
+    const scoringPoints = estimateScoringPoints(scoringPosition);
+    const result = addScoringNode(document, targetPath, scoringPoints.blackPoints, scoringPoints.whitePoints);
+    replaceDocument(result.document, result.path);
+  }
+
   function handleLanguageChange(language: AppLanguage): void {
     saveLanguage(language);
     void i18n.changeLanguage(language);
@@ -1011,11 +1046,13 @@ export function App() {
               whitePlayerName={whitePlayerName}
               capturedBlackStones={position.captures.W}
               capturedWhiteStones={position.captures.B}
-              comment={getComment(document, path)}
+              comment={displayedComment}
               analysisSettings={analysisSettings}
               showAnalysisControls={capabilities.katago}
               hideCommentsPanel={minimalMode}
               commentReadOnly={selectedScoringNode}
+              forceComments={selectedScoringNode}
+              commentRows={selectedScoringNode ? 3 : undefined}
               basicTools={
                 minimalMode && minimalBasicToolsOpen ? (
                   <div className="minimal-basic-tools">
@@ -1055,6 +1092,7 @@ export function App() {
               onMoveRight={handleMoveBranchRight}
               onPrune={handlePruneBranch}
               onDelete={handleDeleteNode}
+              onEstimateScore={handleEstimateScore}
             />
           ) : null}
         </Content>

@@ -17,6 +17,8 @@ interface AppRightPanelProps {
   showAnalysisControls: boolean;
   hideCommentsPanel: boolean;
   commentReadOnly?: boolean;
+  forceComments?: boolean;
+  commentRows?: number;
   basicTools?: ReactNode;
   chartData: AnalysisChartPoint[];
   selectedMoveNumber: number | null;
@@ -33,6 +35,7 @@ interface AppRightPanelProps {
   onMoveRight: (path?: number[]) => void;
   onPrune: (path?: number[]) => void;
   onDelete: (path?: number[]) => void;
+  onEstimateScore: (path: number[]) => void;
 }
 
 export function AppRightPanel({
@@ -47,6 +50,8 @@ export function AppRightPanel({
   showAnalysisControls,
   hideCommentsPanel,
   commentReadOnly = false,
+  forceComments = false,
+  commentRows,
   basicTools,
   chartData,
   selectedMoveNumber,
@@ -63,6 +68,7 @@ export function AppRightPanel({
   onMoveRight,
   onPrune,
   onDelete,
+  onEstimateScore,
 }: AppRightPanelProps) {
   return (
     <aside className="right-region">
@@ -83,14 +89,15 @@ export function AppRightPanel({
         <CommentsPanel
           value={comment}
           onChange={onCommentChange}
-          showAnalysisControls={showAnalysisControls}
+          showAnalysisControls={showAnalysisControls && !forceComments}
           chartData={chartData}
           commentReadOnly={commentReadOnly}
+          commentRows={commentRows}
           moveDisplay={analysisSettings.moveDisplay}
-          showScore={analysisSettings.showScore}
-          showPointLoss={analysisSettings.showPointLoss}
-          showWinrate={analysisSettings.showWinrate}
-          showComments={analysisSettings.showComments}
+          showScore={forceComments ? false : analysisSettings.showScore}
+          showPointLoss={forceComments ? false : analysisSettings.showPointLoss}
+          showWinrate={forceComments ? false : analysisSettings.showWinrate}
+          showComments={forceComments ? true : analysisSettings.showComments}
           selectedMoveNumber={selectedMoveNumber}
           chartSummary={chartSummary}
           onDisplayChange={onAnalysisSettingsChange}
@@ -108,6 +115,7 @@ export function AppRightPanel({
         onMoveRight={onMoveRight}
         onPrune={onPrune}
         onDelete={onDelete}
+        onEstimateScore={onEstimateScore}
         onPreviousMove={onPreviousMove}
         onNextMove={onNextMove}
         shortcutLabels={shortcutLabels}
