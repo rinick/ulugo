@@ -20,6 +20,21 @@ interface EmptyRegion {
   borderStones: SgfPoint[];
 }
 
+interface EmptyRegionCollection {
+  regions: EmptyRegion[];
+  tunnelInfos: Map<SgfPoint, TunnelInfo>;
+}
+
+interface TunnelInfo {
+  owner: Stone;
+  sidePoints: SgfPoint[];
+}
+
+interface TunnelGroup {
+  owner: Stone;
+  points: SgfPoint[];
+}
+
 interface DeadStoneCandidate {
   color: Stone;
   points: SgfPoint[];
@@ -47,7 +62,7 @@ export function toggleScoringGroup(position: BoardPosition, node: SgfNode, point
   const color = position.stones.get(point);
   if (color == null) return null;
 
-  const group = collectScoringStoneGroup(point, color, position.stones, position.size);
+  const group = collectEstimateStoneGroup(point, color, position.stones, position.size);
   const deadStones = deadStoneSetsFromNode(position, node);
   const targetSet = color === 'B' ? deadStones.black : deadStones.white;
   const currentlyDead = group.every((groupPoint) => targetSet.has(groupPoint));
@@ -91,31 +106,90 @@ function scoringPointsForDeadStones(position: BoardPosition, deadStones: DeadSto
   for (const point of deadStones.white) blackPoints.add(point);
   for (const point of deadStones.black) whitePoints.add(point);
 
-  for (const region of collectEmptyRegions(position)) {
-    const owners = new Set<Stone>();
-    for (const borderPoint of region.borderStones) {
-      const color = position.stones.get(borderPoint);
-      if (color == null) continue;
-      if ((color === 'B' && !deadStones.black.has(borderPoint)) || (color === 'W' && deadStones.white.has(borderPoint))) {
-        owners.add('B');
-      }
-      if ((color === 'W' && !deadStones.white.has(borderPoint)) || (color === 'B' && deadStones.black.has(borderPoint))) {
-        owners.add('W');
+  const emptyRegions = collectScoringEmptyRegions(position, deadStones);
+  const pointOwners = new Map<SgfPoint, Stone>();
+
+  for (const region of emptyRegions.regions) {
+    const owner = emptyRegionOwner(region, position, deadStones, emptyRegions.tunnelInfos);
+    if (owner == null) continue;
+
+    for (const point of region.points) {
+      pointOwners.set(point, owner);
+      addOwnedPoint(point, owner, blackPoints, whitePoints);
+    }
+  }
+
+  for (const tunnelGroup of collectTunnelGroups(emptyRegions.tunnelInfos, position, deadStones)) {
+    if (tunnelGroup.points.length === 1) {
+      const point = tunnelGroup.points[0];
+      const tunnel = emptyRegions.tunnelInfos.get(point);
+      if (tunnel == null || !tunnel.sidePoints.some((sidePoint) => pointOwners.get(sidePoint) === tunnelGroup.owner)) {
+        continue;
       }
     }
 
-    if (owners.size !== 1) continue;
-    const owner = [...owners][0];
-    for (const point of region.points) {
-      if (owner === 'B') {
-        blackPoints.add(point);
-      } else {
-        whitePoints.add(point);
-      }
+    for (const point of tunnelGroup.points) {
+      addOwnedPoint(point, tunnelGroup.owner, blackPoints, whitePoints);
     }
   }
 
   return {blackPoints: [...blackPoints], whitePoints: [...whitePoints]};
+}
+
+function addOwnedPoint(
+  point: SgfPoint,
+  owner: Stone,
+  blackPoints: Set<SgfPoint>,
+  whitePoints: Set<SgfPoint>
+): void {
+  if (owner === 'B') {
+    blackPoints.add(point);
+  } else {
+    whitePoints.add(point);
+  }
+}
+
+function emptyRegionOwner(
+  region: EmptyRegion,
+  position: BoardPosition,
+  deadStones: DeadStoneSets,
+  tunnelInfos: Map<SgfPoint, TunnelInfo>
+): Stone | null {
+  const owners = new Set<Stone>();
+  for (const borderPoint of region.borderStones) {
+    const color = position.stones.get(borderPoint);
+    if (color == null) continue;
+    owners.add(effectiveStoneColor(borderPoint, color, deadStones));
+  }
+
+  if (owners.size === 1) return [...owners][0];
+  if (owners.size > 1) return null;
+
+  if (region.points.length !== 1) return null;
+  const point = region.points[0];
+  const surroundedByTunnels = orthogonalNeighbors(point, position.size).every((neighbor) => tunnelInfos.has(neighbor));
+  return surroundedByTunnels ? eightNeighborOwner(point, position, deadStones) : null;
+}
+
+function eightNeighborOwner(point: SgfPoint, position: BoardPosition, deadStones: DeadStoneSets): Stone | null {
+  const vertex = pointToVertex(point);
+  if (vertex == null) return null;
+
+  const [x, y] = vertex;
+  const owners = new Set<Stone>();
+  for (let ny = y - 1; ny <= y + 1; ny += 1) {
+    for (let nx = x - 1; nx <= x + 1; nx += 1) {
+      if (nx === x && ny === y) continue;
+      if (!isVertexOnBoard(nx, ny, position.size)) continue;
+
+      const neighbor = vertexToPoint(nx, ny);
+      const color = position.stones.get(neighbor);
+      if (color == null) continue;
+      owners.add(effectiveStoneColor(neighbor, color, deadStones));
+    }
+  }
+
+  return owners.size === 1 ? [...owners][0] : null;
 }
 
 function estimateDeadStoneSets(position: BoardPosition): DeadStoneSets {
@@ -126,13 +200,27 @@ function estimateDeadStoneSets(position: BoardPosition): DeadStoneSets {
 
   for (const [point, color] of position.stones) {
     if (seen.has(point)) continue;
-    const group = collectScoringStoneGroup(point, color, position.stones, position.size);
+    const group = collectEstimateStoneGroup(point, color, position.stones, position.size);
     for (const groupPoint of group) seen.add(groupPoint);
 
     const groupSet = new Set(group);
     const adjacentRegions = regions.filter((region) =>
       region.borderStones.some((borderPoint) => groupSet.has(borderPoint))
     );
+    const liberties = countGroupLiberties(group, position);
+    if (liberties === 1 && neighboringOpponentGroupsHaveMoreThanOneLiberty(group, color, position)) {
+      const targetSet = color === 'B' ? deadStones.black : deadStones.white;
+      for (const groupPoint of group) targetSet.add(groupPoint);
+      candidates.push({
+        color,
+        points: group,
+        pointSet: groupSet,
+        adjacentRegions,
+        liberties,
+      });
+      continue;
+    }
+
     if (adjacentRegions.length === 0 || countEyes(adjacentRegions, groupSet, position) >= 2) continue;
 
     const opponent = color === 'B' ? 'W' : 'B';
@@ -155,13 +243,37 @@ function estimateDeadStoneSets(position: BoardPosition): DeadStoneSets {
       points: group,
       pointSet: groupSet,
       adjacentRegions,
-      liberties: countGroupLiberties(group, position),
+      liberties,
     });
   }
 
   resolveDeadGroupLibertyConflicts(candidates, deadStones, position);
 
   return deadStones;
+}
+
+function neighboringOpponentGroupsHaveMoreThanOneLiberty(
+  group: SgfPoint[],
+  color: Stone,
+  position: BoardPosition
+): boolean {
+  const opponent = color === 'B' ? 'W' : 'B';
+  const seen = new Set<SgfPoint>();
+  let hasOpponentGroup = false;
+
+  for (const point of group) {
+    for (const neighbor of orthogonalNeighbors(point, position.size)) {
+      if (seen.has(neighbor) || position.stones.get(neighbor) !== opponent) continue;
+
+      const opponentGroup = collectEstimateStoneGroup(neighbor, opponent, position.stones, position.size);
+      for (const opponentPoint of opponentGroup) seen.add(opponentPoint);
+      hasOpponentGroup = true;
+
+      if (countGroupLiberties(opponentGroup, position) <= 1) return false;
+    }
+  }
+
+  return hasOpponentGroup;
 }
 
 function deadStoneSetsFromNode(position: BoardPosition, node: SgfNode): DeadStoneSets {
@@ -232,11 +344,21 @@ function countGroupLiberties(group: SgfPoint[], position: BoardPosition): number
   return liberties.size;
 }
 
-function collectScoringStoneGroup(
+function collectEstimateStoneGroup(
   start: SgfPoint,
   color: Stone,
   stones: Map<SgfPoint, Stone>,
   size: number
+): SgfPoint[] {
+  return collectStoneGroup(start, color, stones, size, estimateStoneNeighbors);
+}
+
+function collectStoneGroup(
+  start: SgfPoint,
+  color: Stone,
+  stones: Map<SgfPoint, Stone>,
+  size: number,
+  neighbors: (point: SgfPoint, color: Stone, stones: Map<SgfPoint, Stone>, size: number) => SgfPoint[]
 ): SgfPoint[] {
   const seen = new Set<SgfPoint>();
   const queue = [start];
@@ -247,7 +369,7 @@ function collectScoringStoneGroup(
     if (stones.get(point) !== color) continue;
     seen.add(point);
 
-    for (const neighbor of scoringStoneNeighbors(point, color, stones, size)) {
+    for (const neighbor of neighbors(point, color, stones, size)) {
       if (!seen.has(neighbor)) queue.push(neighbor);
     }
   }
@@ -255,7 +377,7 @@ function collectScoringStoneGroup(
   return [...seen];
 }
 
-function scoringStoneNeighbors(point: SgfPoint, color: Stone, stones: Map<SgfPoint, Stone>, size: number): SgfPoint[] {
+function estimateStoneNeighbors(point: SgfPoint, color: Stone, stones: Map<SgfPoint, Stone>, size: number): SgfPoint[] {
   const vertex = pointToVertex(point);
   if (vertex == null) return [];
 
@@ -281,27 +403,77 @@ function scoringStoneNeighbors(point: SgfPoint, color: Stone, stones: Map<SgfPoi
     const nx = x + dx;
     const ny = y + dy;
     if (!isVertexOnBoard(nx, ny, size)) continue;
+
     const neighbor = vertexToPoint(nx, ny);
     if (stones.get(neighbor) !== color) continue;
-
-    const opponent = color === 'B' ? 'W' : 'B';
-    const cutOne = vertexToPoint(x + dx, y);
-    const cutTwo = vertexToPoint(x, y + dy);
-    if (stones.get(cutOne) === opponent && stones.get(cutTwo) === opponent) continue;
-    result.push(neighbor);
+    if (estimateDiagonalConnection(x, y, nx, ny, color, stones, size)) result.push(neighbor);
   }
 
   return result;
 }
 
-function collectEmptyRegions(position: BoardPosition): EmptyRegion[] {
+function estimateDiagonalConnection(
+  x: number,
+  y: number,
+  nx: number,
+  ny: number,
+  color: Stone,
+  stones: Map<SgfPoint, Stone>,
+  size: number
+): boolean {
+  const opponent = color === 'B' ? 'W' : 'B';
+  const cutOne = vertexToPoint(nx, y);
+  const cutTwo = vertexToPoint(x, ny);
+  const cutOneStone = stones.get(cutOne);
+  const cutTwoStone = stones.get(cutTwo);
+
+  if (cutOneStone === opponent && cutTwoStone === opponent) return false;
+  if (cutOneStone == null && cutTwoStone == null) return true;
+
+  if (cutOneStone === opponent || cutTwoStone === opponent) {
+    const emptyCut = cutOneStone === opponent ? cutTwo : cutOne;
+    const opponentCut = cutOneStone === opponent ? cutOne : cutTwo;
+    if (stones.has(emptyCut)) return true;
+    return singleCutDiagonalConnection(emptyCut, opponentCut, vertexToPoint(x, y), vertexToPoint(nx, ny), color, stones, size);
+  }
+
+  return true;
+}
+
+function singleCutDiagonalConnection(
+  emptyCut: SgfPoint,
+  opponentCut: SgfPoint,
+  point: SgfPoint,
+  diagonalPoint: SgfPoint,
+  color: Stone,
+  stones: Map<SgfPoint, Stone>,
+  size: number
+): boolean {
+  const opponent = color === 'B' ? 'W' : 'B';
+  const sidePoints = orthogonalNeighbors(emptyCut, size).filter(
+    (neighbor) => neighbor !== point && neighbor !== diagonalPoint
+  );
+
+  if (sidePoints.some((sidePoint) => stones.get(sidePoint) === opponent)) return false;
+  if (sidePoints.some((sidePoint) => stones.get(sidePoint) === color)) return true;
+
+  const emptyVertex = pointToVertex(emptyCut);
+  const opponentVertex = pointToVertex(opponentCut);
+  if (emptyVertex == null || opponentVertex == null) return true;
+
+  const oppositeX = emptyVertex[0] + (emptyVertex[0] - opponentVertex[0]);
+  const oppositeY = emptyVertex[1] + (emptyVertex[1] - opponentVertex[1]);
+  return !isVertexOnBoard(oppositeX, oppositeY, size) || stones.get(vertexToPoint(oppositeX, oppositeY)) !== opponent;
+}
+
+function collectEmptyRegions(position: BoardPosition, blockedPoints = new Set<SgfPoint>()): EmptyRegion[] {
   const regions: EmptyRegion[] = [];
   const seen = new Set<SgfPoint>();
 
   for (let y = 0; y < position.size; y += 1) {
     for (let x = 0; x < position.size; x += 1) {
       const start = vertexToPoint(x, y);
-      if (seen.has(start) || position.stones.has(start)) continue;
+      if (seen.has(start) || position.stones.has(start) || blockedPoints.has(start)) continue;
 
       const points: SgfPoint[] = [];
       const borderStones = new Set<SgfPoint>();
@@ -316,6 +488,8 @@ function collectEmptyRegions(position: BoardPosition): EmptyRegion[] {
         for (const neighbor of orthogonalNeighbors(point, position.size)) {
           if (position.stones.has(neighbor)) {
             borderStones.add(neighbor);
+          } else if (blockedPoints.has(neighbor)) {
+            continue;
           } else if (!seen.has(neighbor)) {
             seen.add(neighbor);
             queue.push(neighbor);
@@ -328,6 +502,116 @@ function collectEmptyRegions(position: BoardPosition): EmptyRegion[] {
   }
 
   return regions;
+}
+
+function collectScoringEmptyRegions(position: BoardPosition, deadStones: DeadStoneSets): EmptyRegionCollection {
+  const tunnelPoints = new Set<SgfPoint>();
+  const tunnelInfos = new Map<SgfPoint, TunnelInfo>();
+
+  for (let y = 0; y < position.size; y += 1) {
+    for (let x = 0; x < position.size; x += 1) {
+      const point = vertexToPoint(x, y);
+      if (position.stones.has(point)) continue;
+
+      const tunnel = tunnelInfo(point, position, deadStones);
+      if (tunnel == null) continue;
+
+      tunnelPoints.add(point);
+      tunnelInfos.set(point, tunnel);
+    }
+  }
+
+  return {
+    regions: collectEmptyRegions(position, tunnelPoints),
+    tunnelInfos,
+  };
+}
+
+function tunnelInfo(point: SgfPoint, position: BoardPosition, deadStones: DeadStoneSets): TunnelInfo | null {
+  const vertex = pointToVertex(point);
+  if (vertex == null || position.stones.has(point)) return null;
+
+  const [x, y] = vertex;
+  const verticalEmpty = isEmptyVertex(x, y - 1, position) && isEmptyVertex(x, y + 1, position);
+  const horizontalEmpty = isEmptyVertex(x - 1, y, position) && isEmptyVertex(x + 1, y, position);
+  const verticalBlocked = isBlockedVertex(x, y - 1, position) && isBlockedVertex(x, y + 1, position);
+  const horizontalBlocked = isBlockedVertex(x - 1, y, position) && isBlockedVertex(x + 1, y, position);
+  const sidePoints = verticalEmpty && horizontalBlocked
+    ? [vertexToPoint(x, y - 1), vertexToPoint(x, y + 1)]
+    : horizontalEmpty && verticalBlocked
+      ? [vertexToPoint(x - 1, y), vertexToPoint(x + 1, y)]
+      : null;
+  if (sidePoints == null) return null;
+
+  const neighborColors = new Set<Stone>();
+  for (const neighbor of orthogonalNeighbors(point, position.size)) {
+    const color = position.stones.get(neighbor);
+    if (color == null) continue;
+    if (isDeadStone(neighbor, color, deadStones)) return null;
+    neighborColors.add(color);
+  }
+  if (neighborColors.size !== 1) return null;
+
+  const owner = [...neighborColors][0];
+  return {owner, sidePoints};
+}
+
+function collectTunnelGroups(
+  tunnelInfos: Map<SgfPoint, TunnelInfo>,
+  position: BoardPosition,
+  deadStones: DeadStoneSets
+): TunnelGroup[] {
+  const groups: TunnelGroup[] = [];
+  const seen = new Set<SgfPoint>();
+
+  for (const point of tunnelInfos.keys()) {
+    if (seen.has(point)) continue;
+
+    const owner = eightNeighborOwner(point, position, deadStones);
+    seen.add(point);
+    if (owner == null) continue;
+
+    const group: SgfPoint[] = [];
+    const queue = [point];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current == null) continue;
+      group.push(current);
+
+      for (const neighbor of orthogonalNeighbors(current, position.size)) {
+        if (seen.has(neighbor) || !tunnelInfos.has(neighbor)) continue;
+        if (eightNeighborOwner(neighbor, position, deadStones) !== owner) continue;
+
+        seen.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+
+    groups.push({owner, points: group});
+  }
+
+  return groups;
+}
+
+function isEmptyVertex(x: number, y: number, position: BoardPosition): boolean {
+  return isVertexOnBoard(x, y, position.size) && !position.stones.has(vertexToPoint(x, y));
+}
+
+function isBlockedVertex(x: number, y: number, position: BoardPosition): boolean {
+  return !isVertexOnBoard(x, y, position.size) || position.stones.has(vertexToPoint(x, y));
+}
+
+function effectiveStoneColor(point: SgfPoint, color: Stone, deadStones: DeadStoneSets): Stone {
+  return isDeadStone(point, color, deadStones) ? oppositeStone(color) : color;
+}
+
+function isDeadStone(point: SgfPoint, color: Stone, deadStones: DeadStoneSets): boolean {
+  return color === 'B' ? deadStones.black.has(point) : deadStones.white.has(point);
+}
+
+function oppositeStone(color: Stone): Stone {
+  return color === 'B' ? 'W' : 'B';
 }
 
 function orthogonalNeighbors(point: SgfPoint, size: number): SgfPoint[] {
