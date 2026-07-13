@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @ulugo/web dev",
-    "dev:electron": "pnpm --filter @ulugo/web build && pnpm --filter @ulugo/electron dev",
+    "dev:electron": "pnpm --filter @ulugo/web build:electron-dev && pnpm --filter @ulugo/electron dev",
     "build": "pnpm -r build",
     "build:electron": "pnpm --filter @ulugo/web build && pnpm --filter @ulugo/electron build",
     "build:win-x64": "pnpm build:electron && pnpm --filter @ulugo/electron package:win-x64",

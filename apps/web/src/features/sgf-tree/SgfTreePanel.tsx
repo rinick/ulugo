@@ -76,6 +76,10 @@ export function SgfTreePanel({
   const tree = useMemo(() => buildTree(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
   const layout = useMemo(() => layoutTree(tree[0], boardSize), [boardSize, tree]);
+  const validContextPath = useMemo(
+    () => (contextPath != null && layout.cells.some((cell) => samePath(cell.path, contextPath)) ? contextPath : null),
+    [contextPath, layout]
+  );
 
   useEffect(() => {
     if (selectedFromScrollRef.current) {
@@ -163,10 +167,10 @@ export function SgfTreePanel({
   );
 
   const canEstimateScore = useMemo(() => {
-    if (contextPath == null) return false;
-    const node = getNodeAtPath(document, contextPath);
+    if (validContextPath == null) return false;
+    const node = getNodeAtPath(document, validContextPath);
     return !isScoringNode(node) && !node.children.some(isScoringNode);
-  }, [contextPath, document]);
+  }, [document, validContextPath]);
 
   const contextMenuItems = useMemo<MenuProps['items']>(
     () => [
@@ -174,19 +178,19 @@ export function SgfTreePanel({
         key: 'moveBranchToMain',
         label: t('moveBranchToMain'),
         icon: <DoubleLeftOutlined />,
-        disabled: contextPath == null || contextPath.length === 0,
+        disabled: validContextPath == null || validContextPath.length === 0,
       },
       {
         key: 'moveBranchLeft',
         label: t('moveBranchLeft'),
         icon: <LeftOutlined />,
-        disabled: contextPath == null || contextPath.length === 0,
+        disabled: validContextPath == null || validContextPath.length === 0,
       },
       {
         key: 'moveBranchRight',
         label: t('moveBranchRight'),
         icon: <RightOutlined />,
-        disabled: contextPath == null || contextPath.length === 0,
+        disabled: validContextPath == null || validContextPath.length === 0,
       },
       ...(canEstimateScore
         ? [
@@ -202,17 +206,17 @@ export function SgfTreePanel({
         label: t('pruneBranch'),
         icon: <ScissorOutlined />,
         danger: true,
-        disabled: contextPath == null || contextPath.length === 0,
+        disabled: validContextPath == null || validContextPath.length === 0,
       },
       {
         key: 'deleteBranch',
         label: t('deleteBranch'),
         icon: <DeleteOutlined />,
         danger: true,
-        disabled: contextPath == null || contextPath.length === 0,
+        disabled: validContextPath == null || validContextPath.length === 0,
       },
     ],
-    [canEstimateScore, contextPath, t]
+    [canEstimateScore, t, validContextPath]
   );
 
   const handleContextMenu = useCallback(

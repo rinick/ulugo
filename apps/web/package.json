@@ -7,6 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "preview": "vite preview --host 0.0.0.0",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build:electron-dev": "tsc -p tsconfig.json --noEmit && vite build --mode electron-dev",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

@@ -84,12 +84,8 @@ import {useAppPreferences} from './useAppPreferences';
 import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
-import {
-  estimateScoringPoints,
-  formatScoringValue,
-  scoringSummaryForNode,
-  toggleScoringGroup,
-} from './scoringUtils';
+import {createLocalConsoleMessage} from './katagoConsoleUtils';
+import {estimateScoringPoints, formatScoringValue, scoringSummaryForNode, toggleScoringGroup} from './scoringUtils';
 
 const {Header, Content} = Layout;
 
@@ -215,8 +211,16 @@ export function App() {
     document,
     gameName: gameInfo.GN,
     onImport: (importedDocument) => {
+      const startAnalysis =
+        capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
       branchMemoryRef.current.clear();
-      setAnalysisModeActive(capabilities.katago && analysisSettings.mode === 'review' && analysisSettings.autoAnalyze);
+      setAnalysisModeActive(startAnalysis);
+      if (capabilities.katago && analysisSettings.mode !== 'minimal' && !startAnalysis) {
+        setKataGoConsoleMessages((current) => [
+          ...current.slice(-499),
+          createLocalConsoleMessage('ulugo', 'info', t('analysisButtonImportHint')),
+        ]);
+      }
       replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
     },
   });
