@@ -30,6 +30,11 @@ export interface TreeItem {
   children: TreeItem[];
 }
 
+interface TreeBoardState {
+  stones: Map<SgfPoint, SgfColor>;
+  captures: Record<SgfColor, number>;
+}
+
 const letters = 'abcdefghijklmnopqrstuvwxyz';
 const coordinateLetters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
 
@@ -707,7 +712,11 @@ export function isScoringNode(node: SgfNode): boolean {
 }
 
 export function resultWinnerColor(document: SgfDocument): SgfColor | null {
-  const result = document.root.data.RE?.[0]?.trim().toUpperCase() ?? '';
+  return resultValueWinnerColor(document.root.data.RE?.[0]);
+}
+
+function resultValueWinnerColor(value: string | undefined): SgfColor | null {
+  const result = value?.trim().toUpperCase() ?? '';
   if (result.startsWith('B+')) return 'B';
   if (result.startsWith('W+')) return 'W';
   return null;
@@ -716,9 +725,10 @@ export function resultWinnerColor(document: SgfDocument): SgfColor | null {
 export function buildTree(document: SgfDocument): TreeItem[] {
   const items: TreeItem[] = [];
   const boardSize = getBoardSize(document);
-  const winnerColor = resultWinnerColor(document);
+  const komi = Number(document.root.data.KM?.[0]?.trim().replace(',', '.') ?? 0);
 
-  function walk(node: SgfNode, path: number[], moveNumber: number): TreeItem {
+  function walk(node: SgfNode, path: number[], moveNumber: number, state: TreeBoardState): TreeItem {
+    const nextState = applyTreeBoardNode(state, node, boardSize);
     const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     const isRoot = path.length === 0;
@@ -743,7 +753,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
       moveNumber: displayMoveNumber,
       color,
       setupColor,
-      scoreColor: isScoring ? winnerColor : null,
+      scoreColor: isScoring ? (resultValueWinnerColor(node.data.RE?.[0]) ?? scoringNodeWinnerColor(node, nextState, komi, boardSize)) : null,
       point: color == null ? null : point,
       isSetup,
       isScoring,
@@ -751,12 +761,126 @@ export function buildTree(document: SgfDocument): TreeItem[] {
       hasComment: hasNodeComment(node),
       hasDrawing: hasNodeDrawing(node),
       hasInitialBlackStones: color == null && (node.data.AB ?? []).length > 0,
-      children: node.children.map((child, index) => walk(child, [...path, index], nextMoveNumber)),
+      children: node.children.map((child, index) => walk(child, [...path, index], nextMoveNumber, nextState)),
     };
   }
 
-  items.push(walk(document.root, [], 0));
+  items.push(walk(document.root, [], 0, {stones: new Map(), captures: {B: 0, W: 0}}));
   return items;
+}
+
+function scoringNodeWinnerColor(
+  node: SgfNode,
+  state: TreeBoardState,
+  komi: number,
+  boardSize: number
+): SgfColor | null {
+  if (node.data.TB == null && node.data.TW == null) return null;
+
+  const blackPoints = onBoardPointSet(node.data.TB ?? [], boardSize);
+  const whitePoints = onBoardPointSet(node.data.TW ?? [], boardSize);
+  const deadWhiteStones = countMarkedStones(blackPoints, state.stones, 'W');
+  const deadBlackStones = countMarkedStones(whitePoints, state.stones, 'B');
+  const blackScore = blackPoints.size + state.captures.B + deadWhiteStones;
+  const whiteScore = whitePoints.size + state.captures.W + deadBlackStones;
+  const diff = blackScore - (whiteScore + (Number.isFinite(komi) ? komi : 0));
+
+  if (diff > 0) return 'B';
+  if (diff < 0) return 'W';
+  return null;
+}
+
+function applyTreeBoardNode(state: TreeBoardState, node: SgfNode, boardSize: number): TreeBoardState {
+  const next: TreeBoardState = {
+    stones: new Map(state.stones),
+    captures: {...state.captures},
+  };
+
+  for (const point of node.data.AE ?? []) next.stones.delete(point);
+  for (const point of node.data.AB ?? []) {
+    if (isPointOnBoard(point, boardSize)) next.stones.set(point, 'B');
+  }
+  for (const point of node.data.AW ?? []) {
+    if (isPointOnBoard(point, boardSize)) next.stones.set(point, 'W');
+  }
+
+  const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
+  if (color == null) return next;
+
+  const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
+  if (point === '' || !isPointOnBoard(point, boardSize)) return next;
+
+  next.stones.set(point, color);
+  const opponent = oppositeColor(color);
+  for (const neighbor of orthogonalNeighbors(point, boardSize)) {
+    if (next.stones.get(neighbor) !== opponent) continue;
+    const group = collectBoardGroup(neighbor, next.stones, boardSize);
+    if (group.liberties === 0) {
+      next.captures[color] += group.points.length;
+      for (const groupPoint of group.points) next.stones.delete(groupPoint);
+    }
+  }
+
+  return next;
+}
+
+function collectBoardGroup(
+  start: SgfPoint,
+  stones: Map<SgfPoint, SgfColor>,
+  boardSize: number
+): {points: SgfPoint[]; liberties: number} {
+  const color = stones.get(start);
+  if (color == null) return {points: [], liberties: 0};
+
+  const points = new Set<SgfPoint>();
+  const liberties = new Set<SgfPoint>();
+  const queue = [start];
+
+  while (queue.length > 0) {
+    const point = queue.shift();
+    if (point == null || points.has(point)) continue;
+    points.add(point);
+
+    for (const neighbor of orthogonalNeighbors(point, boardSize)) {
+      const neighborColor = stones.get(neighbor);
+      if (neighborColor == null) {
+        liberties.add(neighbor);
+      } else if (neighborColor === color && !points.has(neighbor)) {
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  return {points: [...points], liberties: liberties.size};
+}
+
+function orthogonalNeighbors(point: SgfPoint, boardSize: number): SgfPoint[] {
+  const vertex = pointToVertex(point);
+  if (vertex == null) return [];
+
+  const [x, y] = vertex;
+  const result: SgfPoint[] = [];
+  if (x > 0) result.push(vertexToPoint(x - 1, y));
+  if (x < boardSize - 1) result.push(vertexToPoint(x + 1, y));
+  if (y > 0) result.push(vertexToPoint(x, y - 1));
+  if (y < boardSize - 1) result.push(vertexToPoint(x, y + 1));
+  return result;
+}
+
+function onBoardPointSet(points: SgfPoint[], boardSize: number): Set<SgfPoint> {
+  return new Set(points.filter((point) => isPointOnBoard(point, boardSize)));
+}
+
+function countMarkedStones(
+  points: Set<SgfPoint>,
+  stones: Map<SgfPoint, SgfColor>,
+  color: SgfColor
+): number {
+  let count = 0;
+  for (const point of points) {
+    if (stones.get(point) === color) count += 1;
+  }
+  return count;
 }
 
 function hasSetupProperties(node: SgfNode): boolean {

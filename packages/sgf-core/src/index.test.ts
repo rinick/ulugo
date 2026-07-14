@@ -159,14 +159,34 @@ describe('sgf-core', () => {
     expect(tree.children[0].children[0].children[0].moveNumber).toBe(3);
   });
 
-  it('gives final scoring nodes their own tree step with winner color', () => {
+  it('gives final scoring nodes their own tree step without global result color', () => {
     const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp])'))[0];
     const scoringNode = tree.children[0].children[0].children[0];
 
     expect(scoringNode).toMatchObject({
       moveNumber: 3,
       isScoring: true,
-      scoreColor: 'B',
+      scoreColor: null,
+    });
+  });
+
+  it('uses scoring node result for score node color', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp]RE[W+1.5])'))[0];
+    const scoringNode = tree.children[0].children[0].children[0];
+
+    expect(scoringNode).toMatchObject({
+      isScoring: true,
+      scoreColor: 'W',
+    });
+  });
+
+  it('uses scoring node points for score node color', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RE[B+2.5];B[dd];TW[pp])'))[0];
+    const scoringNode = tree.children[0].children[0];
+
+    expect(scoringNode).toMatchObject({
+      isScoring: true,
+      scoreColor: 'W',
     });
   });
 

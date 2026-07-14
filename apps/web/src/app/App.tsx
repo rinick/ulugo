@@ -132,6 +132,7 @@ export function App() {
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const labelResetPathKeyRef = useRef(pathKey([]));
+  const setupToolPathKeyRef = useRef(pathKey([]));
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
@@ -265,6 +266,15 @@ export function App() {
     setAutoColorOverride(null);
     setReplaceMoveState(null);
   }, [selectedScoringNode, tool]);
+
+  useEffect(() => {
+    const currentPathKey = pathKey(path);
+    const selectionChanged = setupToolPathKeyRef.current !== currentPathKey;
+    setupToolPathKeyRef.current = currentPathKey;
+    if (!selectionChanged || (tool !== 'black' && tool !== 'white') || isSetupNode(currentNode)) return;
+    setTool('auto');
+    setAutoColorOverride(null);
+  }, [currentNode, path, tool]);
 
   useEffect(() => {
     if (!minimalMode) return;
@@ -468,6 +478,14 @@ export function App() {
     function handleKeyDown(event: KeyboardEvent): void {
       if (printPreviewOpen) return;
       if (isModalOpen() || isPopupOpen()) return;
+
+      if (event.key === 'Escape' && tool !== 'auto') {
+        event.preventDefault();
+        setTool('auto');
+        setAutoColorOverride(null);
+        setReplaceMoveState(null);
+        return;
+      }
 
       const shortcutAction = shortcutActionForEvent(event, keyboardShortcuts);
       if (shortcutAction == null) return;
