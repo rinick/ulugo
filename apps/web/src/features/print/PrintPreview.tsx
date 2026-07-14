@@ -11,7 +11,7 @@ import {
   type SgfPoint,
 } from '@ulugo/sgf-core';
 import {Button, Checkbox, Input, InputNumber, Modal, Select, Space} from 'antd';
-import {useMemo, useState, type CSSProperties} from 'react';
+import {useEffect, useMemo, useState, type CSSProperties} from 'react';
 import {useTranslation} from 'react-i18next';
 
 type PrintMode = 'all' | 'current';
@@ -75,10 +75,19 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
   const resultTitle = gameInfo.RE?.trim();
   const defaultTitlePrefix = `B: ${gameInfo.PB?.trim() || t('black')} .vs. W: ${gameInfo.PW?.trim() || t('white')}${resultTitle ? ` , ${t('RE')}: ${resultTitle}` : ''}`;
 
+  useEffect(() => {
+    window.addEventListener('afterprint', onClose);
+    return () => window.removeEventListener('afterprint', onClose);
+  }, [onClose]);
+
   function commitMovesPerPageDraft(): void {
     const nextValue = Math.max(0, Number(movesPerPageDraft) || 0);
     setMovesPerPage(nextValue);
     setMovesPerPageDraft(nextValue);
+  }
+
+  function handlePrint(): void {
+    window.print();
   }
 
   return (
@@ -123,7 +132,7 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
             />
           </Space>
           <Space>
-            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+            <Button icon={<PrinterOutlined />} onClick={handlePrint}>
               {t('print')}
             </Button>
             <Button icon={<CloseOutlined />} onClick={onClose}>

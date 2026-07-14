@@ -168,6 +168,7 @@ export function SgfTreePanel({
 
   const canEstimateScore = useMemo(() => {
     if (validContextPath == null) return false;
+    if (validContextPath.length === 0) return false;
     const node = getNodeAtPath(document, validContextPath);
     return !isScoringNode(node) && !node.children.some(isScoringNode);
   }, [document, validContextPath]);
@@ -237,6 +238,7 @@ export function SgfTreePanel({
     setContextMenuOpen(false);
     switch (key) {
       case 'estimateScore':
+        if (targetPath.length === 0) return;
         onEstimateScore(targetPath);
         break;
       case 'moveBranchToMain':

@@ -446,9 +446,10 @@ export function addScoringNode(
   blackPoints: SgfPoint[],
   whitePoints: SgfPoint[]
 ): {document: SgfDocument; path: number[]} {
+  const data = scoringNodeData(blackPoints, whitePoints);
   const next = cloneDocument(document);
   const parent = getNodeAtPath(next, path);
-  const child = createNode(scoringNodeData(blackPoints, whitePoints));
+  const child = createNode(data);
   parent.children.push(child);
   return {document: next, path: [...path, parent.children.length - 1]};
 }
@@ -460,8 +461,7 @@ export function updateScoringPoints(
   whitePoints: SgfPoint[]
 ): SgfDocument {
   return updateNode(document, path, (node) => {
-    setProperty(node, 'TB', uniquePoints(blackPoints));
-    setProperty(node, 'TW', uniquePoints(whitePoints));
+    Object.assign(node.data, scoringNodeData(blackPoints, whitePoints));
   });
 }
 
@@ -703,9 +703,7 @@ export function getGameInfo(document: SgfDocument): Record<string, string> {
 }
 
 export function isScoringNode(node: SgfNode): boolean {
-  return (
-    node.data.B == null && node.data.W == null && ((node.data.TB?.length ?? 0) > 0 || (node.data.TW?.length ?? 0) > 0)
-  );
+  return node.data.B == null && node.data.W == null && (node.data.TB != null || node.data.TW != null);
 }
 
 export function resultWinnerColor(document: SgfDocument): SgfColor | null {
@@ -829,16 +827,19 @@ function setProperty(node: SgfNode, key: string, values: string[]): void {
 }
 
 function scoringNodeData(blackPoints: SgfPoint[], whitePoints: SgfPoint[]): Record<string, string[]> {
-  return Object.fromEntries(
-    Object.entries({
-      TB: uniquePoints(blackPoints),
-      TW: uniquePoints(whitePoints),
-    }).filter(([, values]) => values.length > 0)
-  );
+  return {
+    TB: nonEmptyPoints(blackPoints),
+    TW: nonEmptyPoints(whitePoints),
+  };
 }
 
 function uniquePoints(points: SgfPoint[]): SgfPoint[] {
   return [...new Set(points)];
+}
+
+function nonEmptyPoints(points: SgfPoint[]): SgfPoint[] {
+  const unique = uniquePoints(points);
+  return unique.length === 0 ? [''] : unique;
 }
 
 function addPointValue(node: SgfNode, key: string, value: string): void {

@@ -176,7 +176,23 @@ describe('sgf-core', () => {
     const updated = updateScoringPoints(scoring.document, scoring.path, ['cc'], []);
 
     expect(scoring.path).toEqual([0, 0]);
-    expect(serializeSgf(updated)).toContain(';B[dd];TB[cc])');
+    expect(serializeSgf(updated)).toContain(';B[dd];TB[cc]TW[])');
+  });
+
+  it('adds empty scoring nodes with explicit scoring properties', () => {
+    const document = parseSgf(
+      '(;CA[utf-8]AP[zhq][zhq_robot][zhq_robot_level]DT[2026-07-13]PB[烽烟弈客]PW[Steve Z]BR[6 段]WR[5 段]HA[0]RE[W+R]KM[7.5]SZ[19]RU[chinese]TM[1800]TC[3]TT[60]GN[[烽烟弈客\\]vs[Steve Z\\]_20260714064736];B[pd];W[dp];B[cd];W[qp];)'
+    );
+    const result = addScoringNode(document, [0, 0, 0, 0, 0], [], []);
+    const scoringNode =
+      buildTree(result.document)[0].children[0].children[0].children[0].children[0].children[0].children[0];
+
+    expect(result.path).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(serializeSgf(result.document)).toContain(';W[qp];;TB[]TW[])');
+    expect(scoringNode).toMatchObject({
+      isScoring: true,
+      moveNumber: 5,
+    });
   });
 
   it('adds setup stones as setup nodes after regular moves', () => {
