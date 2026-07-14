@@ -102,25 +102,21 @@ textarea,
   justify-content: flex-end;
 }
 
-.print-preview-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
+.print-preview-modal .ant-modal-body {
   display: flex;
+  max-height: min(78vh, 900px);
   flex-direction: column;
+  min-height: 0;
+  padding: 0;
   background: #f5f5f5;
-  color: #111111;
 }
 
-.print-preview-toolbar {
+.print-preview-footer {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #d9d9d9;
-  background: #ffffff;
+  text-align: left;
 }
 
 .print-preview-title-input {
@@ -132,6 +128,7 @@ textarea,
   min-height: 0;
   padding: 24px;
   overflow: auto;
+  color: #111111;
 }
 
 .print-preview-page {
@@ -212,6 +209,8 @@ textarea,
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .print-preview-repeated-stone.black {
@@ -1373,20 +1372,32 @@ body.minimal .app-content > .right-region .capture-summary {
   }
 
   body.print-preview-open .app-shell,
-  body.print-preview-open .print-preview-toolbar {
+  body.print-preview-open .ant-modal-mask,
+  body.print-preview-open .ant-modal-header,
+  body.print-preview-open .ant-modal-close,
+  body.print-preview-open .ant-modal-footer {
     display: none !important;
   }
 
-  body.print-preview-open .print-preview-overlay,
+  body.print-preview-open .ant-modal-root,
+  body.print-preview-open .ant-modal-wrap,
+  body.print-preview-open .print-preview-modal,
+  body.print-preview-open .print-preview-modal .ant-modal-content,
+  body.print-preview-open .print-preview-modal .ant-modal-body,
   body.print-preview-open .print-preview-pages {
     position: static !important;
     display: block !important;
     width: auto !important;
+    max-width: none !important;
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
     background: #ffffff !important;
+    box-shadow: none !important;
+    transform: none !important;
   }
 
   body.print-preview-open .print-preview-page {

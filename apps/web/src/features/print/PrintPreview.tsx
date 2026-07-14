@@ -10,7 +10,7 @@ import {
   type SgfDocument,
   type SgfPoint,
 } from '@ulugo/sgf-core';
-import {Button, Checkbox, Input, InputNumber, Select, Space} from 'antd';
+import {Button, Checkbox, Input, InputNumber, Modal, Select, Space} from 'antd';
 import {useMemo, useState, type CSSProperties} from 'react';
 import {useTranslation} from 'react-i18next';
 
@@ -72,7 +72,8 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
     [boardSize]
   );
   const titlePrefix = customTitle.trim();
-  const defaultTitlePrefix = `Black:${gameInfo.PB?.trim() || t('black')} vs White:${gameInfo.PW?.trim() || t('white')}`;
+  const resultTitle = gameInfo.RE?.trim();
+  const defaultTitlePrefix = `B: ${gameInfo.PB?.trim() || t('black')} .vs. W: ${gameInfo.PW?.trim() || t('white')}${resultTitle ? ` , ${t('RE')}: ${resultTitle}` : ''}`;
 
   function commitMovesPerPageDraft(): void {
     const nextValue = Math.max(0, Number(movesPerPageDraft) || 0);
@@ -81,47 +82,57 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
   }
 
   return (
-    <div className="print-preview-overlay" role="dialog" aria-modal="true" aria-label={t('printPreview')}>
-      <div className="print-preview-toolbar">
-        <Space wrap>
-          <strong>{t('printPreview')}</strong>
-          <Select
-            value={mode}
-            getPopupContainer={(trigger) => trigger.parentElement ?? window.document.body}
-            options={[
-              {value: 'all', label: t('printAll')},
-              {value: 'current', label: t('printCurrent')},
-            ]}
-            onChange={setMode}
-          />
-          <span>{t('movesPerPage')}</span>
-          <InputNumber
-            min={0}
-            precision={0}
-            value={movesPerPageDraft}
-            onBlur={commitMovesPerPageDraft}
-            onChange={setMovesPerPageDraft}
-            onPressEnter={commitMovesPerPageDraft}
-          />
-          <Checkbox checked={showTitle} onChange={(event) => setShowTitle(event.target.checked)}>
-            {t('showTitle')}
-          </Checkbox>
-          <Input
-            className="print-preview-title-input"
-            placeholder={t('customTitle')}
-            value={customTitle}
-            onChange={(event) => setCustomTitle(event.target.value)}
-          />
-        </Space>
-        <Space>
-          <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
-            {t('print')}
-          </Button>
-          <Button icon={<CloseOutlined />} onClick={onClose}>
-            {t('close')}
-          </Button>
-        </Space>
-      </div>
+    <Modal
+      className="print-preview-modal"
+      title={t('printPreview')}
+      open
+      centered
+      closable={false}
+      onCancel={onClose}
+      width="min(96vw, 980px)"
+      destroyOnHidden
+      footer={
+        <div className="print-preview-footer">
+          <Space wrap>
+            <Select
+              value={mode}
+              getPopupContainer={(trigger) => trigger.parentElement ?? window.document.body}
+              options={[
+                {value: 'all', label: t('printAll')},
+                {value: 'current', label: t('printCurrent')},
+              ]}
+              onChange={setMode}
+            />
+            <span>{t('movesPerPage')}</span>
+            <InputNumber
+              min={0}
+              precision={0}
+              value={movesPerPageDraft}
+              onBlur={commitMovesPerPageDraft}
+              onChange={setMovesPerPageDraft}
+              onPressEnter={commitMovesPerPageDraft}
+            />
+            <Checkbox checked={showTitle} onChange={(event) => setShowTitle(event.target.checked)}>
+              {t('showTitle')}
+            </Checkbox>
+            <Input
+              className="print-preview-title-input"
+              placeholder={t('customTitle')}
+              value={customTitle}
+              onChange={(event) => setCustomTitle(event.target.value)}
+            />
+          </Space>
+          <Space>
+            <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
+              {t('print')}
+            </Button>
+            <Button icon={<CloseOutlined />} onClick={onClose}>
+              {t('close')}
+            </Button>
+          </Space>
+        </div>
+      }
+    >
       <div className="print-preview-pages">
         {pages.map((page, index) => {
           const diagram = buildPageDiagram(document, boardSize, printMoves, page);
@@ -166,7 +177,7 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
           );
         })}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -230,11 +241,10 @@ function buildPageDiagram(
   const firstMoveIndex = page.startMove <= 0 ? 0 : page.startMove - 1;
   const beforePath = firstMoveIndex > 0 ? moves[firstMoveIndex - 1]?.path ?? [] : [];
   const beforePosition = deriveBoardPosition(document, beforePath);
-  const occupiedPoints = new Set<SgfPoint>();
+  const pagePoints = new Set<SgfPoint>();
 
   for (const [point, color] of beforePosition.stones) {
     setPoint(signMap, boardSize, point, colorToSign(color));
-    occupiedPoints.add(point);
   }
 
   for (const move of page.items) {
@@ -243,12 +253,12 @@ function buildPageDiagram(
       continue;
     }
 
-    if (occupiedPoints.has(move.point)) {
+    if (pagePoints.has(move.point)) {
       repeatedMoves.push({...move, position: formatPoint(move.point, boardSize)});
       continue;
     }
 
-    occupiedPoints.add(move.point);
+    pagePoints.add(move.point);
     setPoint(signMap, boardSize, move.point, colorToSign(move.color));
     setPoint(markerMap, boardSize, move.point, {type: 'label', label: String(move.moveNumber)});
   }
