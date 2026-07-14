@@ -81,6 +81,25 @@ describe('scoringUtils', () => {
     expect(scoring.blackPoints).toEqual(expect.arrayContaining(['cc', 'cd']));
   });
 
+  it('separates empty regions at one-side tunnel points', () => {
+    const position = boardPosition([
+      'BBBBBBBBB',
+      'BBBWWWWWB',
+      'B..W.W.WB',
+      'BBBWWWWWB',
+      'BBBBBBBBB',
+      'B.BBBBBBB',
+      'BBBBBBBBB',
+      'B.BBBBBBB',
+      'BBBBBBBBB',
+    ]);
+
+    const scoring = estimateScoringPoints(position);
+
+    expect(scoring.blackPoints).toContain('bc');
+    expect(scoring.blackPoints).not.toContain('cc');
+  });
+
   it('marks one-liberty groups dead when neighboring opponent groups have more liberties', () => {
     const position = boardPosition([
       '.....',

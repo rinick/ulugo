@@ -26,7 +26,6 @@ interface EmptyRegionCollection {
 }
 
 interface TunnelInfo {
-  owner: Stone;
   sidePoints: SgfPoint[];
 }
 
@@ -536,13 +535,100 @@ function tunnelInfo(point: SgfPoint, position: BoardPosition, deadStones: DeadSt
   const horizontalEmpty = isEmptyVertex(x - 1, y, position) && isEmptyVertex(x + 1, y, position);
   const verticalBlocked = isBlockedVertex(x, y - 1, position) && isBlockedVertex(x, y + 1, position);
   const horizontalBlocked = isBlockedVertex(x - 1, y, position) && isBlockedVertex(x + 1, y, position);
-  const sidePoints = verticalEmpty && horizontalBlocked
+  const regularSidePoints = verticalEmpty && horizontalBlocked
     ? [vertexToPoint(x, y - 1), vertexToPoint(x, y + 1)]
     : horizontalEmpty && verticalBlocked
       ? [vertexToPoint(x - 1, y), vertexToPoint(x + 1, y)]
       : null;
-  if (sidePoints == null) return null;
+  if (regularSidePoints != null) {
+    return regularTunnelOwner(point, position, deadStones) == null ? null : {sidePoints: regularSidePoints};
+  }
 
+  const oneSidePoints = oneSideTunnelSidePoints(x, y, position, deadStones);
+  return oneSidePoints == null ? null : {sidePoints: oneSidePoints};
+}
+
+function oneSideTunnelSidePoints(
+  x: number,
+  y: number,
+  position: BoardPosition,
+  deadStones: DeadStoneSets
+): SgfPoint[] | null {
+  const verticalOwner = solidAxisOwner(
+    [
+      [x, y - 1],
+      [x, y + 1],
+    ],
+    position,
+    deadStones
+  );
+  const horizontalOwner = solidAxisOwner(
+    [
+      [x - 1, y],
+      [x + 1, y],
+    ],
+    position,
+    deadStones
+  );
+
+  return (
+    (verticalOwner == null ? null : oneEmptyOneOpponentSidePoint(x - 1, y, x + 1, y, verticalOwner, position, deadStones)) ??
+    (horizontalOwner == null ? null : oneEmptyOneOpponentSidePoint(x, y - 1, x, y + 1, horizontalOwner, position, deadStones))
+  );
+}
+
+function solidAxisOwner(
+  vertices: Array<[number, number]>,
+  position: BoardPosition,
+  deadStones: DeadStoneSets
+): Stone | null {
+  const colors = new Set<Stone>();
+
+  for (const [x, y] of vertices) {
+    if (!isVertexOnBoard(x, y, position.size)) continue;
+
+    const point = vertexToPoint(x, y);
+    const color = position.stones.get(point);
+    if (color == null || isDeadStone(point, color, deadStones)) return null;
+    colors.add(color);
+  }
+
+  return colors.size === 1 ? [...colors][0] : null;
+}
+
+function oneEmptyOneOpponentSidePoint(
+  leftX: number,
+  leftY: number,
+  rightX: number,
+  rightY: number,
+  owner: Stone,
+  position: BoardPosition,
+  deadStones: DeadStoneSets
+): SgfPoint[] | null {
+  const left = sideVertexInfo(leftX, leftY, position, deadStones);
+  const right = sideVertexInfo(rightX, rightY, position, deadStones);
+  const opponent = owner === 'B' ? 'W' : 'B';
+
+  if (left.kind === 'empty' && right.kind === 'stone' && right.color === opponent) return [left.point];
+  if (right.kind === 'empty' && left.kind === 'stone' && left.color === opponent) return [right.point];
+  return null;
+}
+
+function sideVertexInfo(
+  x: number,
+  y: number,
+  position: BoardPosition,
+  deadStones: DeadStoneSets
+): {kind: 'empty'; point: SgfPoint} | {kind: 'stone'; color: Stone} | {kind: 'boundary'} {
+  if (!isVertexOnBoard(x, y, position.size)) return {kind: 'boundary'};
+
+  const point = vertexToPoint(x, y);
+  const color = position.stones.get(point);
+  if (color == null) return {kind: 'empty', point};
+  return isDeadStone(point, color, deadStones) ? {kind: 'boundary'} : {kind: 'stone', color};
+}
+
+function regularTunnelOwner(point: SgfPoint, position: BoardPosition, deadStones: DeadStoneSets): Stone | null {
   const neighborColors = new Set<Stone>();
   for (const neighbor of orthogonalNeighbors(point, position.size)) {
     const color = position.stones.get(neighbor);
@@ -552,8 +638,7 @@ function tunnelInfo(point: SgfPoint, position: BoardPosition, deadStones: DeadSt
   }
   if (neighborColors.size !== 1) return null;
 
-  const owner = [...neighborColors][0];
-  return {owner, sidePoints};
+  return [...neighborColors][0];
 }
 
 function collectTunnelGroups(
