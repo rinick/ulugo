@@ -184,7 +184,7 @@ textarea,
 .print-preview-repeated-moves {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  gap: 5px 10px;
   width: 100%;
   margin-top: 18px;
   font-size: 13px;
@@ -1398,6 +1398,10 @@ body.minimal .app-content > .right-region .capture-summary {
     background: #ffffff !important;
     box-shadow: none !important;
     transform: none !important;
+  }
+
+  .ant-modal-container {
+    box-shadow: none !important;
   }
 
   body.print-preview-open .print-preview-page {

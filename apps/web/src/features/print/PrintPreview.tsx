@@ -106,6 +106,7 @@ export function PrintPreview({document, selectedPath, onClose}: PrintPreviewProp
             <Select
               value={mode}
               getPopupContainer={(trigger) => trigger.parentElement ?? window.document.body}
+              popupMatchSelectWidth={false}
               options={[
                 {value: 'all', label: t('printAll')},
                 {value: 'current', label: t('printCurrent')},
@@ -312,6 +313,6 @@ function buildPageTitle({
     page.startMove === page.endMove ? `Move ${page.startMove}` : `Move ${page.startMove} to ${page.endMove}`;
   return {
     mainTitle: prefix,
-    moveTitle: pageCount > 1 || customPrefix === '' ? moveText : null,
+    moveTitle: pageCount > 1 ? moveText : null,
   };
 }
