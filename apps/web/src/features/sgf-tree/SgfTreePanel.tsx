@@ -45,6 +45,7 @@ interface SgfTreePanelProps {
   onPrune: (path?: number[]) => void;
   onDelete: (path?: number[]) => void;
   onEstimateScore: (path: number[]) => void;
+  estimateScoreEnabled: boolean;
   onPreviousMove: () => void;
   onNextMove: () => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
@@ -60,6 +61,7 @@ export function SgfTreePanel({
   onPrune,
   onDelete,
   onEstimateScore,
+  estimateScoreEnabled,
   onPreviousMove,
   onNextMove,
   shortcutLabels = {},
@@ -167,11 +169,12 @@ export function SgfTreePanel({
   );
 
   const canEstimateScore = useMemo(() => {
+    if (!estimateScoreEnabled) return false;
     if (validContextPath == null) return false;
     if (validContextPath.length === 0) return false;
     const node = getNodeAtPath(document, validContextPath);
     return !isScoringNode(node) && !node.children.some(isScoringNode);
-  }, [document, validContextPath]);
+  }, [document, estimateScoreEnabled, validContextPath]);
 
   const contextMenuItems = useMemo<MenuProps['items']>(
     () => [
@@ -238,6 +241,7 @@ export function SgfTreePanel({
     setContextMenuOpen(false);
     switch (key) {
       case 'estimateScore':
+        if (!estimateScoreEnabled) return;
         if (targetPath.length === 0) return;
         onEstimateScore(targetPath);
         break;

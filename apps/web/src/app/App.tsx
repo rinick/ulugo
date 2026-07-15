@@ -1116,6 +1116,7 @@ export function App() {
               onPrune={handlePruneBranch}
               onDelete={handleDeleteNode}
               onEstimateScore={handleEstimateScore}
+              estimateScoreEnabled={!kataGoInitialized}
             />
           ) : null}
         </Content>

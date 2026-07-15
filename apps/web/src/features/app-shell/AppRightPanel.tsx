@@ -36,6 +36,7 @@ interface AppRightPanelProps {
   onPrune: (path?: number[]) => void;
   onDelete: (path?: number[]) => void;
   onEstimateScore: (path: number[]) => void;
+  estimateScoreEnabled: boolean;
 }
 
 export function AppRightPanel({
@@ -69,6 +70,7 @@ export function AppRightPanel({
   onPrune,
   onDelete,
   onEstimateScore,
+  estimateScoreEnabled,
 }: AppRightPanelProps) {
   return (
     <aside className="right-region">
@@ -116,6 +118,7 @@ export function AppRightPanel({
         onPrune={onPrune}
         onDelete={onDelete}
         onEstimateScore={onEstimateScore}
+        estimateScoreEnabled={estimateScoreEnabled}
         onPreviousMove={onPreviousMove}
         onNextMove={onNextMove}
         shortcutLabels={shortcutLabels}
