@@ -1,3 +1,4 @@
+import {ReloadOutlined} from '@ant-design/icons';
 import {Button, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -99,6 +100,13 @@ export function SettingsModal({
         </Form.Item>
         <Form.Item label={t('uiScale')}>
           <div className="app-settings-scale-row">
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              title={t('resetUiScale')}
+              aria-label={t('resetUiScale')}
+              onClick={() => onUiScaleChange(100)}
+            />
             <Slider min={25} max={400} value={uiScale} onChange={onUiScaleChange} />
             <InputNumber
               size="small"

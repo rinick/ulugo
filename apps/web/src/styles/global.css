@@ -238,6 +238,7 @@ textarea,
 
 .app-settings-scale-row .ant-slider {
   flex: 1;
+  min-width: 0;
 }
 
 .app-settings-scale-row .ant-input-number-group-wrapper {
@@ -423,8 +424,15 @@ textarea,
   font-size: 12px;
 }
 
+.play-edit-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .edit-tools {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
 }
 
 .pass-tool {

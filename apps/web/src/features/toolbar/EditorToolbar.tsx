@@ -43,7 +43,7 @@ export function EditorToolbar({
   const {t} = useTranslation();
 
   return (
-    <>
+    <div className="play-edit-tools">
       <Button
         className="pass-tool"
         size="middle"
@@ -144,7 +144,7 @@ export function EditorToolbar({
           </>
         )}
       </Space.Compact>
-    </>
+    </div>
   );
 }
 
