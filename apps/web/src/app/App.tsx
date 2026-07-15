@@ -15,7 +15,9 @@ import {
   moveBranch,
   moveBranchToMain,
   pruneBranch,
+  parseSgf,
   samePath,
+  serializeSgf,
   updateComment,
   updateGameInfo,
   updateScoringPoints,
@@ -80,7 +82,7 @@ import {
   replaceNextMoveBranch,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
-import {useAppPreferences} from './useAppPreferences';
+import {readOpenLastSgfOnStartupPreference, useAppPreferences} from './useAppPreferences';
 import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
@@ -88,6 +90,12 @@ import {createLocalConsoleMessage} from './katagoConsoleUtils';
 import {estimateScoringPoints, formatScoringValue, scoringSummaryForNode, toggleScoringGroup} from './scoringUtils';
 
 const {Header, Content} = Layout;
+const lastSgfStorageKey = 'ulugo.lastSgf';
+
+interface StartupState {
+  document: SgfDocument;
+  path: number[];
+}
 
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
@@ -101,8 +109,9 @@ const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
 
 export function App() {
   const {t, i18n} = useTranslation();
-  const [document, setDocument] = useState<SgfDocument>(() => createNewGame());
-  const [path, setPath] = useState<number[]>([]);
+  const [startupState] = useState(readStartupState);
+  const [document, setDocument] = useState<SgfDocument>(startupState.document);
+  const [path, setPath] = useState<number[]>(startupState.path);
   const [tool, setTool] = useState<EditorTool>('auto');
   const [labelText, setLabelText] = useState('A');
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
@@ -115,6 +124,8 @@ export function App() {
     setShowCoordinates,
     playStoneSound,
     setPlayStoneSound,
+    openLastSgfOnStartup,
+    setOpenLastSgfOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
   } = useAppPreferences();
@@ -176,6 +187,11 @@ export function App() {
     globalThis.document.documentElement.lang = currentLanguage;
     globalThis.document.documentElement.style.setProperty('--ulugo-font-family', appFontFamily);
   }, [appFontFamily, currentLanguage]);
+
+  useEffect(() => {
+    if (!openLastSgfOnStartup) return;
+    writeLastSgf(document);
+  }, [document, openLastSgfOnStartup]);
 
   const {
     analysisSettings,
@@ -1145,6 +1161,7 @@ export function App() {
         uiScale={uiScale}
         showCoordinates={showCoordinates}
         playStoneSound={playStoneSound}
+        openLastSgfOnStartup={openLastSgfOnStartup}
         showKataGoAnalysisSettings={capabilities.katago}
         onCancel={() => setSettingsOpen(false)}
         onAnalysisSettingsChange={updateAnalysisSettings}
@@ -1152,6 +1169,7 @@ export function App() {
         onUiScaleChange={setUiScale}
         onShowCoordinatesChange={setShowCoordinates}
         onPlayStoneSoundChange={setPlayStoneSound}
+        onOpenLastSgfOnStartupChange={setOpenLastSgfOnStartup}
         onKeyboardShortcutsClick={openKeyboardShortcuts}
       />
       <KeyboardShortcutsModal
@@ -1181,6 +1199,45 @@ function isSetupNode(node: SgfNode): boolean {
   return (
     node.data.B == null && node.data.W == null && setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
   );
+}
+
+function readStartupState(): StartupState {
+  if (!readOpenLastSgfOnStartupPreference()) return newStartupState(createNewGame(), []);
+
+  try {
+    const sgf = localStorage.getItem(lastSgfStorageKey);
+    if (sgf == null) return newStartupState(createNewGame(), []);
+    const document = parseSgf(sgf);
+    return newStartupState(document, lastMainBranchMovePath(document));
+  } catch {
+    return newStartupState(createNewGame(), []);
+  }
+}
+
+function newStartupState(document: SgfDocument, path: number[]): StartupState {
+  return {document, path};
+}
+
+function lastMainBranchMovePath(document: SgfDocument): number[] {
+  let node = document.root;
+  let path: number[] = [];
+  let lastMovePath: number[] = [];
+
+  while (node.children.length > 0) {
+    path = [...path, 0];
+    node = node.children[0];
+    if (node.data.B != null || node.data.W != null) lastMovePath = path;
+  }
+
+  return lastMovePath;
+}
+
+function writeLastSgf(document: SgfDocument): void {
+  try {
+    localStorage.setItem(lastSgfStorageKey, serializeSgf(document));
+  } catch {
+    // Ignore storage failures; the current session state is still updated.
+  }
 }
 
 function resetLabelText(value: string): string {

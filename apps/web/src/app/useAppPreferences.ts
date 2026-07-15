@@ -1,14 +1,17 @@
 import {useEffect, useState} from 'react';
+import {capabilities} from './capabilities';
 
 const uiScaleStorageKey = 'ulugo.uiScale';
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
+const openLastSgfOnStartupStorageKey = 'ulugo.openLastSgfOnStartup';
 const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
 
 export function useAppPreferences() {
   const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
+  const [openLastSgfOnStartup, setOpenLastSgfOnStartup] = useState(readOpenLastSgfOnStartupPreference);
   const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
     readStoredBoolean(leftPanelOpenStorageKey, defaultLeftPanelOpen())
   );
@@ -28,6 +31,10 @@ export function useAppPreferences() {
   }, [playStoneSound]);
 
   useEffect(() => {
+    writeStoredValue(openLastSgfOnStartupStorageKey, openLastSgfOnStartup);
+  }, [openLastSgfOnStartup]);
+
+  useEffect(() => {
     writeStoredValue(leftPanelOpenStorageKey, leftPanelOpen);
   }, [leftPanelOpen]);
 
@@ -38,9 +45,15 @@ export function useAppPreferences() {
     setShowCoordinates,
     playStoneSound,
     setPlayStoneSound,
+    openLastSgfOnStartup,
+    setOpenLastSgfOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
   };
+}
+
+export function readOpenLastSgfOnStartupPreference(): boolean {
+  return readStoredBoolean(openLastSgfOnStartupStorageKey, capabilities.platform === 'web');
 }
 
 function readStoredBoolean(key: string, fallback: boolean): boolean {
