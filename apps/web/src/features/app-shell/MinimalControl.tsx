@@ -5,6 +5,7 @@ import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 interface MinimalControlProps {
+  nextColor: 'B' | 'W';
   showRightPanel: boolean;
   showBasicTools: boolean;
   showMoveNumber: boolean;
@@ -19,6 +20,7 @@ interface MinimalControlProps {
 }
 
 export function MinimalControl({
+  nextColor,
   showRightPanel,
   showBasicTools,
   showMoveNumber,
@@ -69,7 +71,7 @@ export function MinimalControl({
       }}
     >
       <Button
-        className="minimal-control"
+        className={`minimal-control ${nextColor === 'B' ? 'black-next' : ''}`}
         shape="circle"
         size="large"
         icon={<EyeOutlined />}

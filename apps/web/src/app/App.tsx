@@ -967,6 +967,7 @@ export function App() {
       <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
         {minimalMode ? (
           <MinimalControl
+            nextColor={nextAutoColor}
             showRightPanel={minimalRightPanelOpen}
             showBasicTools={minimalBasicToolsOpen}
             showMoveNumber={analysisSettings.stoneOverlay === 'number'}

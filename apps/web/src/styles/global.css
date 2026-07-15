@@ -410,6 +410,22 @@ textarea,
   font-size: 22px;
 }
 
+.minimal-control.black-next {
+  color: #fff;
+  background: #111;
+  border-color: #111;
+}
+
+.minimal-control.black-next:hover,
+.minimal-control.black-next:focus,
+.minimal-control.black-next:focus-visible,
+.minimal-control.black-next:active,
+.minimal-control.black-next.ant-btn-color-default.ant-btn-variant-outlined:not(:disabled):not(.ant-btn-disabled):hover,
+.minimal-control.black-next.ant-btn-color-default.ant-btn-variant-outlined:not(:disabled):not(.ant-btn-disabled):active {
+  color: #ffb65f;
+  background: #111;
+}
+
 .minimal-control-checkbox {
   pointer-events: none;
 }
