@@ -1,7 +1,7 @@
 import {Form, Input, Modal, Select} from 'antd';
 import type {Rule} from 'antd/es/form';
 import type {TFunction} from 'i18next';
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 
 interface GameInfoModalProps {
@@ -26,10 +26,34 @@ const ruleKeys = new Set(ruleOptions.map((option) => ruleKey(option.value)));
 export function GameInfoModal({open, values, onCancel, onSave}: GameInfoModalProps) {
   const {t} = useTranslation();
   const [form] = Form.useForm<Record<string, string>>();
+  const previousRulesRef = useRef('');
 
   useEffect(() => {
-    if (open) form.setFieldsValue(values);
+    if (!open) return;
+    previousRulesRef.current = values.RU ?? '';
+    form.setFieldsValue(values);
   }, [form, open, values]);
+
+  function handleValuesChange(changedValues: Partial<Record<string, string>>, allValues: Record<string, string>): void {
+    if (!Object.prototype.hasOwnProperty.call(changedValues, 'RU')) return;
+
+    const previousRules = previousRulesRef.current;
+    const nextRules = allValues.RU ?? '';
+    const previousDefaultKomi = defaultKomiForRules(previousRules);
+    const nextDefaultKomi = defaultKomiForRules(nextRules);
+    previousRulesRef.current = nextRules;
+
+    if (
+      ruleKey(previousRules) === ruleKey(nextRules) ||
+      previousDefaultKomi == null ||
+      nextDefaultKomi == null ||
+      parseKomi(allValues.KM ?? '') !== previousDefaultKomi
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({KM: formatKomi(nextDefaultKomi)});
+  }
 
   async function handleOk(): Promise<void> {
     const nextValues = await form.validateFields();
@@ -47,7 +71,7 @@ export function GameInfoModal({open, values, onCancel, onSave}: GameInfoModalPro
       cancelText={t('cancel')}
       width={720}
     >
-      <Form form={form} layout="vertical" className="game-info-form">
+      <Form form={form} layout="vertical" className="game-info-form" onValuesChange={handleValuesChange}>
         {gameInfoKeys.map((key) => (
           <Form.Item key={key} name={key} label={t(key)} rules={validationRules(key, t)}>
             {key === 'RU' ? (
@@ -127,4 +151,29 @@ function ruleKey(value: string): string {
     .trim()
     .toLowerCase()
     .replace(/[_\s]+/g, '-');
+}
+
+function defaultKomiForRules(value: string): number | null {
+  switch (ruleKey(value)) {
+    case 'japanese':
+    case 'korean':
+      return 6.5;
+    case 'chinese':
+    case 'aga':
+    case 'new-zealand':
+    case 'tromp-taylor':
+    case 'stone-scoring':
+      return 7.5;
+    default:
+      return null;
+  }
+}
+
+function parseKomi(value: string): number | null {
+  const komi = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(komi) ? komi : null;
+}
+
+function formatKomi(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

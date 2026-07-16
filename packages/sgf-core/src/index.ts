@@ -213,38 +213,6 @@ function normalizeRootProperties(root: SgfNode): void {
   if (root.data.RU?.[0]?.trim() == null || root.data.RU[0].trim() === '') root.data.RU = ['Chinese'];
 }
 
-function defaultKomiForRules(value: string): number | null {
-  switch (ruleKey(value)) {
-    case 'japanese':
-    case 'korean':
-      return 6.5;
-    case 'chinese':
-    case 'aga':
-    case 'new-zealand':
-    case 'tromp-taylor':
-    case 'stone-scoring':
-      return 7.5;
-    default:
-      return null;
-  }
-}
-
-function parseKomi(value: string): number | null {
-  const komi = Number(value.trim().replace(',', '.'));
-  return Number.isFinite(komi) ? komi : null;
-}
-
-function formatKomi(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function ruleKey(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, '-');
-}
-
 function readGibTag(line: string, key: string): string | null {
   const match = new RegExp(`^\\\\+\\[${key}=([\\s\\S]*?)\\\\+\\]$`).exec(line);
   return match?.[1] ?? null;
@@ -458,32 +426,10 @@ export function updateComment(document: SgfDocument, path: number[], comment: st
 
 export function updateGameInfo(document: SgfDocument, values: Record<string, string>): SgfDocument {
   const next = cloneDocument(document);
-  const nextValues = defaultedGameInfoValues(document, values);
-  for (const [key, value] of Object.entries(nextValues)) {
+  for (const [key, value] of Object.entries(values)) {
     setProperty(next.root, key, value.trim() === '' ? [] : [value]);
   }
   return next;
-}
-
-function defaultedGameInfoValues(document: SgfDocument, values: Record<string, string>): Record<string, string> {
-  const previousRules = document.root.data.RU?.[0] ?? '';
-  const nextRules = values.RU ?? previousRules;
-  const previousKomi = document.root.data.KM?.[0] ?? '';
-  const nextKomi = values.KM ?? previousKomi;
-  const previousDefaultKomi = defaultKomiForRules(previousRules);
-  const nextDefaultKomi = defaultKomiForRules(nextRules);
-
-  if (
-    ruleKey(previousRules) === ruleKey(nextRules) ||
-    previousDefaultKomi == null ||
-    nextDefaultKomi == null ||
-    parseKomi(previousKomi) !== previousDefaultKomi ||
-    parseKomi(nextKomi) !== previousDefaultKomi
-  ) {
-    return values;
-  }
-
-  return {...values, KM: formatKomi(nextDefaultKomi)};
 }
 
 export function addMove(
