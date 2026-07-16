@@ -659,6 +659,10 @@ function oppositeColor(color: SgfColor): SgfColor {
   return color === 'B' ? 'W' : 'B';
 }
 
+function isAgaRules(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === 'aga';
+}
+
 export function updateSetupNextColor(document: SgfDocument, path: number[], color: SgfColor): SgfDocument {
   return updateNode(document, path, (node) => setProperty(node, 'PL', [color]));
 }
@@ -726,9 +730,10 @@ export function buildTree(document: SgfDocument): TreeItem[] {
   const items: TreeItem[] = [];
   const boardSize = getBoardSize(document);
   const komi = Number(document.root.data.KM?.[0]?.trim().replace(',', '.') ?? 0);
+  const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
 
   function walk(node: SgfNode, path: number[], moveNumber: number, state: TreeBoardState): TreeItem {
-    const nextState = applyTreeBoardNode(state, node, boardSize);
+    const nextState = applyTreeBoardNode(state, node, boardSize, useAgaPassStones);
     const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     const isRoot = path.length === 0;
@@ -790,7 +795,12 @@ function scoringNodeWinnerColor(
   return null;
 }
 
-function applyTreeBoardNode(state: TreeBoardState, node: SgfNode, boardSize: number): TreeBoardState {
+function applyTreeBoardNode(
+  state: TreeBoardState,
+  node: SgfNode,
+  boardSize: number,
+  useAgaPassStones: boolean
+): TreeBoardState {
   const next: TreeBoardState = {
     stones: new Map(state.stones),
     captures: {...state.captures},
@@ -808,7 +818,11 @@ function applyTreeBoardNode(state: TreeBoardState, node: SgfNode, boardSize: num
   if (color == null) return next;
 
   const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
-  if (point === '' || !isPointOnBoard(point, boardSize)) return next;
+  if (point === '') {
+    if (useAgaPassStones) next.captures[oppositeColor(color)] += 1;
+    return next;
+  }
+  if (!isPointOnBoard(point, boardSize)) return next;
 
   next.stones.set(point, color);
   const opponent = oppositeColor(color);

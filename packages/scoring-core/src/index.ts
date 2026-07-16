@@ -55,8 +55,13 @@ export function scoringSummaryForNode(document: SgfDocument, node: SgfNode, posi
   const whitePoints = onBoardPointSet(node.data.TW ?? [], position.size);
   const deadWhiteStones = countMarkedStones(blackPoints, position, 'W');
   const deadBlackStones = countMarkedStones(whitePoints, position, 'B');
-  const blackScore = blackPoints.size + position.captures.B + deadWhiteStones;
-  const whiteScore = whitePoints.size + position.captures.W + deadBlackStones;
+  const territoryScoring = usesTerritoryScoring(document.root.data.RU?.[0]);
+  const blackScore = territoryScoring
+    ? blackPoints.size + position.captures.B + deadWhiteStones
+    : blackPoints.size + countLiveStones(position, 'B', whitePoints);
+  const whiteScore = territoryScoring
+    ? whitePoints.size + position.captures.W + deadBlackStones
+    : whitePoints.size + countLiveStones(position, 'W', blackPoints);
 
   return {
     blackScore,
@@ -111,6 +116,19 @@ function countMarkedStones(points: Set<SgfPoint>, position: BoardPosition, color
     if (position.stones.get(point) === color) count += 1;
   }
   return count;
+}
+
+function countLiveStones(position: BoardPosition, color: Stone, deadPoints: Set<SgfPoint>): number {
+  let count = 0;
+  for (const [point, stone] of position.stones) {
+    if (stone === color && !deadPoints.has(point)) count += 1;
+  }
+  return count;
+}
+
+function usesTerritoryScoring(rules: string | undefined): boolean {
+  const key = rules?.trim().toLowerCase().replace(/[^a-z]/g, '') ?? '';
+  return key === '' || key === 'japanese' || key === 'korean';
 }
 
 function komi(document: SgfDocument): number {

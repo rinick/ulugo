@@ -44,6 +44,7 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
   let lastMove: SgfPoint | null = null;
   let nextColor: Stone = 'B';
   const allowSuicide = isNewZealandRules(document.root.data.RU?.[0]);
+  const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
 
   for (const node of line) {
     applySetup(node, stones, moveNumbers);
@@ -59,7 +60,10 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
     nextColor = color === 'B' ? 'W' : 'B';
     lastMove = point === '' ? null : point;
 
-    if (point === '') continue;
+    if (point === '') {
+      if (useAgaPassStones) captures[nextColor] += 1;
+      continue;
+    }
     stones.set(point, color);
     moveNumbers.set(point, moveNumber);
 
@@ -155,6 +159,10 @@ function isNewZealandRules(value: string | undefined): boolean {
     ?.trim()
     .toLowerCase()
     .replace(/[_\s]+/g, '-') === 'new-zealand';
+}
+
+function isAgaRules(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === 'aga';
 }
 
 function setupNextColor(node: SgfNode): Stone | null {

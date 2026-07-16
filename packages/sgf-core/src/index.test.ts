@@ -190,6 +190,26 @@ describe('sgf-core', () => {
     });
   });
 
+  it('uses AGA pass stones for score node color', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[AGA];B[];TB[]TW[])'))[0];
+    const scoringNode = tree.children[0].children[0];
+
+    expect(scoringNode).toMatchObject({
+      isScoring: true,
+      scoreColor: 'W',
+    });
+  });
+
+  it('does not use pass stones for score node color outside AGA rules', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[Japanese];B[];TB[]TW[])'))[0];
+    const scoringNode = tree.children[0].children[0];
+
+    expect(scoringNode).toMatchObject({
+      isScoring: true,
+      scoreColor: null,
+    });
+  });
+
   it('adds and updates scoring nodes', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const scoring = addScoringNode(first.document, first.path, ['aa', 'aa'], ['bb']);

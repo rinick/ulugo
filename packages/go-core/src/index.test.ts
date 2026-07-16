@@ -24,6 +24,22 @@ describe('go-core', () => {
     expect(position.stones.get('dd')).toBe('W');
   });
 
+  it('credits AGA pass stones to the opponent', () => {
+    const document = parseSgf('(;GM[1]SZ[19]RU[AGA];B[];W[])');
+    const position = deriveBoardPosition(document, [0, 0]);
+
+    expect(position.captures.B).toBe(1);
+    expect(position.captures.W).toBe(1);
+  });
+
+  it('does not credit pass stones outside AGA rules', () => {
+    const document = parseSgf('(;GM[1]SZ[19]RU[Japanese];B[];W[])');
+    const position = deriveBoardPosition(document, [0, 0]);
+
+    expect(position.captures.B).toBe(0);
+    expect(position.captures.W).toBe(0);
+  });
+
   it('uses PL on setup nodes as the next color', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
 

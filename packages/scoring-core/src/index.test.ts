@@ -1,9 +1,9 @@
 import type {BoardPosition, Stone} from '@ulugo/go-core';
-import {vertexToPoint, type SgfPoint} from '@ulugo/sgf-core';
+import {parseSgf, vertexToPoint, type SgfPoint} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
 import {analyzeScoringPosition} from './analysis';
 import {scoringPointsForDeadStones} from './territory';
-import {estimateScoringPoints, toggleScoringGroup} from './index';
+import {estimateScoringPoints, scoringSummaryForNode, toggleScoringGroup} from './index';
 
 describe('scoring', () => {
   it('estimates surrounded empty points as territory', () => {
@@ -380,9 +380,41 @@ describe('scoring', () => {
     expect(scoring?.whitePoints).toContain('cb');
     expect(scoring?.whitePoints).not.toContain('bc');
   });
+
+  it('summarizes Japanese and Korean scores with territory and captures', () => {
+    const position = boardPosition(['B.W', '...', '...'], {B: 2, W: 0});
+    const node = {id: 'node', data: {TB: ['ba']}, children: []};
+
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0]RU[Japanese])'), node, position)).toMatchObject({
+      blackScore: 3,
+      whiteScore: 0,
+      result: 'B+3',
+    });
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0]RU[Korean])'), node, position)).toMatchObject({
+      blackScore: 3,
+      whiteScore: 0,
+      result: 'B+3',
+    });
+  });
+
+  it('summarizes non-territory rules with territory and live on-board stones', () => {
+    const position = boardPosition(['B.W', '...', '...'], {B: 2, W: 0});
+    const node = {id: 'node', data: {TB: ['ba']}, children: []};
+
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0]RU[Chinese])'), node, position)).toMatchObject({
+      blackScore: 2,
+      whiteScore: 1,
+      result: 'B+1',
+    });
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0]RU[AGA])'), node, position)).toMatchObject({
+      blackScore: 2,
+      whiteScore: 1,
+      result: 'B+1',
+    });
+  });
 });
 
-function boardPosition(rows: string[]): BoardPosition {
+function boardPosition(rows: string[], captures: Record<Stone, number> = {B: 0, W: 0}): BoardPosition {
   const stones = new Map<SgfPoint, Stone>();
 
   rows.forEach((row, y) => {
@@ -395,7 +427,7 @@ function boardPosition(rows: string[]): BoardPosition {
     size: rows.length,
     points: [],
     stones,
-    captures: {B: 0, W: 0},
+    captures,
     nextColor: 'B',
     lastMove: null,
     moveNumber: 0,
