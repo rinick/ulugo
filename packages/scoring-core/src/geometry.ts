@@ -158,6 +158,13 @@ function singleCutDiagonalConnection(
   stones: Map<SgfPoint, Stone>,
   size: number
 ): boolean {
+  if (
+    countOrthogonalGroupLiberties(point, color, stones, size) === 1 ||
+    countOrthogonalGroupLiberties(diagonalPoint, color, stones, size) === 1
+  ) {
+    return false;
+  }
+
   const opponent = oppositeStone(color);
   const sidePoints = orthogonalNeighbors(emptyCut, size).filter(
     (neighbor) => neighbor !== point && neighbor !== diagonalPoint
@@ -173,4 +180,32 @@ function singleCutDiagonalConnection(
   const oppositeX = emptyVertex[0] + (emptyVertex[0] - opponentVertex[0]);
   const oppositeY = emptyVertex[1] + (emptyVertex[1] - opponentVertex[1]);
   return isVertexOnBoard(oppositeX, oppositeY, size) && stones.get(vertexToPoint(oppositeX, oppositeY)) === color;
+}
+
+function countOrthogonalGroupLiberties(
+  start: SgfPoint,
+  color: Stone,
+  stones: Map<SgfPoint, Stone>,
+  size: number
+): number {
+  const seen = new Set<SgfPoint>();
+  const liberties = new Set<SgfPoint>();
+  const queue = [start];
+
+  while (queue.length > 0) {
+    const point = queue.shift();
+    if (point == null || seen.has(point) || stones.get(point) !== color) continue;
+    seen.add(point);
+
+    for (const neighbor of orthogonalNeighbors(point, size)) {
+      const neighborColor = stones.get(neighbor);
+      if (neighborColor == null) {
+        liberties.add(neighbor);
+      } else if (neighborColor === color && !seen.has(neighbor)) {
+        queue.push(neighbor);
+      }
+    }
+  }
+
+  return liberties.size;
 }

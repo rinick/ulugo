@@ -329,10 +329,32 @@ describe('scoring', () => {
   });
 
   it('keeps estimate groups connected through a single diagonal cut when the far corner is same color', () => {
-    const position = boardPosition(['..W..', '.WBW.', '.B...', '...B.', '.....']);
+    const position = boardPosition(['.....', '.WBW.', '.B...', '...B.', '.....']);
     const scoring = toggleScoringGroup(position, {id: 'node', data: {}, children: []}, 'cb');
 
     expect(scoring?.whitePoints).toEqual(expect.arrayContaining(['cb', 'bc']));
+  });
+
+  it('cuts estimate groups through a single diagonal cut when either endpoint group has one liberty', () => {
+    const oneLibertyFirstEndpoint = boardPosition(['..W..', '.WBW.', '.B...', '...B.', '.....']);
+    const firstEndpointScoring = toggleScoringGroup(
+      oneLibertyFirstEndpoint,
+      {id: 'node', data: {}, children: []},
+      'cb'
+    );
+
+    expect(firstEndpointScoring?.whitePoints).toContain('cb');
+    expect(firstEndpointScoring?.whitePoints).not.toContain('bc');
+
+    const oneLibertySecondEndpoint = boardPosition(['.....', '.WBW.', 'WB...', '.W.B.', '.....']);
+    const secondEndpointScoring = toggleScoringGroup(
+      oneLibertySecondEndpoint,
+      {id: 'node', data: {}, children: []},
+      'cb'
+    );
+
+    expect(secondEndpointScoring?.whitePoints).toContain('cb');
+    expect(secondEndpointScoring?.whitePoints).not.toContain('bc');
   });
 
   it('cuts estimate groups through a single diagonal cut when the far corner is empty', () => {

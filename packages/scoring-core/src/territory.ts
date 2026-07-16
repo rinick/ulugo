@@ -46,7 +46,6 @@ export function scoringPointsForDeadStones(position: BoardPosition, deadStones: 
   assignNearestStoneTerritory(analysis, blackPoints, whitePoints);
   assignLocallySurroundedUnassignedTerritory(analysis, blackPoints, whitePoints);
   assignSurroundedUnassignedTerritory(analysis, blackPoints, whitePoints);
-  removeTerritoryNextToLiveOpponent(analysis, blackPoints, whitePoints);
 
   return {
     blackPoints: sortPoints([...blackPoints]),
@@ -60,24 +59,41 @@ function pointOwner(
   analysis: ScoringAnalysis,
   scenario: ScoreScenario
 ): Stone | null {
-  return (
+  const owner =
     regionOwner(region, analysis, scenario) ??
-    influenceOwner(influenceAtPoint(point, analysis.groups, scenario), point, analysis.position.size)
-  );
+    influenceOwner(influenceAtPoint(point, analysis.groups, scenario), point, analysis.position.size);
+  if (owner == null || isNonDeadOpponentLiberty(point, analysis.groups, owner)) return null;
+  return owner;
 }
 
 function regionOwner(region: EmptyRegion, analysis: ScoringAnalysis, scenario: ScoreScenario): Stone | null {
   const criticalOwner = scenario === 'favorBlack' ? 'B' : 'W';
   const colors = regionBorderColors(region, analysis.groups, criticalOwner);
-  if (colors.size !== 1) return stableBorderOwner(region, analysis.groups);
+  if (colors.size !== 1) {
+    const owner = stableBorderOwner(region, analysis.groups);
+    return owner != null && !regionBordersNonDeadOpponent(region, analysis.groups, owner) ? owner : null;
+  }
 
   const owner = [...colors][0];
+  if (regionBordersNonDeadOpponent(region, analysis.groups, owner)) return null;
+
   const hasOwnerBorder = [...region.borderGroupIds].some((id) => {
     const group = analysis.groups[id];
     return group != null && effectiveGroupColor(group, criticalOwner) === owner && group.status !== 'dead';
   });
 
   return hasOwnerBorder ? owner : null;
+}
+
+function regionBordersNonDeadOpponent(region: EmptyRegion, groups: StoneGroup[], owner: Stone): boolean {
+  return [...region.borderGroupIds].some((id) => {
+    const group = groups[id];
+    return group != null && group.status !== 'dead' && group.color !== owner;
+  });
+}
+
+function isNonDeadOpponentLiberty(point: SgfPoint, groups: StoneGroup[], owner: Stone): boolean {
+  return groups.some((group) => group.status !== 'dead' && group.color !== owner && group.liberties.has(point));
 }
 
 function stableBorderOwner(region: EmptyRegion, groups: StoneGroup[]): Stone | null {
@@ -272,30 +288,6 @@ function assignedOwner(point: SgfPoint, blackPoints: Set<SgfPoint>, whitePoints:
   if (blackPoints.has(point)) return 'B';
   if (whitePoints.has(point)) return 'W';
   return null;
-}
-
-function removeTerritoryNextToLiveOpponent(
-  analysis: ScoringAnalysis,
-  blackPoints: Set<SgfPoint>,
-  whitePoints: Set<SgfPoint>
-): void {
-  const groupByPoint = stoneGroupByPoint(analysis.groups);
-
-  for (const region of analysis.emptyRegions) {
-    for (const point of region.points) {
-      const owner = assignedOwner(point, blackPoints, whitePoints);
-      if (owner == null) continue;
-
-      for (const neighbor of orthogonalNeighbors(point, analysis.position.size)) {
-        const group = groupByPoint.get(neighbor);
-        if (group == null || group.status === 'dead' || group.color === owner) continue;
-
-        blackPoints.delete(point);
-        whitePoints.delete(point);
-        break;
-      }
-    }
-  }
 }
 
 function distanceToEffectiveColor(analysis: ScoringAnalysis, color: Stone): Map<SgfPoint, number> {
