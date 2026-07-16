@@ -20,6 +20,7 @@ import {
   replaceMove,
   serializeSgf,
   updateComment,
+  updateGameInfo,
   updateScoringPoints,
   updateSetupNextColor,
 } from '.';
@@ -89,6 +90,36 @@ describe('sgf-core', () => {
   it('preserves explicit rules when normalizing Chinese stone komi', () => {
     const document = parseSgf('(;GM[1]SZ[19]KM[375]RU[AGA])');
     expect(serializeSgf(document)).toBe('(;GM[1]SZ[19]KM[7.5]RU[AGA])');
+  });
+
+  it('updates default komi when changing rules', () => {
+    const document = updateGameInfo(parseSgf('(;GM[1]SZ[19]KM[6.5]RU[Japanese])'), {
+      KM: '6.5',
+      RU: 'AGA',
+    });
+
+    expect(document.root.data.KM).toEqual(['7.5']);
+    expect(document.root.data.RU).toEqual(['AGA']);
+  });
+
+  it('updates default komi when changing back to territory rules', () => {
+    const document = updateGameInfo(parseSgf('(;GM[1]SZ[19]KM[7.5]RU[Chinese])'), {
+      KM: '7.5',
+      RU: 'Korean',
+    });
+
+    expect(document.root.data.KM).toEqual(['6.5']);
+    expect(document.root.data.RU).toEqual(['Korean']);
+  });
+
+  it('preserves custom komi when changing rules', () => {
+    const document = updateGameInfo(parseSgf('(;GM[1]SZ[19]KM[0.5]RU[Japanese])'), {
+      KM: '0.5',
+      RU: 'Chinese',
+    });
+
+    expect(document.root.data.KM).toEqual(['0.5']);
+    expect(document.root.data.RU).toEqual(['Chinese']);
   });
 
   it('escapes comments', () => {
