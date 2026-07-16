@@ -97,6 +97,18 @@ function stableBorderOwner(region: EmptyRegion, groups: StoneGroup[]): Stone | n
   return hasLivingBorder && colors.size === 1 ? [...colors][0] : null;
 }
 
+function competeDistance(d: number) {
+  if (d === 1) {
+    return 3;
+  }
+  if (d === 2) {
+    return 4;
+  }
+  if (d === 3) {
+    return 5;
+  }
+  return d * 3;
+}
 function assignNearestStoneTerritory(
   analysis: ScoringAnalysis,
   blackPoints: Set<SgfPoint>,
@@ -113,9 +125,9 @@ function assignNearestStoneTerritory(
       const whiteDistance = whiteDistances.get(point);
       if (blackDistance == null || whiteDistance == null) continue;
 
-      if (blackDistance > whiteDistance * 2) {
+      if (blackDistance >= competeDistance(whiteDistance)) {
         whitePoints.add(point);
-      } else if (whiteDistance > blackDistance * 2) {
+      } else if (whiteDistance >= competeDistance(blackDistance)) {
         blackPoints.add(point);
       }
     }
