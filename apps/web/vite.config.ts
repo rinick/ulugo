@@ -37,23 +37,16 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           clientsClaim: true,
+          cleanupOutdatedCaches: true,
           disableDevLogs: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,webp,woff2,ttf,wav}'],
-          maximumFileSizeToCacheInBytes: electronDevBuild ? 5 * 1024 * 1024 : undefined,
-          mode: 'development',
+          globPatterns: [],
+          navigateFallback: undefined,
           skipWaiting: true,
         },
       }),
     ],
     build: {
       minify: electronDevBuild ? false : true,
-      rollupOptions: {
-        output: {
-          assetFileNames: 'assets/[name][extname]',
-          chunkFileNames: 'assets/[name].js',
-          entryFileNames: 'assets/[name].js',
-        },
-      },
     },
     server: {
       hmr: false,

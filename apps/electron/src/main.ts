@@ -189,7 +189,7 @@ async function createWindow(): Promise<void> {
     minHeight: 640,
     backgroundColor: '#f4f7f5',
     icon: app.isPackaged
-      ? path.join(process.resourcesPath, 'web/dist/assets/icon-512.png')
+      ? path.join(process.resourcesPath, 'web/dist/icon-512.png')
       : path.join(__dirname, '../../web/src/assets/icon-512.png'),
     webPreferences: {
       contextIsolation: true,
