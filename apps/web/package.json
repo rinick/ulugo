@@ -18,6 +18,7 @@
     "@ulugo/go-core": "workspace:*",
     "@ulugo/katago-core": "workspace:*",
     "@ulugo/go-board": "workspace:*",
+    "@ulugo/scoring-core": "workspace:*",
     "@ulugo/sgf-analysis-tree": "workspace:*",
     "@ulugo/sgf-core": "workspace:*",
     "@ulugo/ui-shared": "workspace:*",

@@ -13,3 +13,4 @@ build
 /apps/web/dist
 /apps/electron/dist
 /apps/electron/analysis_logs
+/gnugo/gnugo*

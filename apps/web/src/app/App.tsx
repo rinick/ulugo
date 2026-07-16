@@ -87,7 +87,6 @@ import {useGameRecordFiles} from './useGameRecordFiles';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
-import {estimateScoringPoints, formatScoringValue, scoringSummaryForNode, toggleScoringGroup} from './scoringUtils';
 
 const {Header, Content} = Layout;
 const lastSgfStorageKey = 'ulugo.lastSgf';
@@ -106,6 +105,12 @@ interface ReplaceDocumentOptions {
 }
 
 const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
+
+interface DisplayScoringSummary {
+  blackScoreText: string;
+  whiteScoreText: string;
+  result: string;
+}
 
 export function App() {
   const {t, i18n} = useTranslation();
@@ -150,15 +155,12 @@ export function App() {
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const selectedScoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
-  const scoringSummary = useMemo(
-    () => (selectedScoringNode ? scoringSummaryForNode(document, currentNode, position) : null),
-    [currentNode, document, position, selectedScoringNode]
-  );
+  const [scoringSummary, setScoringSummary] = useState<DisplayScoringSummary | null>(null);
   const displayedComment = useMemo(() => {
     if (scoringSummary == null) return getComment(document, path);
     return [
-      `${t('blackScore')}: ${formatScoringValue(scoringSummary.blackScore)}`,
-      `${t('whiteScore')}: ${formatScoringValue(scoringSummary.whiteScore)}`,
+      `${t('blackScore')}: ${scoringSummary.blackScoreText}`,
+      `${t('whiteScore')}: ${scoringSummary.whiteScoreText}`,
       `${t('finalResult')}: ${scoringSummary.result}`,
     ].join('\n');
   }, [document, path, scoringSummary, t]);
@@ -187,6 +189,33 @@ export function App() {
     globalThis.document.documentElement.lang = currentLanguage;
     globalThis.document.documentElement.style.setProperty('--ulugo-font-family', appFontFamily);
   }, [appFontFamily, currentLanguage]);
+
+  useEffect(() => {
+    let canceled = false;
+
+    if (!selectedScoringNode) {
+      setScoringSummary(null);
+      return;
+    }
+    setScoringSummary(null);
+
+    async function loadScoringSummary(): Promise<void> {
+      const {formatScoringValue, scoringSummaryForNode} = await import('@ulugo/scoring-core');
+      const summary = scoringSummaryForNode(document, currentNode, position);
+      if (canceled) return;
+      setScoringSummary({
+        blackScoreText: formatScoringValue(summary.blackScore),
+        whiteScoreText: formatScoringValue(summary.whiteScore),
+        result: summary.result,
+      });
+    }
+
+    void loadScoringSummary();
+
+    return () => {
+      canceled = true;
+    };
+  }, [currentNode, document, position, selectedScoringNode]);
 
   useEffect(() => {
     if (!openLastSgfOnStartup) return;
@@ -692,7 +721,11 @@ export function App() {
     }
   }
 
-  function handleBoardClick(point: string, options: BoardVertexClickOptions, colorOverride?: SgfColor): void {
+  async function handleBoardClick(
+    point: string,
+    options: BoardVertexClickOptions,
+    colorOverride?: SgfColor
+  ): Promise<void> {
     if (options.shiftKey) {
       const nextPath = position.stones.has(point)
         ? findCurrentStoneMovePath(document, path, point)
@@ -702,6 +735,7 @@ export function App() {
     }
 
     if (selectedScoringNode) {
+      const {toggleScoringGroup} = await import('@ulugo/scoring-core');
       const scoringPoints = toggleScoringGroup(position, currentNode, point);
       if (scoringPoints == null) return;
       replaceDocument(updateScoringPoints(document, path, scoringPoints.blackPoints, scoringPoints.whitePoints), path);
@@ -783,7 +817,7 @@ export function App() {
     }
 
     if (tool !== 'black' && tool !== 'white') return;
-    handleBoardClick(point, {shiftKey: false, clickCount: 1}, tool === 'black' ? 'W' : 'B');
+    void handleBoardClick(point, {shiftKey: false, clickCount: 1}, tool === 'black' ? 'W' : 'B');
   }
 
   function applyMarkupTool(point: string, rightClick: boolean, clickCount: number): void {
@@ -926,11 +960,12 @@ export function App() {
     });
   }
 
-  function handleEstimateScore(targetPath: number[]): void {
+  async function handleEstimateScore(targetPath: number[]): Promise<void> {
     const targetNode = getNodeAtPath(document, targetPath);
     if (isScoringNode(targetNode) || targetNode.children.some(isScoringNode)) return;
 
     const scoringPosition = deriveBoardPosition(document, targetPath);
+    const {estimateScoringPoints} = await import('@ulugo/scoring-core');
     const scoringPoints = estimateScoringPoints(scoringPosition);
     const result = addScoringNode(document, targetPath, scoringPoints.blackPoints, scoringPoints.whitePoints);
     replaceDocument(result.document, result.path);
