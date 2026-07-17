@@ -35,40 +35,47 @@ export function NavigationToolbar({
   onLast,
 }: NavigationToolbarProps) {
   const {t} = useTranslation();
+  const previousShortcut = shortcutLabels.previousMove;
+  const nextShortcut = shortcutLabels.nextMoveMain;
 
   return (
     <Space.Compact className="navigation-tools">
       <NavButton
-        title={t('firstMove')}
+        title={withShortcut(t('firstMove'), modifiedShortcut('Ctrl', previousShortcut))}
         disabled={!canNavigatePrevious}
         icon={<StepBackwardOutlined />}
         onClick={onFirst}
       />
       <NavButton
-        title={t('previous10Moves')}
+        title={withShortcut(t('previous10Moves'), modifiedShortcut('Shift', previousShortcut))}
         disabled={!canNavigatePrevious}
         icon={<FastBackwardOutlined />}
         onClick={onPrevious10}
       />
       <NavButton
-        title={withShortcut(t('previousMove'), shortcutLabels.previousMove)}
+        title={withShortcut(t('previousMove'), previousShortcut)}
         disabled={!canNavigatePrevious}
         icon={<BackwardOutlined />}
         onClick={onPrevious}
       />
       <NavButton
-        title={withShortcut(t('nextMoveCurrent'), shortcutLabels.nextMoveCurrent)}
+        title={withShortcut(t('nextMove'), nextShortcut)}
         disabled={!canNavigateNext}
         icon={<ForwardOutlined />}
         onClick={onNext}
       />
       <NavButton
-        title={t('next10Moves')}
+        title={withShortcut(t('next10Moves'), modifiedShortcut('Shift', nextShortcut))}
         disabled={!canNavigateNext}
         icon={<FastForwardOutlined />}
         onClick={onNext10}
       />
-      <NavButton title={t('lastMove')} disabled={!canNavigateNext} icon={<StepForwardOutlined />} onClick={onLast} />
+      <NavButton
+        title={withShortcut(t('lastMove'), modifiedShortcut('Ctrl', nextShortcut))}
+        disabled={!canNavigateNext}
+        icon={<StepForwardOutlined />}
+        onClick={onLast}
+      />
     </Space.Compact>
   );
 }
@@ -89,4 +96,8 @@ function NavButton({
 
 function withShortcut(title: string, shortcut: string | undefined): string {
   return shortcut == null || shortcut === '' ? title : `${title} (${shortcut})`;
+}
+
+function modifiedShortcut(modifier: 'Ctrl' | 'Shift', shortcut: string | undefined): string | undefined {
+  return shortcut == null || shortcut === '' ? shortcut : `${modifier}+${shortcut}`;
 }

@@ -270,7 +270,8 @@ export function App() {
       replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
     },
   });
-  const showMarkup = analysisSettings.showMarkup && !selectedScoringNode;
+  const showMarkup = analysisSettings.showMarkup;
+  const showBoardMarkup = showMarkup && !selectedScoringNode;
   const stoneOverlayDisplay =
     !capabilities.katago && analysisSettings.stoneOverlay === 'dot' ? 'number' : analysisSettings.stoneOverlay;
   const boardMoveNumberLimit = stoneOverlayDisplay === 'number' ? analysisSettings.maxMoves : 0;
@@ -434,10 +435,6 @@ export function App() {
     },
     [document, path]
   );
-
-  const navigateToLast = useCallback(() => {
-    selectPath(nextRememberedPath(document, path, Infinity, branchMemoryRef.current));
-  }, [document, path]);
 
   const navigateBranch = useCallback(
     (direction: -1 | 1, steps = 1) => {
@@ -743,10 +740,6 @@ export function App() {
     }
 
     if (options.clickCount > 1) {
-      if (tool === 'auto' && position.stones.has(point)) {
-        const nextPath = findCurrentStoneMovePath(document, path, point);
-        if (nextPath != null) selectPath(nextPath);
-      }
       if (!isMarkupTool(tool) && tool !== 'erase') return;
     }
 
@@ -1036,9 +1029,9 @@ export function App() {
                 onFirst={navigateToFirst}
                 onPrevious10={() => navigatePrevious(10)}
                 onPrevious={() => navigatePrevious()}
-                onNext={() => navigateNext()}
-                onNext10={() => navigateNext(10)}
-                onLast={navigateToLast}
+                onNext={() => navigateFirstChild()}
+                onNext10={() => navigateFirstChild(10)}
+                onLast={() => navigateFirstChild(Infinity)}
               />
             </section>
             <section className="app-header-middle">
@@ -1089,7 +1082,7 @@ export function App() {
             document={document}
             path={path}
             showCoordinates={showCoordinates}
-            showMarkup={showMarkup}
+            showMarkup={showBoardMarkup}
             moveNumberLimit={boardMoveNumberLimit}
             analysis={selectedScoringNode ? null : currentAnalysis}
             passAnalysis={selectedScoringNode ? null : currentPassAnalysis}
