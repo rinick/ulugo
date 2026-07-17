@@ -11,6 +11,7 @@ interface TipsDialogProps {
 export function TipsDialog({open, tips, onClose}: TipsDialogProps) {
   const {t} = useTranslation();
   const [index, setIndex] = useState(0);
+  const title = `${t('tips')} ${tips.length === 0 ? '0/0' : `${index + 1}/${tips.length}`}`;
 
   useEffect(() => {
     if (open) setIndex(0);
@@ -20,7 +21,7 @@ export function TipsDialog({open, tips, onClose}: TipsDialogProps) {
     <Modal
       centered
       className="tips-dialog"
-      title={t('tips')}
+      title={title}
       open={open}
       width={360}
       onCancel={onClose}

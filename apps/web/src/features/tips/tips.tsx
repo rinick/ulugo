@@ -39,16 +39,34 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
     <Tip key="markup">
       <p>{t('tipMarkup')}</p>
     </Tip>,
-    <Tip>
-      <p>添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。</p>
+    <Tip key="markup-text">
+      <p>{t('tipMarkupText')}</p>
     </Tip>,
-    <Tip platform="web">
-      <p>极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。</p>
+    <Tip key="web-minimal-portrait" platform="web">
+      <p>{t('tipMinimalPortrait')}</p>
     </Tip>,
-    <Tip platform="web">
+    <Tip key="web-score-estimate" platform="web">
       <p>
-        在右下窗口内右键点击一手棋，可以进行目数估算。这项功能只适合终盘目数计算，如果要进行盘中形式分析请下载离线版。
+        {t('tipWebScoreEstimate')}
+        <br />
+        <br />
+        {t('tipWebScoreEstimateEndgameOnly')} {t('downloadDesktopApp')}
       </p>
+    </Tip>,
+    <Tip key="electron-deep-analysis" platform="electron">
+      <p>{t('tipElectronDeepAnalysis')}</p>
+    </Tip>,
+    <Tip key="electron-move-value" platform="electron">
+      <p>{t('tipElectronMoveValue')}</p>
+    </Tip>,
+    <Tip key="electron-hot-zone" platform="electron">
+      <p>{t('tipElectronHotZone')}</p>
+    </Tip>,
+    <Tip key="electron-katago-speed" platform="electron">
+      <p>{t('tipElectronKatagoSpeed')}</p>
+    </Tip>,
+    <Tip key="electron-pv-preview" platform="electron">
+      <p>{t('tipElectronPvPreview')}</p>
     </Tip>,
   ];
 }

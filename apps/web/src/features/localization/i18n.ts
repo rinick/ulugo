@@ -67,6 +67,22 @@ export const resources = {
       welcomeTip: 'Welcome to Ulugo. Use the board, toolbar, and move tree to review or edit SGF games.',
       tipShiftJump: 'Shift-click a stone or future move on the board to jump to that move.',
       tipMarkup: 'When adding markup, double-click to mark all connected stones.',
+      tipMarkupText:
+        'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
+      tipMinimalPortrait:
+        'Minimal mode rotates 90 degrees automatically in portrait orientation. On phones and tablets, portrait mode gives more board space while recording a game.',
+      tipWebScoreEstimate: 'In the bottom-right panel, right-click a move to estimate the score.',
+      tipWebScoreEstimateEndgameOnly: 'This is only for endgame scoring.',
+      tipElectronDeepAnalysis:
+        'Shift-click the analysis button at the bottom right to start deep analysis, ignoring the max visits setting in AI config.',
+      tipElectronMoveValue:
+        "In Settings, Top move overlay can show a move's Value, but hot-zone life and death and sente/gote can affect it, so it is not exactly the same as endgame value.",
+      tipElectronHotZone:
+        'Enable Hot zone to show the area affected by the current fight. Blue areas are key points both players are fighting over, and gray areas may need to be given up.',
+      tipElectronKatagoSpeed:
+        'If AI analysis is slow, choose a smaller KataGo model in AI config, such as kata1-b18. You can also lower fast visits to make the chart render faster.',
+      tipElectronPvPreview:
+        'Hover over an AI recommended point to preview the following best sequence. You can also Alt-click the recommended point to show it.',
       boardBackground: 'Board background',
       golden: 'Golden',
       natural: 'Natural',
@@ -285,6 +301,18 @@ export const resources = {
       welcomeTip: '欢迎使用乌鹭。你可以用棋盘、工具栏和着手树复盘或编辑SGF棋谱。',
       tipShiftJump: '按住Shift点击棋盘上的棋子或后续着手，可以跳转到那一手。',
       tipMarkup: '添加标记时，双击可以将连续的棋子全部加上标记。',
+      tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
+      tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
+      tipWebScoreEstimate: '在右下窗口内，右键点击一手棋可进行目数估算。',
+      tipWebScoreEstimateEndgameOnly: '这项功能只适合终盘目数计算。',
+      tipElectronDeepAnalysis: '按住Shift点击右下角分析按钮，可开启深度分析，无视AI配置里的最大访问数。',
+      tipElectronMoveValue:
+        '设置中“推荐点叠加”里可显示一手棋的“价值”，但因为会受到热点区域死活和先后手影响，和官子价值并不完全一致。',
+      tipElectronHotZone:
+        '开启“热点区域”可显示当前战斗影响的区域，蓝色区域是双方争抢的要点，灰色区域可能需要弃给对方。',
+      tipElectronKatagoSpeed:
+        '如果AI分析速度较慢，可以在AI设置里选择更小的KataGo模型，例如kata1-b18。也可以减少快速访问数值来加快图表的显示。',
+      tipElectronPvPreview: '鼠标悬停在一个AI推荐位置会显示之后的最佳手顺。也可以按住Alt点击推荐位置来显示。',
       boardBackground: '棋盘背景',
       golden: '金色',
       natural: '自然',
@@ -501,6 +529,22 @@ export const resources = {
       welcomeTip: 'Ulugoへようこそ。盤面、ツールバー、着手ツリーを使ってSGF棋譜を検討または編集できます。',
       tipShiftJump: 'Shiftを押しながら盤上の石や先の着手をクリックすると、その手へ移動できます。',
       tipMarkup: 'マークアップを追加するときは、ダブルクリックで連続した石すべてにマークを付けられます。',
+      tipMarkupText:
+        '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
+      tipMinimalPortrait:
+        'ミニマルモードは縦画面で自動的に90度回転します。スマートフォンやタブレットで記録するとき、縦画面のほうが広く表示できます。',
+      tipWebScoreEstimate: '右下のパネルで手を右クリックすると、スコアを推定できます。',
+      tipWebScoreEstimateEndgameOnly: 'この機能は終局時の地合い計算向けです。',
+      tipElectronDeepAnalysis:
+        '右下の解析ボタンをShiftクリックすると、AI設定の最大訪問数を無視して深い解析を開始できます。',
+      tipElectronMoveValue:
+        '設定の「候補手オーバーレイ」では手の「価値」を表示できますが、ホットゾーンの死活や先手後手の影響を受けるため、ヨセの価値とは完全には一致しません。',
+      tipElectronHotZone:
+        '「ホットゾーン」を有効にすると、現在の戦いが影響する範囲を表示できます。青い範囲は双方が争う要点で、灰色の範囲は相手に譲る必要があるかもしれません。',
+      tipElectronKatagoSpeed:
+        'AI解析が遅い場合は、AI設定でkata1-b18など小さめのKataGoモデルを選べます。高速訪問数を減らすとグラフ表示も速くなります。',
+      tipElectronPvPreview:
+        'AIの推奨位置にマウスを重ねると、その後の最善手順を表示できます。Altを押しながら推奨位置をクリックしても表示できます。',
       boardBackground: '盤面の背景',
       golden: 'ゴールド',
       natural: 'ナチュラル',
@@ -720,6 +764,22 @@ export const resources = {
         'Ulugo에 오신 것을 환영합니다. 바둑판, 도구 모음, 착수 트리로 SGF 대국을 검토하거나 편집할 수 있습니다.',
       tipShiftJump: 'Shift를 누른 채 바둑판의 돌이나 이후 착수를 클릭하면 그 수로 이동합니다.',
       tipMarkup: '표식을 추가할 때 두 번 클릭하면 이어진 돌 전체에 표식을 추가할 수 있습니다.',
+      tipMarkupText:
+        '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
+      tipMinimalPortrait:
+        '미니멀 모드는 세로 화면에서 자동으로 90도 회전합니다. 휴대폰이나 태블릿에서 기록할 때 세로 화면이 더 넓은 표시 공간을 줍니다.',
+      tipWebScoreEstimate: '오른쪽 아래 창에서 한 수를 오른쪽 클릭하면 점수를 추정할 수 있습니다.',
+      tipWebScoreEstimateEndgameOnly: '이 기능은 종국 점수 계산에만 적합합니다.',
+      tipElectronDeepAnalysis:
+        'Shift를 누른 채 오른쪽 아래 분석 버튼을 클릭하면 AI 설정의 최대 방문 수를 무시하고 심층 분석을 시작할 수 있습니다.',
+      tipElectronMoveValue:
+        '설정의 "추천 수 오버레이"에서 한 수의 "가치"를 표시할 수 있지만, 핫존의 사활과 선후수 영향 때문에 끝내기 가치와 완전히 같지는 않습니다.',
+      tipElectronHotZone:
+        '"핫존"을 켜면 현재 전투가 영향을 주는 영역을 표시합니다. 파란 영역은 양쪽이 다투는 요점이고, 회색 영역은 상대에게 넘겨야 할 수 있습니다.',
+      tipElectronKatagoSpeed:
+        'AI 분석 속도가 느리면 AI 설정에서 kata1-b18 같은 더 작은 KataGo 모델을 선택할 수 있습니다. 빠른 방문 수도 줄이면 차트 표시가 빨라집니다.',
+      tipElectronPvPreview:
+        'AI 추천 위치에 마우스를 올리면 이후 최선 수순이 표시됩니다. Alt를 누른 채 추천 위치를 클릭해도 표시할 수 있습니다.',
       boardBackground: '바둑판 배경',
       golden: '골든',
       natural: '내추럴',
@@ -939,6 +999,22 @@ export const resources = {
         'Bienvenue dans Ulugo. Utilisez le plateau, la barre d outils et l arbre des coups pour revoir ou modifier des parties SGF.',
       tipShiftJump: 'Maj-clic sur une pierre ou un coup futur du plateau permet de sauter vers ce coup.',
       tipMarkup: 'Lorsque vous ajoutez un marquage, double-cliquez pour marquer toutes les pierres connectees.',
+      tipMarkupText:
+        'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
+      tipMinimalPortrait:
+        'Le mode minimal pivote automatiquement de 90 degres en orientation portrait. Sur telephone ou tablette, le mode portrait donne plus d espace pour noter une partie.',
+      tipWebScoreEstimate: 'Dans le panneau en bas a droite, faites un clic droit sur un coup pour estimer le score.',
+      tipWebScoreEstimateEndgameOnly: 'Cette fonction convient seulement au calcul de score en fin de partie.',
+      tipElectronDeepAnalysis:
+        'Maj-clic sur le bouton d analyse en bas a droite pour lancer une analyse profonde, sans tenir compte du nombre maximal de visites dans la configuration IA.',
+      tipElectronMoveValue:
+        'Dans les reglages, la superposition des meilleurs coups peut afficher la "valeur" d un coup, mais la vie et mort des zones chaudes et le sente/gote peuvent l influencer; ce n est donc pas exactement la valeur de yose.',
+      tipElectronHotZone:
+        'Activez Zone chaude pour afficher la zone affectee par le combat actuel. Les zones bleues sont des points clefs disputes par les deux joueurs, et les zones grises devront peut-etre etre abandonnees.',
+      tipElectronKatagoSpeed:
+        'Si l analyse IA est lente, choisissez un modele KataGo plus petit dans la configuration IA, par exemple kata1-b18. Vous pouvez aussi reduire les visites rapides pour accelerer le graphique.',
+      tipElectronPvPreview:
+        'Survolez un point recommande par l IA pour afficher la meilleure sequence qui suit. Vous pouvez aussi faire Alt-clic sur le point recommande pour l afficher.',
       boardBackground: 'Fond du plateau',
       golden: 'Dore',
       natural: 'Naturel',
@@ -1160,6 +1236,23 @@ export const resources = {
         'Willkommen bei Ulugo. Mit Brett, Werkzeugleiste und Zugbaum kannst du SGF-Partien pruefen oder bearbeiten.',
       tipShiftJump: 'Umschalt-Klick auf einen Stein oder spaeteren Zug auf dem Brett springt zu diesem Zug.',
       tipMarkup: 'Beim Hinzufuegen von Markierungen kannst du doppelklicken, um alle verbundenen Steine zu markieren.',
+      tipMarkupText:
+        'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
+      tipMinimalPortrait:
+        'Der Minimalmodus dreht sich im Hochformat automatisch um 90 Grad. Auf Telefonen und Tablets bietet Hochformat beim Notieren einer Partie mehr Platz.',
+      tipWebScoreEstimate:
+        'Im Fenster unten rechts kannst du einen Zug rechtsklicken, um den Punktestand zu schaetzen.',
+      tipWebScoreEstimateEndgameOnly: 'Diese Funktion eignet sich nur fuer die Endstandzaehlung.',
+      tipElectronDeepAnalysis:
+        'Umschalt-Klick auf die Analyse-Schaltflaeche unten rechts startet eine Tiefenanalyse und ignoriert die maximale Besuchszahl in der KI-Konfiguration.',
+      tipElectronMoveValue:
+        'In den Einstellungen kann die Top-Zug-Ueberlagerung den "Wert" eines Zuges anzeigen. Da Hot-Zone-Leben-und-Tod sowie Sente/Gote ihn beeinflussen, ist er nicht genau gleich dem Endspielwert.',
+      tipElectronHotZone:
+        'Aktiviere Hot Zone, um den vom aktuellen Kampf betroffenen Bereich zu zeigen. Blaue Bereiche sind Schluesselpunkte, um die beide Spieler kaempfen, graue Bereiche muessen moeglicherweise aufgegeben werden.',
+      tipElectronKatagoSpeed:
+        'Wenn die KI-Analyse langsam ist, waehle in der KI-Konfiguration ein kleineres KataGo-Modell, zum Beispiel kata1-b18. Du kannst auch die schnellen Besuche verringern, damit das Diagramm schneller angezeigt wird.',
+      tipElectronPvPreview:
+        'Wenn du den Mauszeiger ueber einen von der KI empfohlenen Punkt bewegst, wird die folgende beste Sequenz angezeigt. Du kannst auch Alt-Klick auf den empfohlenen Punkt verwenden.',
       boardBackground: 'Bretthintergrund',
       golden: 'Golden',
       natural: 'Natur',
@@ -1380,6 +1473,22 @@ export const resources = {
         'Добро пожаловать в Ulugo. Используйте доску, панель инструментов и дерево ходов, чтобы разбирать или редактировать SGF партии.',
       tipShiftJump: 'Щелкните камень или будущий ход на доске с Shift, чтобы перейти к этому ходу.',
       tipMarkup: 'При добавлении разметки дважды щелкните, чтобы отметить все соединенные камни.',
+      tipMarkupText:
+        'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
+      tipMinimalPortrait:
+        'Минимальный режим в портретной ориентации автоматически поворачивается на 90 градусов. На телефонах и планшетах портретный режим дает больше места для записи партии.',
+      tipWebScoreEstimate: 'В правом нижнем окне щелкните ход правой кнопкой мыши, чтобы оценить счет.',
+      tipWebScoreEstimateEndgameOnly: 'Эта функция подходит только для подсчета счета в конце партии.',
+      tipElectronDeepAnalysis:
+        'Щелкните кнопку анализа справа внизу с Shift, чтобы включить глубокий анализ без учета максимального числа посещений в настройках ИИ.',
+      tipElectronMoveValue:
+        'В настройках наложение рекомендуемых ходов может показывать "ценность" хода, но из-за жизни и смерти в горячих зонах, а также сэнтэ/готэ, она не полностью совпадает с ценностью йосэ.',
+      tipElectronHotZone:
+        'Включите "Горячую зону", чтобы показать область, на которую влияет текущая борьба. Синие области - ключевые пункты, за которые борются оба игрока, а серые, возможно, придется отдать сопернику.',
+      tipElectronKatagoSpeed:
+        'Если анализ ИИ идет медленно, выберите в настройках ИИ меньшую модель KataGo, например kata1-b18. Также можно уменьшить быстрые посещения, чтобы график отображался быстрее.',
+      tipElectronPvPreview:
+        'Наведите мышь на рекомендованный ИИ пункт, чтобы увидеть дальнейшую лучшую последовательность. Ее также можно показать, щелкнув рекомендованный пункт с Alt.',
       boardBackground: 'Фон доски',
       golden: 'Золотой',
       natural: 'Натуральный',
