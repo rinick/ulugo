@@ -148,12 +148,7 @@ export function AppMenuBar({
       <Button size="small" icon={<SettingOutlined />} onClick={onSettings}>
         {t('settings')}
       </Button>
-      <LanguageDropdown
-        ariaLabel={t('language')}
-        size="small"
-        value={language}
-        onChange={onLanguageChange}
-      />
+      <LanguageDropdown ariaLabel={t('language')} size="small" value={language} onChange={onLanguageChange} />
     </Space>
   );
 }

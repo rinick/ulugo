@@ -26,7 +26,11 @@ export function CoordX({style, xs}: CoordXProps) {
     },
 
     xs.map((i) =>
-      h('div', {key: i, style: {width: '1em'}}, h('span', {style: {display: 'block'}}, alpha[i] || alpha[alpha.length - 1]))
+      h(
+        'div',
+        {key: i, style: {width: '1em'}},
+        h('span', {style: {display: 'block'}}, alpha[i] || alpha[alpha.length - 1])
+      )
     )
   );
 }

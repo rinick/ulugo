@@ -15,6 +15,7 @@ interface SettingsModalProps {
   showCoordinates: boolean;
   playStoneSound: boolean;
   openLastSgfOnStartup: boolean;
+  showTipsOnStartup: boolean;
   showKataGoAnalysisSettings?: boolean;
   onCancel: () => void;
   onAnalysisSettingsChange: (settings: AnalysisSettings) => void;
@@ -23,6 +24,7 @@ interface SettingsModalProps {
   onShowCoordinatesChange: (showCoordinates: boolean) => void;
   onPlayStoneSoundChange: (playStoneSound: boolean) => void;
   onOpenLastSgfOnStartupChange: (openLastSgfOnStartup: boolean) => void;
+  onShowTipsOnStartupChange: (showTipsOnStartup: boolean) => void;
   onKeyboardShortcutsClick: () => void;
 }
 
@@ -34,6 +36,7 @@ export function SettingsModal({
   showCoordinates,
   playStoneSound,
   openLastSgfOnStartup,
+  showTipsOnStartup,
   showKataGoAnalysisSettings = false,
   onCancel,
   onAnalysisSettingsChange,
@@ -42,6 +45,7 @@ export function SettingsModal({
   onShowCoordinatesChange,
   onPlayStoneSoundChange,
   onOpenLastSgfOnStartupChange,
+  onShowTipsOnStartupChange,
   onKeyboardShortcutsClick,
 }: SettingsModalProps) {
   const {t} = useTranslation();
@@ -153,6 +157,12 @@ export function SettingsModal({
           <div className="app-settings-row">
             <span>{t('openLastSgfOnStartup')}</span>
             <Switch size="small" checked={openLastSgfOnStartup} onChange={onOpenLastSgfOnStartupChange} />
+          </div>
+        </Form.Item>
+        <Form.Item>
+          <div className="app-settings-row">
+            <span>{t('showTipsOnStartup')}</span>
+            <Switch size="small" checked={showTipsOnStartup} onChange={onShowTipsOnStartupChange} />
           </div>
         </Form.Item>
         <Form.Item>

@@ -239,17 +239,12 @@ function paginateMoves(moves: PrintMove[], movesPerPage: number): PrintPage[] {
   return pages;
 }
 
-function buildPageDiagram(
-  document: SgfDocument,
-  boardSize: number,
-  moves: PrintMove[],
-  page: PrintPage
-): PageDiagram {
+function buildPageDiagram(document: SgfDocument, boardSize: number, moves: PrintMove[], page: PrintPage): PageDiagram {
   const signMap = createGrid<Sign>(boardSize, 0);
   const markerMap = createGrid<Marker | null>(boardSize, null);
   const repeatedMoves: RepeatedMove[] = [];
   const firstMoveIndex = page.startMove <= 0 ? 0 : page.startMove - 1;
-  const beforePath = firstMoveIndex > 0 ? moves[firstMoveIndex - 1]?.path ?? [] : [];
+  const beforePath = firstMoveIndex > 0 ? (moves[firstMoveIndex - 1]?.path ?? []) : [];
   const beforePosition = deriveBoardPosition(document, beforePath);
   const pagePoints = new Set<SgfPoint>();
 

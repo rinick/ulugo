@@ -46,10 +46,7 @@ const recommendedB18Model: KataGoAvailableAsset = {
 };
 type KataGoCatalogProgress = (message: string) => void;
 
-export async function readKataGoVersionCatalog(
-  catalogPath: string,
-  platform: string
-): Promise<KataGoAssetCatalog> {
+export async function readKataGoVersionCatalog(catalogPath: string, platform: string): Promise<KataGoAssetCatalog> {
   try {
     const raw = await fs.readFile(catalogPath, 'utf8');
     return normalizeCatalog(JSON.parse(raw));
@@ -98,7 +95,9 @@ async function fetchLatestKataGoBuilds(
   const platformKey = platform === 'win32' ? 'windows-x64' : platform === 'linux' ? 'linux-x64' : 'macos';
 
   const assets = (release.assets ?? [])
-    .filter((asset) => asset.name?.endsWith('.zip') && asset.name.includes(platformKey) && !isBs50KataGoBuild(asset.name))
+    .filter(
+      (asset) => asset.name?.endsWith('.zip') && asset.name.includes(platformKey) && !isBs50KataGoBuild(asset.name)
+    )
     .map((asset) => {
       const name = asset.name ?? '';
       return {

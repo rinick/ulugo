@@ -51,11 +51,15 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
   );
   const selectedKataGoRow =
     selectedKataGoId ??
-    (installTarget?.kind === 'katago' ? installTarget.assetId : inventory?.katago.find((asset) => asset.available)?.id) ??
+    (installTarget?.kind === 'katago'
+      ? installTarget.assetId
+      : inventory?.katago.find((asset) => asset.available)?.id) ??
     null;
   const selectedModelRow =
     selectedModelId ??
-    (installTarget?.kind === 'model' ? installTarget.assetId : inventory?.models.find((asset) => asset.available)?.id) ??
+    (installTarget?.kind === 'model'
+      ? installTarget.assetId
+      : inventory?.models.find((asset) => asset.available)?.id) ??
     null;
 
   async function loadInventory(): Promise<void> {
@@ -164,8 +168,7 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
 
   async function handleUninstall(kind: AssetKind, assetId: string): Promise<void> {
     if (window.ulugo == null || inventory == null) return;
-    const currentAssetUninstalled =
-      kind === 'katago' ? assetId === selectedKataGoId : assetId === selectedModelId;
+    const currentAssetUninstalled = kind === 'katago' ? assetId === selectedKataGoId : assetId === selectedModelId;
 
     try {
       const nextInventory = await window.ulugo.katago.uninstallAsset({kind, assetId});

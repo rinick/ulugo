@@ -5,6 +5,7 @@ const uiScaleStorageKey = 'ulugo.uiScale';
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 const openLastSgfOnStartupStorageKey = 'ulugo.openLastSgfOnStartup';
+const showTipsOnStartupStorageKey = 'ulugo.showTipsOnStartup';
 const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
 
 export function useAppPreferences() {
@@ -12,6 +13,9 @@ export function useAppPreferences() {
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
   const [openLastSgfOnStartup, setOpenLastSgfOnStartup] = useState(readOpenLastSgfOnStartupPreference);
+  const [showTipsOnStartup, setShowTipsOnStartup] = useState(() =>
+    readStoredBoolean(showTipsOnStartupStorageKey, true)
+  );
   const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
     readStoredBoolean(leftPanelOpenStorageKey, defaultLeftPanelOpen())
   );
@@ -35,6 +39,10 @@ export function useAppPreferences() {
   }, [openLastSgfOnStartup]);
 
   useEffect(() => {
+    writeStoredValue(showTipsOnStartupStorageKey, showTipsOnStartup);
+  }, [showTipsOnStartup]);
+
+  useEffect(() => {
     writeStoredValue(leftPanelOpenStorageKey, leftPanelOpen);
   }, [leftPanelOpen]);
 
@@ -47,6 +55,8 @@ export function useAppPreferences() {
     setPlayStoneSound,
     openLastSgfOnStartup,
     setOpenLastSgfOnStartup,
+    showTipsOnStartup,
+    setShowTipsOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
   };

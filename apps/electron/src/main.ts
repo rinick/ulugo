@@ -578,15 +578,20 @@ function pathCandidatesFromEnv(executableName: string): string[] {
 }
 
 function sendMacKataGoHomebrewGuidance(sender: WebContents): void {
-  sendKataGoConsole(sender, 'ulugo', 'warning', [
-    'KataGo was not found on this Mac.',
-    'Install the Apple Silicon Metal build with Homebrew:',
-    '1. Open Terminal.',
-    '2. If Homebrew is not installed, install it from https://brew.sh/.',
-    '3. Run: brew install katago',
-    '4. Verify it with: /opt/homebrew/bin/katago version',
-    '5. Restart Ulugo after installation.',
-  ].join('\n'));
+  sendKataGoConsole(
+    sender,
+    'ulugo',
+    'warning',
+    [
+      'KataGo was not found on this Mac.',
+      'Install the Apple Silicon Metal build with Homebrew:',
+      '1. Open Terminal.',
+      '2. If Homebrew is not installed, install it from https://brew.sh/.',
+      '3. Run: brew install katago',
+      '4. Verify it with: /opt/homebrew/bin/katago version',
+      '5. Restart Ulugo after installation.',
+    ].join('\n')
+  );
 }
 
 async function showMacKataGoHomebrewDialog(sender: WebContents): Promise<void> {

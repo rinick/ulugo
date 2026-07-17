@@ -49,6 +49,8 @@ import {PrintPreview} from '../features/print/PrintPreview';
 import {AnalysisToolbarOptions} from '../features/toolbar/AnalysisToolbarOptions';
 import {EditorToolbar} from '../features/toolbar/EditorToolbar';
 import {ModeToolbarOptions} from '../features/toolbar/ModeToolbarOptions';
+import {TipsDialog} from '../features/tips/TipsDialog';
+import {createStartupTips, readTipsFirstTime, writeTipsWelcomeShown} from '../features/tips/tips';
 import {
   readKeyboardShortcuts,
   shortcutActionForEvent,
@@ -131,9 +133,14 @@ export function App() {
     setPlayStoneSound,
     openLastSgfOnStartup,
     setOpenLastSgfOnStartup,
+    showTipsOnStartup,
+    setShowTipsOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
   } = useAppPreferences();
+  const [tipsFirstTime] = useState(readTipsFirstTime);
+  const [startupTips] = useState(() => createStartupTips(t, tipsFirstTime, capabilities.platform));
+  const [tipsOpen, setTipsOpen] = useState(showTipsOnStartup);
   const [gameInfoOpen, setGameInfoOpen] = useState(false);
   const [kataGoSettingsOpen, setKataGoSettingsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -283,6 +290,10 @@ export function App() {
   const appTitle = isElectron ? t('electronTitle') : t('appTitle');
   const blackPlayerName = gameInfo.PB.trim() === '' ? t('black') : gameInfo.PB;
   const whitePlayerName = gameInfo.PW.trim() === '' ? t('white') : gameInfo.PW;
+
+  useEffect(() => {
+    if (tipsOpen && tipsFirstTime) writeTipsWelcomeShown();
+  }, [tipsFirstTime, tipsOpen]);
 
   useEffect(() => {
     window.document.body.classList.toggle('platform-web', capabilities.platform === 'web');
@@ -1191,6 +1202,7 @@ export function App() {
         showCoordinates={showCoordinates}
         playStoneSound={playStoneSound}
         openLastSgfOnStartup={openLastSgfOnStartup}
+        showTipsOnStartup={showTipsOnStartup}
         showKataGoAnalysisSettings={capabilities.katago}
         onCancel={() => setSettingsOpen(false)}
         onAnalysisSettingsChange={updateAnalysisSettings}
@@ -1199,8 +1211,10 @@ export function App() {
         onShowCoordinatesChange={setShowCoordinates}
         onPlayStoneSoundChange={setPlayStoneSound}
         onOpenLastSgfOnStartupChange={setOpenLastSgfOnStartup}
+        onShowTipsOnStartupChange={setShowTipsOnStartup}
         onKeyboardShortcutsClick={openKeyboardShortcuts}
       />
+      <TipsDialog open={tipsOpen} tips={startupTips} onClose={() => setTipsOpen(false)} />
       <KeyboardShortcutsModal
         open={keyboardShortcutsOpen}
         shortcuts={keyboardShortcuts}

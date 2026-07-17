@@ -37,7 +37,11 @@ interface PickerBuilder {
 interface GoogleGlobals {
   accounts: {
     oauth2: {
-      initTokenClient: (config: {client_id: string; scope: string; callback: (response: TokenResponse) => void}) => TokenClient;
+      initTokenClient: (config: {
+        client_id: string;
+        scope: string;
+        callback: (response: TokenResponse) => void;
+      }) => TokenClient;
     };
   };
   picker: {
@@ -252,11 +256,7 @@ function pickGoogleDriveFile(token: string): Promise<{id: string; name: string} 
   });
 }
 
-async function createGoogleDriveFile(
-  token: string,
-  content: string,
-  fileName: string
-): Promise<GoogleDriveSaveResult> {
+async function createGoogleDriveFile(token: string, content: string, fileName: string): Promise<GoogleDriveSaveResult> {
   const boundary = `ulugo_${crypto.randomUUID()}`;
   const body = [
     `--${boundary}`,

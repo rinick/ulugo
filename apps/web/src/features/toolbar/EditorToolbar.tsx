@@ -1,10 +1,4 @@
-import {
-  BorderOutlined,
-  CloseOutlined,
-  DeleteOutlined,
-  FontSizeOutlined,
-  SwapOutlined,
-} from '@ant-design/icons';
+import {BorderOutlined, CloseOutlined, DeleteOutlined, FontSizeOutlined, SwapOutlined} from '@ant-design/icons';
 import {Button, Input, Space} from 'antd';
 import type React from 'react';
 import {useTranslation} from 'react-i18next';

@@ -127,7 +127,11 @@ function countLiveStones(position: BoardPosition, color: Stone, deadPoints: Set<
 }
 
 function usesTerritoryScoring(rules: string | undefined): boolean {
-  const key = rules?.trim().toLowerCase().replace(/[^a-z]/g, '') ?? '';
+  const key =
+    rules
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-z]/g, '') ?? '';
   return key === '' || key === 'japanese' || key === 'korean';
 }
 

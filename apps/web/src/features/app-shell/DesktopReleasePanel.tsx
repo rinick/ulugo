@@ -81,7 +81,9 @@ export function DesktopReleasePanel({active}: {active: boolean}) {
             {release.name || release.tag_name}
           </a>
           {release.published_at == null ? null : (
-            <span>{new Intl.DateTimeFormat(undefined, {dateStyle: 'medium'}).format(new Date(release.published_at))}</span>
+            <span>
+              {new Intl.DateTimeFormat(undefined, {dateStyle: 'medium'}).format(new Date(release.published_at))}
+            </span>
           )}
         </div>
       </div>

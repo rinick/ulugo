@@ -143,11 +143,7 @@ function applyCaptures(
   }
 }
 
-function removeGroup(
-  points: SgfPoint[],
-  stones: Map<SgfPoint, Stone>,
-  moveNumbers: Map<SgfPoint, number>
-): void {
+function removeGroup(points: SgfPoint[], stones: Map<SgfPoint, Stone>, moveNumbers: Map<SgfPoint, number>): void {
   for (const point of points) {
     stones.delete(point);
     moveNumbers.delete(point);
@@ -155,10 +151,12 @@ function removeGroup(
 }
 
 function isNewZealandRules(value: string | undefined): boolean {
-  return value
-    ?.trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, '-') === 'new-zealand';
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[_\s]+/g, '-') === 'new-zealand'
+  );
 }
 
 function isAgaRules(value: string | undefined): boolean {

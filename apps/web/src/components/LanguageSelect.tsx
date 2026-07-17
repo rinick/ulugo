@@ -7,10 +7,7 @@ interface LanguageSelectOption {
   label: ReactNode;
 }
 
-type LanguageSelectProps = Omit<
-  SelectProps<AppLanguage, LanguageSelectOption>,
-  'value' | 'onChange' | 'options'
-> & {
+type LanguageSelectProps = Omit<SelectProps<AppLanguage, LanguageSelectOption>, 'value' | 'onChange' | 'options'> & {
   value: AppLanguage;
   onChange: (language: AppLanguage) => void;
 };

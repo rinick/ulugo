@@ -758,7 +758,9 @@ export function buildTree(document: SgfDocument): TreeItem[] {
       moveNumber: displayMoveNumber,
       color,
       setupColor,
-      scoreColor: isScoring ? (resultValueWinnerColor(node.data.RE?.[0]) ?? scoringNodeWinnerColor(node, nextState, komi, boardSize)) : null,
+      scoreColor: isScoring
+        ? (resultValueWinnerColor(node.data.RE?.[0]) ?? scoringNodeWinnerColor(node, nextState, komi, boardSize))
+        : null,
       point: color == null ? null : point,
       isSetup,
       isScoring,
@@ -885,11 +887,7 @@ function onBoardPointSet(points: SgfPoint[], boardSize: number): Set<SgfPoint> {
   return new Set(points.filter((point) => isPointOnBoard(point, boardSize)));
 }
 
-function countMarkedStones(
-  points: Set<SgfPoint>,
-  stones: Map<SgfPoint, SgfColor>,
-  color: SgfColor
-): number {
+function countMarkedStones(points: Set<SgfPoint>, stones: Map<SgfPoint, SgfColor>, color: SgfColor): number {
   let count = 0;
   for (const point of points) {
     if (stones.get(point) === color) count += 1;

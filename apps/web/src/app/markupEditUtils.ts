@@ -15,7 +15,13 @@ import {pathKey} from './sgfPathUtils';
 import {toolToMarkup} from './sgfEditUtils';
 
 export type PointMarkup = {kind: 'LB'; label: string} | {kind: MarkupKind};
-export type MarkupAction = {pathKey: string; point: string; action: 'draw' | 'erase'; markup: PointMarkup; time: number};
+export type MarkupAction = {
+  pathKey: string;
+  point: string;
+  action: 'draw' | 'erase';
+  markup: PointMarkup;
+  time: number;
+};
 
 interface MarkupEditOptions {
   document: SgfDocument;
@@ -48,7 +54,10 @@ export function applyMarkupEdit(options: MarkupEditOptions): MarkupEditResult | 
   if (repeated?.action === 'draw' && toolMatchesMarkup(options.tool, repeated.markup)) {
     const points = drawConnectedUnmarkedStoneTargets(node, options.point, options.stones, options.boardSize);
     return {
-      document: points.length === 0 ? options.document : drawMarkupPoints(options.document, options.path, points, repeated.markup),
+      document:
+        points.length === 0
+          ? options.document
+          : drawMarkupPoints(options.document, options.path, points, repeated.markup),
       nextAction: repeated,
     };
   }
@@ -132,7 +141,11 @@ function repeatedMarkupAction(options: MarkupEditOptions): MarkupAction | null {
   return action;
 }
 
-function makeMarkupAction(options: MarkupEditOptions, action: MarkupAction['action'], markup: PointMarkup): MarkupAction {
+function makeMarkupAction(
+  options: MarkupEditOptions,
+  action: MarkupAction['action'],
+  markup: PointMarkup
+): MarkupAction {
   return {pathKey: pathKey(options.path), point: options.point, action, markup, time: Date.now()};
 }
 
@@ -256,6 +269,12 @@ function eraseMarkupPoints(document: SgfDocument, path: number[], points: string
 
 function drawMarkupPoints(document: SgfDocument, path: number[], points: string[], markup: PointMarkup): SgfDocument {
   return markup.kind === 'LB'
-    ? points.reduce((current, point) => addLabel(current, path, point, markup.label), eraseMarkupPoints(document, path, points))
-    : points.reduce((current, point) => addMarkup(current, path, markup.kind, point), eraseMarkupPoints(document, path, points));
+    ? points.reduce(
+        (current, point) => addLabel(current, path, point, markup.label),
+        eraseMarkupPoints(document, path, points)
+      )
+    : points.reduce(
+        (current, point) => addMarkup(current, path, markup.kind, point),
+        eraseMarkupPoints(document, path, points)
+      );
 }

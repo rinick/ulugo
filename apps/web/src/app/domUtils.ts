@@ -34,18 +34,9 @@ export function isModalOpen(): boolean {
 function isTextInputElement(element: Element): boolean {
   if (element instanceof HTMLTextAreaElement) return true;
   if (element instanceof HTMLInputElement) {
-    return ![
-      'button',
-      'checkbox',
-      'color',
-      'file',
-      'hidden',
-      'image',
-      'radio',
-      'range',
-      'reset',
-      'submit',
-    ].includes(element.type);
+    return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(
+      element.type
+    );
   }
   return element instanceof HTMLElement && element.isContentEditable;
 }

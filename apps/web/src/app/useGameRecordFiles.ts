@@ -4,19 +4,9 @@ import {useEffect, useRef, useState, type DragEvent, type RefObject} from 'react
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
 import {promptSgfText} from '../features/files/promptSgfText';
-import {
-  currentSgfFileName,
-  hasDraggedFiles,
-  normalizeSgfFileName,
-  type CurrentFileMetadata,
-} from './appFileUtils';
+import {currentSgfFileName, hasDraggedFiles, normalizeSgfFileName, type CurrentFileMetadata} from './appFileUtils';
 import {capabilities, isElectron} from './capabilities';
-import {
-  isGameRecordFile,
-  parseGameRecord,
-  readGameRecordFile,
-  withImportedGameName,
-} from './gameRecordFileUtils';
+import {isGameRecordFile, parseGameRecord, readGameRecordFile, withImportedGameName} from './gameRecordFileUtils';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
 
 interface UseGameRecordFilesOptions {
@@ -42,11 +32,7 @@ interface GameRecordFiles {
   cancelGoogleDriveOperation: () => void;
 }
 
-export function useGameRecordFiles({
-  document,
-  gameName,
-  onImport,
-}: UseGameRecordFilesOptions): GameRecordFiles {
+export function useGameRecordFiles({document, gameName, onImport}: UseGameRecordFilesOptions): GameRecordFiles {
   const {t} = useTranslation();
   const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);

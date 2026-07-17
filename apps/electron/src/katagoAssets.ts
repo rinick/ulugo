@@ -86,8 +86,7 @@ export async function downloadKataGoAsset(
   await ensureUlugoAssetDirectories();
   const directory = kind === 'katago' ? katagoInstallDirectory() : modelInstallDirectory();
   const fileName = path.basename(new URL(option.url).pathname);
-  const installDirectory =
-    kind === 'katago' ? path.join(directory, sanitizeFileName(option.id)) : directory;
+  const installDirectory = kind === 'katago' ? path.join(directory, sanitizeFileName(option.id)) : directory;
   await fs.mkdir(installDirectory, {recursive: true});
 
   const downloadPath = path.join(installDirectory, fileName);
@@ -273,11 +272,7 @@ async function downloadFile(url: string, destination: string, onProgress: (perce
   }
 }
 
-async function extractDownloadedAsset(
-  zipPath: string,
-  destination: string,
-  kind: KataGoAssetKind
-): Promise<string> {
+async function extractDownloadedAsset(zipPath: string, destination: string, kind: KataGoAssetKind): Promise<string> {
   const existingFiles = new Set(await listFiles(destination));
   await extract(zipPath, {dir: destination});
   await fs.rm(zipPath, {force: true});

@@ -1,9 +1,4 @@
-import {
-  getNodeAtPath,
-  type MarkupKind,
-  type SgfColor,
-  type SgfDocument,
-} from '@ulugo/sgf-core';
+import {getNodeAtPath, type MarkupKind, type SgfColor, type SgfDocument} from '@ulugo/sgf-core';
 import type {EditorTool} from '../features/toolbar/types';
 
 export function findChildMovePath(
