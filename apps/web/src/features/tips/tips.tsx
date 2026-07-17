@@ -46,12 +46,7 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
       <p>{t('tipMinimalPortrait')}</p>
     </Tip>,
     <Tip key="web-score-estimate" platform="web">
-      <p>
-        {t('tipWebScoreEstimate')}
-        <br />
-        <br />
-        {t('tipWebScoreEstimateEndgameOnly')} {t('downloadDesktopApp')}
-      </p>
+      <p>{t('tipWebScoreEstimate', {downloadDesktopApp: t('downloadDesktopApp')})}</p>
     </Tip>,
     <Tip key="electron-deep-analysis" platform="electron">
       <p>{t('tipElectronDeepAnalysis')}</p>

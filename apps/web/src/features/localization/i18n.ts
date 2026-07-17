@@ -64,15 +64,15 @@ export const resources = {
       openLastSgfOnStartup: 'Open the last SGF on startup',
       showTipsOnStartup: 'Show tips on startup',
       autoIncrementMarkupText: 'Auto increment markup text',
-      welcomeTip: 'Welcome to Ulugo. Use the board, toolbar, and move tree to review or edit SGF games.',
+      welcomeTip: 'Welcome to Ulugo Go, a Go game AI analysis and game record editing app.',
       tipShiftJump: 'Shift-click a stone or future move on the board to jump to that move.',
       tipMarkup: 'When adding markup, double-click to mark all connected stones.',
       tipMarkupText:
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
       tipMinimalPortrait:
         'Minimal mode rotates 90 degrees automatically in portrait orientation. On phones and tablets, portrait mode gives more board space while recording a game.',
-      tipWebScoreEstimate: 'In the bottom-right panel, right-click a move to estimate the score.',
-      tipWebScoreEstimateEndgameOnly: 'This is only for endgame scoring.',
+      tipWebScoreEstimate:
+        'In the bottom-right panel, right-click a move to estimate the score.\n\nThis is only for endgame scoring. {{downloadDesktopApp}}.',
       tipElectronDeepAnalysis:
         'Shift-click the analysis button at the bottom right to start deep analysis, ignoring the max visits setting in AI config.',
       tipElectronMoveValue:
@@ -298,13 +298,13 @@ export const resources = {
       openLastSgfOnStartup: '启动时打开上次的SGF',
       showTipsOnStartup: '启动时显示小贴士',
       autoIncrementMarkupText: '自动递增标记文字',
-      welcomeTip: '欢迎使用乌鹭。你可以用棋盘、工具栏和着手树复盘或编辑SGF棋谱。',
+      welcomeTip: '欢迎使用乌鹭围棋。一个围棋棋局AI分析和棋谱编辑软件。',
       tipShiftJump: '按住Shift点击棋盘上的棋子或后续着手，可以跳转到那一手。',
       tipMarkup: '添加标记时，双击可以将连续的棋子全部加上标记。',
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
-      tipWebScoreEstimate: '在右下窗口内，右键点击一手棋可进行目数估算。',
-      tipWebScoreEstimateEndgameOnly: '这项功能只适合终盘目数计算。',
+      tipWebScoreEstimate:
+        '在右下窗口内，右键点击一手棋可进行目数估算。\n\n这项功能只适合终盘目数计算。{{downloadDesktopApp}}。',
       tipElectronDeepAnalysis: '按住Shift点击右下角分析按钮，可开启深度分析，无视AI配置里的最大访问数。',
       tipElectronMoveValue:
         '设置中“推荐点叠加”里可显示一手棋的“价值”，但因为会受到热点区域死活和先后手影响，和官子价值并不完全一致。',
@@ -526,15 +526,15 @@ export const resources = {
       openLastSgfOnStartup: '起動時に前回のSGFを開く',
       showTipsOnStartup: '起動時にヒントを表示',
       autoIncrementMarkupText: 'マークアップ文字を自動増加',
-      welcomeTip: 'Ulugoへようこそ。盤面、ツールバー、着手ツリーを使ってSGF棋譜を検討または編集できます。',
+      welcomeTip: '烏鷺囲碁へようこそ。囲碁の対局AI解析と棋譜編集のためのアプリです。',
       tipShiftJump: 'Shiftを押しながら盤上の石や先の着手をクリックすると、その手へ移動できます。',
       tipMarkup: 'マークアップを追加するときは、ダブルクリックで連続した石すべてにマークを付けられます。',
       tipMarkupText:
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
       tipMinimalPortrait:
         'ミニマルモードは縦画面で自動的に90度回転します。スマートフォンやタブレットで記録するとき、縦画面のほうが広く表示できます。',
-      tipWebScoreEstimate: '右下のパネルで手を右クリックすると、スコアを推定できます。',
-      tipWebScoreEstimateEndgameOnly: 'この機能は終局時の地合い計算向けです。',
+      tipWebScoreEstimate:
+        '右下のパネルで手を右クリックすると、スコアを推定できます。\n\nこの機能は終局時の地合い計算向けです。{{downloadDesktopApp}}。',
       tipElectronDeepAnalysis:
         '右下の解析ボタンをShiftクリックすると、AI設定の最大訪問数を無視して深い解析を開始できます。',
       tipElectronMoveValue:
@@ -761,15 +761,15 @@ export const resources = {
       showTipsOnStartup: '시작할 때 팁 표시',
       autoIncrementMarkupText: '표식 문자 자동 증가',
       welcomeTip:
-        'Ulugo에 오신 것을 환영합니다. 바둑판, 도구 모음, 착수 트리로 SGF 대국을 검토하거나 편집할 수 있습니다.',
+        '오로바둑에 오신 것을 환영합니다. 바둑 대국 AI 분석과 기보 편집을 위한 앱입니다.',
       tipShiftJump: 'Shift를 누른 채 바둑판의 돌이나 이후 착수를 클릭하면 그 수로 이동합니다.',
       tipMarkup: '표식을 추가할 때 두 번 클릭하면 이어진 돌 전체에 표식을 추가할 수 있습니다.',
       tipMarkupText:
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
       tipMinimalPortrait:
         '미니멀 모드는 세로 화면에서 자동으로 90도 회전합니다. 휴대폰이나 태블릿에서 기록할 때 세로 화면이 더 넓은 표시 공간을 줍니다.',
-      tipWebScoreEstimate: '오른쪽 아래 창에서 한 수를 오른쪽 클릭하면 점수를 추정할 수 있습니다.',
-      tipWebScoreEstimateEndgameOnly: '이 기능은 종국 점수 계산에만 적합합니다.',
+      tipWebScoreEstimate:
+        '오른쪽 아래 창에서 한 수를 오른쪽 클릭하면 점수를 추정할 수 있습니다.\n\n이 기능은 종국 점수 계산에만 적합합니다. {{downloadDesktopApp}}.',
       tipElectronDeepAnalysis:
         'Shift를 누른 채 오른쪽 아래 분석 버튼을 클릭하면 AI 설정의 최대 방문 수를 무시하고 심층 분석을 시작할 수 있습니다.',
       tipElectronMoveValue:
@@ -996,15 +996,15 @@ export const resources = {
       showTipsOnStartup: 'Afficher les astuces au demarrage',
       autoIncrementMarkupText: "Incrementer automatiquement le texte d'annotation",
       welcomeTip:
-        'Bienvenue dans Ulugo. Utilisez le plateau, la barre d outils et l arbre des coups pour revoir ou modifier des parties SGF.',
+        'Bienvenue dans Ulugo Go, une application d analyse IA de parties de go et d edition de kifu.',
       tipShiftJump: 'Maj-clic sur une pierre ou un coup futur du plateau permet de sauter vers ce coup.',
       tipMarkup: 'Lorsque vous ajoutez un marquage, double-cliquez pour marquer toutes les pierres connectees.',
       tipMarkupText:
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
       tipMinimalPortrait:
         'Le mode minimal pivote automatiquement de 90 degres en orientation portrait. Sur telephone ou tablette, le mode portrait donne plus d espace pour noter une partie.',
-      tipWebScoreEstimate: 'Dans le panneau en bas a droite, faites un clic droit sur un coup pour estimer le score.',
-      tipWebScoreEstimateEndgameOnly: 'Cette fonction convient seulement au calcul de score en fin de partie.',
+      tipWebScoreEstimate:
+        'Dans le panneau en bas a droite, faites un clic droit sur un coup pour estimer le score.\n\nCette fonction convient seulement au calcul de score en fin de partie. {{downloadDesktopApp}}.',
       tipElectronDeepAnalysis:
         'Maj-clic sur le bouton d analyse en bas a droite pour lancer une analyse profonde, sans tenir compte du nombre maximal de visites dans la configuration IA.',
       tipElectronMoveValue:
@@ -1233,7 +1233,7 @@ export const resources = {
       showTipsOnStartup: 'Tipps beim Start anzeigen',
       autoIncrementMarkupText: 'Markierungstext automatisch erhoehen',
       welcomeTip:
-        'Willkommen bei Ulugo. Mit Brett, Werkzeugleiste und Zugbaum kannst du SGF-Partien pruefen oder bearbeiten.',
+        'Willkommen bei Ulugo Go, einer App fuer KI-Analyse von Go-Partien und Bearbeitung von Partieaufzeichnungen.',
       tipShiftJump: 'Umschalt-Klick auf einen Stein oder spaeteren Zug auf dem Brett springt zu diesem Zug.',
       tipMarkup: 'Beim Hinzufuegen von Markierungen kannst du doppelklicken, um alle verbundenen Steine zu markieren.',
       tipMarkupText:
@@ -1241,8 +1241,7 @@ export const resources = {
       tipMinimalPortrait:
         'Der Minimalmodus dreht sich im Hochformat automatisch um 90 Grad. Auf Telefonen und Tablets bietet Hochformat beim Notieren einer Partie mehr Platz.',
       tipWebScoreEstimate:
-        'Im Fenster unten rechts kannst du einen Zug rechtsklicken, um den Punktestand zu schaetzen.',
-      tipWebScoreEstimateEndgameOnly: 'Diese Funktion eignet sich nur fuer die Endstandzaehlung.',
+        'Im Fenster unten rechts kannst du einen Zug rechtsklicken, um den Punktestand zu schaetzen.\n\nDiese Funktion eignet sich nur fuer die Endstandzaehlung. {{downloadDesktopApp}}.',
       tipElectronDeepAnalysis:
         'Umschalt-Klick auf die Analyse-Schaltflaeche unten rechts startet eine Tiefenanalyse und ignoriert die maximale Besuchszahl in der KI-Konfiguration.',
       tipElectronMoveValue:
@@ -1470,15 +1469,15 @@ export const resources = {
       showTipsOnStartup: 'Показывать советы при запуске',
       autoIncrementMarkupText: 'Автоматически увеличивать текст разметки',
       welcomeTip:
-        'Добро пожаловать в Ulugo. Используйте доску, панель инструментов и дерево ходов, чтобы разбирать или редактировать SGF партии.',
+        'Добро пожаловать в Ulugo Go, приложение для ИИ-анализа партий го и редактирования записей партий.',
       tipShiftJump: 'Щелкните камень или будущий ход на доске с Shift, чтобы перейти к этому ходу.',
       tipMarkup: 'При добавлении разметки дважды щелкните, чтобы отметить все соединенные камни.',
       tipMarkupText:
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
       tipMinimalPortrait:
         'Минимальный режим в портретной ориентации автоматически поворачивается на 90 градусов. На телефонах и планшетах портретный режим дает больше места для записи партии.',
-      tipWebScoreEstimate: 'В правом нижнем окне щелкните ход правой кнопкой мыши, чтобы оценить счет.',
-      tipWebScoreEstimateEndgameOnly: 'Эта функция подходит только для подсчета счета в конце партии.',
+      tipWebScoreEstimate:
+        'В правом нижнем окне щелкните ход правой кнопкой мыши, чтобы оценить счет.\n\nЭта функция подходит только для подсчета счета в конце партии. {{downloadDesktopApp}}.',
       tipElectronDeepAnalysis:
         'Щелкните кнопку анализа справа внизу с Shift, чтобы включить глубокий анализ без учета максимального числа посещений в настройках ИИ.',
       tipElectronMoveValue:

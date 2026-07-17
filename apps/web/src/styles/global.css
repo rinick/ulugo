@@ -308,6 +308,7 @@ textarea,
   align-items: center;
   justify-content: center;
   overflow-y: auto;
+  white-space: pre-line;
 }
 
 .keyboard-shortcuts-row {
