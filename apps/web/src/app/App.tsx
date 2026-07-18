@@ -1226,7 +1226,13 @@ export function App() {
         onShowTipsOnStartupChange={setShowTipsOnStartup}
         onKeyboardShortcutsClick={openKeyboardShortcuts}
       />
-      <TipsDialog open={tipsOpen} tips={startupTips} onClose={() => setTipsOpen(false)} />
+      <TipsDialog
+        open={tipsOpen}
+        tips={startupTips}
+        showTipsOnStartup={showTipsOnStartup}
+        onShowTipsOnStartupChange={setShowTipsOnStartup}
+        onClose={() => setTipsOpen(false)}
+      />
       <KeyboardShortcutsModal
         open={keyboardShortcutsOpen}
         shortcuts={keyboardShortcuts}
