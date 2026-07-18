@@ -47,6 +47,14 @@ export default defineConfig(({mode}) => {
     ],
     build: {
       minify: electronDevBuild ? false : true,
+      rollupOptions: {
+        output: {
+          assetFileNames: (asset) =>
+            asset.names.some((name) => name.endsWith('.md'))
+              ? 'assets/[name][extname]'
+              : 'assets/[name]-[hash][extname]',
+        },
+      },
     },
     server: {
       hmr: false,

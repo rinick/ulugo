@@ -3,10 +3,11 @@ import {Button} from 'antd';
 import type {KataGoConsoleMessage} from '@ulugo/katago-core';
 import {useEffect, useState, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
-import privacyPolicyUrl from '../../../../../policies/privacy-policy.md?url';
-import termsOfServiceUrl from '../../../../../policies/terms-of-service.md?url';
 import {formatConsoleTime} from '../../app/katagoConsoleUtils';
 import {DesktopReleasePanel} from './DesktopReleasePanel';
+
+const privacyPolicyUrl = 'https://ulugo.com/assets/privacy-policy.md';
+const termsOfServiceUrl = 'https://ulugo.com/assets/terms-of-service.md';
 
 interface AppLeftPanelProps {
   katagoEnabled: boolean;
