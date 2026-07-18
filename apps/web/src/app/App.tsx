@@ -79,8 +79,10 @@ import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './
 import {getAppFontFamily} from './fonts';
 import {appTheme} from './appTheme';
 import {
+  canPlaceReplacementMove,
   gtpMoveToPoint,
   hasReplaceableContinuation,
+  replaceMoveStateForSelection,
   replaceNextMoveBranch,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
@@ -385,8 +387,18 @@ export function App() {
     if (!samePath(path, normalizedPath)) setSelectionMoved(true);
     resetLabelTextForUnmarkedSelection(document, normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
-    setReplaceMoveState(null);
-    if (tool === 'replace') setTool('auto');
+    if (tool === 'replace') {
+      const nextReplaceMoveState = replaceMoveStateForSelection(
+        document,
+        normalizedPath,
+        branchMemoryRef.current,
+        replaceMoveState
+      );
+      setReplaceMoveState(nextReplaceMoveState);
+      if (nextReplaceMoveState == null) setTool('auto');
+    } else {
+      setReplaceMoveState(null);
+    }
   }
 
   function playPlaceStoneSound(): void {
@@ -524,7 +536,7 @@ export function App() {
   const canReplaceMove =
     !selectedScoringNode &&
     (tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
-      ? hasReplaceableContinuation(document, replaceMoveState.originalPath, branchMemoryRef.current)
+      ? canPlaceReplacementMove(path, replaceMoveState)
       : hasReplaceableContinuation(document, path, branchMemoryRef.current));
 
   useEffect(() => {

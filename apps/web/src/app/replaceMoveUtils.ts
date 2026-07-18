@@ -14,6 +14,8 @@ import {pathKey} from './sgfPathUtils';
 export interface ReplaceMoveState {
   originalPath: number[];
   replacementPath: number[];
+  originalStartPath?: number[];
+  replacementStartPath?: number[];
 }
 
 export function replaceNextMoveBranch({
@@ -30,36 +32,64 @@ export function replaceNextMoveBranch({
   rules?: string;
   branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+}): {document: SgfDocument; path: number[]; state: ReplaceMoveState | null} | null {
   if (state == null || !samePath(path, state.replacementPath)) return null;
 
   const originalNextPath = nextOriginalBranchPath(document, state.originalPath, branchMemory);
-  if (originalNextPath == null) return null;
-
-  const originalMove = nodeMove(getNodeAtPath(document, originalNextPath));
-  if (originalMove == null) return null;
+  const originalMove = originalNextPath == null ? null : nodeMove(getNodeAtPath(document, originalNextPath));
+  const color = originalMove?.color ?? deriveBoardPosition(document, path).nextColor;
 
   const position = deriveBoardPosition(document, path);
-  if (!isLegalMove(position, originalMove.color, point, rules)) return null;
+  if (!isLegalMove(position, color, point, rules)) return null;
 
   const next = cloneDocument(document);
   const parent = getNodeAtPath(next, path);
   const replacesOriginalBranch = samePath(path, state.originalPath);
   if (!replacesOriginalBranch) parent.children = [];
 
-  const child = createNode({[originalMove.color]: [point]});
-  const insertIndex = replacesOriginalBranch ? originalNextPath[originalNextPath.length - 1] : 0;
+  const child = createNode({[color]: [point]});
+  const insertIndex = replacesOriginalBranch && originalNextPath != null ? originalNextPath[originalNextPath.length - 1] : 0;
   parent.children.splice(insertIndex, 0, child);
   const nextPath = [...path, insertIndex];
-  const nextOriginalPath = replacesOriginalBranch ? [...path, insertIndex + 1] : originalNextPath;
+  const nextOriginalPath = originalNextPath == null ? null : replacesOriginalBranch ? [...path, insertIndex + 1] : originalNextPath;
 
-  copyOriginalContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
+  if (originalNextPath != null) copyOriginalContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
 
   return {
     document: next,
     path: nextPath,
-    state: {originalPath: nextOriginalPath, replacementPath: nextPath},
+    state:
+      nextOriginalPath == null
+        ? null
+        : {
+            originalPath: nextOriginalPath,
+            replacementPath: nextPath,
+            originalStartPath: state.originalStartPath ?? nextOriginalPath,
+            replacementStartPath: state.replacementStartPath ?? nextPath,
+          },
   };
+}
+
+export function replaceMoveStateForSelection(
+  document: SgfDocument,
+  path: number[],
+  branchMemory: Map<string, number>,
+  state: ReplaceMoveState | null
+): ReplaceMoveState | null {
+  if (state?.originalStartPath == null || state.replacementStartPath == null) return null;
+  if (!pathStartsWith(path, state.replacementStartPath)) return null;
+
+  let originalPath = state.originalStartPath;
+  const suffix = path.slice(state.replacementStartPath.length);
+  if (suffix.some((index) => index !== 0)) return null;
+
+  for (let index = 0; index < suffix.length; index += 1) {
+    const nextOriginalPath = nextOriginalBranchPath(document, originalPath, branchMemory);
+    if (nextOriginalPath == null) return null;
+    originalPath = nextOriginalPath;
+  }
+
+  return {...state, originalPath, replacementPath: path};
 }
 
 export function hasReplaceableContinuation(
@@ -69,6 +99,14 @@ export function hasReplaceableContinuation(
 ): boolean {
   const nextPath = nextOriginalBranchPath(document, path, branchMemory);
   return nextPath != null && nextOriginalBranchPath(document, nextPath, branchMemory) != null;
+}
+
+export function canPlaceReplacementMove(
+  path: number[],
+  state: ReplaceMoveState | null
+): boolean {
+  if (state == null || !samePath(path, state.replacementPath)) return false;
+  return state.originalStartPath != null && state.replacementStartPath != null;
 }
 
 export function gtpMoveToPoint(move: string, size: number): string | null {
@@ -121,6 +159,10 @@ function nextOriginalBranchPath(
   const remembered = branchMemory.get(pathKey(path)) ?? 0;
   const childIndex = node.children[remembered] == null ? 0 : remembered;
   return [...path, childIndex];
+}
+
+function pathStartsWith(path: number[], prefix: number[]): boolean {
+  return prefix.length <= path.length && prefix.every((index, offset) => path[offset] === index);
 }
 
 function nodeMove(node: SgfNode): {color: SgfColor; point: string} | null {

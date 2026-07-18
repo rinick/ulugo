@@ -42,6 +42,9 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
     <Tip key="markup-text">
       <p>{t('tipMarkupText')}</p>
     </Tip>,
+    <Tip key="replace-move">
+      <p>{t('tipReplaceMove')}</p>
+    </Tip>,
     <Tip key="web-minimal-portrait" platform="web">
       <p>{t('tipMinimalPortrait')}</p>
     </Tip>,
