@@ -61,7 +61,12 @@ import {
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
 import type {EditorTool} from '../features/toolbar/types';
-import {nextLabelText, resolveBoardBackground, selectedPathAfterDelete} from './appEditorUtils';
+import {
+  nextLabelText,
+  resolveBoardBackground,
+  selectedPathAfterDelete,
+  shouldDeleteScoringNodeOnExit,
+} from './appEditorUtils';
 import {capabilities, isElectron} from './capabilities';
 import {findChildMovePath, oppositeColor} from './sgfEditUtils';
 import {
@@ -381,6 +386,11 @@ export function App() {
 
   function selectPath(nextPath: number[], options: {keepAutoColorOverride?: boolean} = {}): void {
     const normalizedPath = normalizeSelectedPath(document, nextPath);
+    if (!samePath(path, normalizedPath) && shouldDeleteScoringNodeOnExit(document, path)) {
+      const result = deleteNode(document, path);
+      replaceDocument(result.document, selectedPathAfterDelete(normalizedPath, path));
+      return;
+    }
 
     rememberPath(normalizedPath);
     setPath(normalizedPath);
@@ -543,6 +553,12 @@ export function App() {
     function handleKeyDown(event: KeyboardEvent): void {
       if (printPreviewOpen) return;
       if (isModalOpen() || isPopupOpen()) return;
+
+      if (event.key === 'Escape' && selectedScoringNode) {
+        event.preventDefault();
+        selectPath(path.slice(0, -1));
+        return;
+      }
 
       if (event.key === 'Escape' && tool !== 'auto') {
         event.preventDefault();

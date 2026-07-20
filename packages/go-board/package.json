@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "description": "React Go board renderer for Ulugo.",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "dependencies": {
     "classnames": "^2.3.1"
   },

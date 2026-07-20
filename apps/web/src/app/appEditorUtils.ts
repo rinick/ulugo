@@ -1,5 +1,20 @@
 import type {AnalysisSettings} from '@ulugo/analysis-core';
-import {samePath} from '@ulugo/sgf-core';
+import {
+  getBoardSize,
+  getNodeAtPath,
+  isScoringNode,
+  normalizeMovePoint,
+  samePath,
+  type SgfDocument,
+} from '@ulugo/sgf-core';
+
+export function shouldDeleteScoringNodeOnExit(document: SgfDocument, path: number[]): boolean {
+  if (path.length === 0 || !isScoringNode(getNodeAtPath(document, path))) return false;
+
+  const parent = getNodeAtPath(document, path.slice(0, -1));
+  const movePoint = parent.data.B?.[0] ?? parent.data.W?.[0];
+  return movePoint == null || normalizeMovePoint(movePoint, getBoardSize(document)) !== '';
+}
 
 export function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {
   if (samePath(selectedPath.slice(0, deletedPath.length), deletedPath)) {
