@@ -2,7 +2,7 @@ import {LeftSquareOutlined, RightSquareOutlined, ThunderboltOutlined} from '@ant
 import {Button} from 'antd';
 import type {AnalysisSettings, KataGoAnalysisResult} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
-import type {DragEvent, MouseEvent} from 'react';
+import type {MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {GoBoard, type BoardVertexClickOptions, type MoveNumberLimit} from '../board/GoBoard';
 
@@ -27,8 +27,6 @@ interface AppBoardRegionProps {
   minimalMode: boolean;
   onBoardClick: (point: string, options: BoardVertexClickOptions) => void;
   onBoardRightClick: (point: string, options: BoardVertexClickOptions) => void;
-  onDragOver: (event: DragEvent<HTMLElement>) => void;
-  onDrop: (event: DragEvent<HTMLElement>) => void;
   onPreviousMove: () => void;
   onNextMove: () => void;
   onAnalysisClick: (event: MouseEvent<HTMLElement>) => void;
@@ -56,8 +54,6 @@ export function AppBoardRegion({
   minimalMode,
   onBoardClick,
   onBoardRightClick,
-  onDragOver,
-  onDrop,
   onPreviousMove,
   onNextMove,
   onAnalysisClick,
@@ -73,8 +69,6 @@ export function AppBoardRegion({
   return (
     <main
       className="board-region"
-      onDragOver={onDragOver}
-      onDrop={onDrop}
       onWheel={(event) => {
         if (event.deltaY > 0) onNextMove();
         if (event.deltaY < 0) onPreviousMove();

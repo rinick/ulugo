@@ -1,6 +1,5 @@
 import {
   FileAddOutlined,
-  FileOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
   PrinterOutlined,
@@ -10,7 +9,6 @@ import {
 } from '@ant-design/icons';
 import {Button, Dropdown, Space, type MenuProps} from 'antd';
 import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
-import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {AppLanguage} from '../../app/localizationUtils';
 import {LanguageDropdown} from '../../components/LanguageSelect';
@@ -51,92 +49,54 @@ export function AppMenuBar({
   onLanguageChange,
 }: AppMenuBarProps) {
   const {t} = useTranslation();
-  const [fileMenuOpen, setFileMenuOpen] = useState(false);
 
-  function runFileMenuAction(action: () => void): void {
-    setFileMenuOpen(false);
-    action();
-  }
-
-  function clickableSubmenuLabel(label: string, action: () => void) {
-    return (
-      <span
-        onClick={(event) => {
-          event.stopPropagation();
-          runFileMenuAction(action);
-        }}
-      >
-        {label}
-      </span>
-    );
-  }
-
-  const fileMenuItems: MenuProps['items'] = [
+  const openMenuItems: MenuProps['items'] = [
     {
       key: 'new',
       icon: <FileAddOutlined />,
-      label: clickableSubmenuLabel(t('new'), () => onNew(19)),
+      label: t('new'),
       children: boardSizes.map((size) => ({key: `new:${size}`, label: t(`new${size}`)})),
     },
-    {
-      key: 'open',
-      icon: <FolderOpenOutlined />,
-      label: clickableSubmenuLabel(t('open'), onOpen),
-      children: [
-        {key: 'open:file', label: t('open')},
-        {key: 'open:sgfText', label: t('openFromSgfText')},
-        {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
-      ],
-    },
-    {
-      key: 'save',
-      icon: <SaveOutlined />,
-      label: clickableSubmenuLabel(t('save'), onSave),
-      children: [
-        {key: 'save:file', label: t('save')},
-        {key: 'save:as', label: t('saveAs')},
-        {key: 'save:clipboard', label: t('saveToClipboard')},
-        {key: 'save:googleDrive', label: t('saveToGoogleDrive')},
-      ],
-    },
+    {key: 'open:sgfText', label: t('openFromSgfText')},
+    {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
+  ];
+
+  const saveMenuItems: MenuProps['items'] = [
+    {key: 'save:as', label: t('saveAs')},
+    {key: 'save:clipboard', label: t('saveToClipboard')},
+    {key: 'save:googleDrive', label: t('saveToGoogleDrive')},
     {type: 'divider'},
     {key: 'print', icon: <PrinterOutlined />, label: t('print')},
   ];
 
-  function handleFileMenuClick(info: {key: string}): void {
+  function handleMenuClick(info: {key: string}): void {
     if (info.key.startsWith('new:')) {
-      runFileMenuAction(() => onNew(Number(info.key.split(':')[1]) as BoardSize));
-    } else if (info.key === 'open:file') {
-      runFileMenuAction(onOpen);
+      onNew(Number(info.key.split(':')[1]) as BoardSize);
     } else if (info.key === 'open:sgfText') {
-      runFileMenuAction(onOpenFromSgfText);
+      onOpenFromSgfText();
     } else if (info.key === 'open:googleDrive') {
-      runFileMenuAction(onOpenFromGoogleDrive);
-    } else if (info.key === 'save:file') {
-      runFileMenuAction(onSave);
+      onOpenFromGoogleDrive();
     } else if (info.key === 'save:as') {
-      runFileMenuAction(onSaveAs);
+      onSaveAs();
     } else if (info.key === 'save:clipboard') {
-      runFileMenuAction(onSaveToClipboard);
+      onSaveToClipboard();
     } else if (info.key === 'save:googleDrive') {
-      runFileMenuAction(onSaveToGoogleDrive);
+      onSaveToGoogleDrive();
     } else if (info.key === 'print') {
-      runFileMenuAction(onPrint);
+      onPrint();
     }
   }
 
   return (
     <Space className="app-menu-buttons" wrap>
-      <Dropdown
-        menu={{items: fileMenuItems, onClick: handleFileMenuClick}}
-        open={fileMenuOpen}
-        trigger={['click']}
-        onOpenChange={setFileMenuOpen}
-      >
-        <Button size="small" icon={<FileOutlined />}>
-          {t('file')}
-        </Button>
-      </Dropdown>
+      <Dropdown.Button size="small" menu={{items: openMenuItems, onClick: handleMenuClick}} onClick={onOpen}>
+        <FolderOpenOutlined />
+        {t('open')}
+      </Dropdown.Button>
+      <Dropdown.Button size="small" menu={{items: saveMenuItems, onClick: handleMenuClick}} onClick={onSave}>
+        <SaveOutlined />
+        {t('save')}
+      </Dropdown.Button>
       <Button size="small" icon={<InfoCircleOutlined />} onClick={onGameInfo}>
         {t('gameInfo')}
       </Button>

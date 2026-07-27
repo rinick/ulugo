@@ -164,6 +164,7 @@ export function App() {
   const labelResetPathKeyRef = useRef(pathKey([]));
   const setupToolPathKeyRef = useRef(pathKey([]));
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
+  const analysisButtonImportHintShownRef = useRef(false);
   const gameInfo = useMemo(() => getGameInfo(document), [document]);
   const boardSize = useMemo(() => getBoardSize(document), [document]);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
@@ -275,7 +276,13 @@ export function App() {
         capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
       branchMemoryRef.current.clear();
       setAnalysisModeActive(startAnalysis);
-      if (capabilities.katago && analysisSettings.mode !== 'minimal' && !startAnalysis) {
+      if (
+        capabilities.katago &&
+        analysisSettings.mode !== 'minimal' &&
+        !startAnalysis &&
+        !analysisButtonImportHintShownRef.current
+      ) {
+        analysisButtonImportHintShownRef.current = true;
         setKataGoConsoleMessages((current) => [
           ...current.slice(-499),
           createLocalConsoleMessage('ulugo', 'info', t('analysisButtonImportHint')),
@@ -1031,7 +1038,12 @@ export function App() {
         onCancelGoogleDrive={gameRecordFiles.cancelGoogleDriveOperation}
         onCloseKataGoAutotuning={() => setKataGoAutotuningOpen(false)}
       />
-      <Layout className="app-shell" onClickCapture={handleAppClickCapture}>
+      <Layout
+        className="app-shell"
+        onClickCapture={handleAppClickCapture}
+        onDragOver={gameRecordFiles.handleDragOver}
+        onDrop={gameRecordFiles.handleDrop}
+      >
         {minimalMode ? (
           <MinimalControl
             nextColor={nextAutoColor}
@@ -1138,8 +1150,6 @@ export function App() {
             minimalMode={minimalMode}
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
-            onDragOver={gameRecordFiles.handleDragOver}
-            onDrop={gameRecordFiles.handleDrop}
             onPreviousMove={() => navigatePrevious()}
             onNextMove={() => navigateNext()}
             onAnalysisClick={handleAnalysisButtonClick}
