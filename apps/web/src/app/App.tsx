@@ -67,7 +67,7 @@ import {
   selectedPathAfterDelete,
   shouldDeleteScoringNodeOnExit,
 } from './appEditorUtils';
-import {capabilities, isElectron} from './capabilities';
+import {capabilities, isElectron, supportsCameraCapture} from './capabilities';
 import {findChildMovePath, oppositeColor} from './sgfEditUtils';
 import {
   findCurrentStoneMovePath,
@@ -1100,6 +1100,7 @@ export function App() {
             <section className="app-header-right">
               <AppMenuBar
                 showAiConfig={capabilities.katago}
+                showCameraOpen={supportsCameraCapture}
                 language={currentLanguage}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
@@ -1228,24 +1229,26 @@ export function App() {
         accept=".sgf,.gib,application/x-go-sgf,text/plain,image/*"
         onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
       />
-      <input
-        ref={gameRecordFiles.cameraInputRef}
-        className="hidden-file-input"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
-      />
+      {supportsCameraCapture ? (
+        <input
+          ref={gameRecordFiles.cameraInputRef}
+          className="hidden-file-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
+        />
+      ) : null}
       {recognitionImage != null ? (
         <Suspense
           fallback={
             <Modal
               centered
               open
-              closable={false}
               footer={null}
               maskClosable={false}
               keyboard={false}
+              onCancel={() => setRecognitionImage(null)}
               width={960}
               className="board-recognition-modal"
               title={t('boardRecognition')}

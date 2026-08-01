@@ -16,6 +16,7 @@ import {LanguageDropdown} from '../../components/LanguageSelect';
 
 interface AppMenuBarProps {
   showAiConfig: boolean;
+  showCameraOpen: boolean;
   language: AppLanguage;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
@@ -35,6 +36,7 @@ interface AppMenuBarProps {
 
 export function AppMenuBar({
   showAiConfig,
+  showCameraOpen,
   language,
   onNew,
   onOpen,
@@ -60,7 +62,7 @@ export function AppMenuBar({
       label: t('new'),
       children: boardSizes.map((size) => ({key: `new:${size}`, label: t(`new${size}`)})),
     },
-    {key: 'open:camera', icon: <CameraOutlined />, label: t('openFromCamera')},
+    ...(showCameraOpen ? [{key: 'open:camera', icon: <CameraOutlined />, label: t('openFromCamera')}] : []),
     {key: 'open:sgfText', label: t('openFromSgfText')},
     {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
   ];

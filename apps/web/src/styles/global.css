@@ -281,7 +281,7 @@ textarea,
   padding-bottom: 0;
 }
 
-.ant-modal .ant-modal-content {
+.ant-modal .ant-modal-container {
   display: flex;
   flex-direction: column;
   max-height: calc(100dvh - 24px);
@@ -1422,7 +1422,7 @@ body.minimal .app-content > .right-region .capture-summary {
   body.print-preview-open .ant-modal-root,
   body.print-preview-open .ant-modal-wrap,
   body.print-preview-open .print-preview-modal,
-  body.print-preview-open .print-preview-modal .ant-modal-content,
+  body.print-preview-open .print-preview-modal .ant-modal-container,
   body.print-preview-open .print-preview-modal .ant-modal-body,
   body.print-preview-open .print-preview-pages {
     position: static !important;
@@ -1687,25 +1687,41 @@ body.minimal .app-content > .right-region .capture-summary {
   overflow: hidden;
 }
 
-@media (max-width: 600px), (max-height: 600px) {
-  .board-recognition-modal {
+@media (max-width: 639px) {
+  .ant-modal-root .ant-modal-wrap {
+    overflow: hidden;
+  }
+
+  .ant-modal-root .ant-modal {
     top: 0;
     width: 100% !important;
     max-width: none;
     height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
     margin: 0;
     padding: 0;
   }
 
-  .board-recognition-modal .ant-modal-content {
-    height: 100dvh;
+  .ant-modal-root .ant-modal-container {
+    height: 100%;
+    min-height: 100%;
     max-height: none;
-    border-radius: 0;
+    border-radius: 0 !important;
+    box-shadow: none;
   }
 
-  .board-recognition-modal .ant-modal-body {
+  .ant-modal-root .ant-modal-body {
     max-height: none;
     min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ant-modal-root .ant-modal-header,
+  .ant-modal-root .ant-modal-footer {
+    flex: 0 0 auto;
+    border-radius: 0;
   }
 
   .board-recognition-result-content {

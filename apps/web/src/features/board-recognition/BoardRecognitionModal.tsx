@@ -90,10 +90,10 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
     <Modal
       centered
       open
-      closable={false}
       footer={null}
       maskClosable={false}
       keyboard={false}
+      onCancel={onClose}
       width={960}
       className="board-recognition-modal"
       title={t('boardRecognition')}
