@@ -1,4 +1,5 @@
 import {
+  CameraOutlined,
   FileAddOutlined,
   FolderOpenOutlined,
   InfoCircleOutlined,
@@ -18,6 +19,7 @@ interface AppMenuBarProps {
   language: AppLanguage;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
+  onOpenFromCamera: () => void;
   onOpenFromSgfText: () => void;
   onOpenFromGoogleDrive: () => void;
   onSave: () => void;
@@ -36,6 +38,7 @@ export function AppMenuBar({
   language,
   onNew,
   onOpen,
+  onOpenFromCamera,
   onOpenFromSgfText,
   onOpenFromGoogleDrive,
   onSave,
@@ -57,6 +60,7 @@ export function AppMenuBar({
       label: t('new'),
       children: boardSizes.map((size) => ({key: `new:${size}`, label: t(`new${size}`)})),
     },
+    {key: 'open:camera', icon: <CameraOutlined />, label: t('openFromCamera')},
     {key: 'open:sgfText', label: t('openFromSgfText')},
     {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
   ];
@@ -74,6 +78,8 @@ export function AppMenuBar({
       onNew(Number(info.key.split(':')[1]) as BoardSize);
     } else if (info.key === 'open:sgfText') {
       onOpenFromSgfText();
+    } else if (info.key === 'open:camera') {
+      onOpenFromCamera();
     } else if (info.key === 'open:googleDrive') {
       onOpenFromGoogleDrive();
     } else if (info.key === 'save:as') {

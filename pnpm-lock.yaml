@@ -96,6 +96,9 @@ importers:
       react-i18next:
         specifier: ^16.3.0
         version: 16.6.6(i18next@25.10.10(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
+      uluscan:
+        specifier: 0.1.0
+        version: 0.1.0
       workbox-window:
         specifier: ^7.4.1
         version: 7.4.1
@@ -3512,6 +3515,9 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  uluscan@0.1.0:
+    resolution: {integrity: sha512-g+T1AOAAipU5S/gleUNXG08zVFJ0XlhbC8IVao69ALin0mDaMcMDgDL2Ak+zoSpkOHFua3zZedO/8ugcKDMg7Q==}
 
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
@@ -7690,6 +7696,8 @@ snapshots:
       reflect.getprototypeof: 1.0.10
 
   typescript@5.9.3: {}
+
+  uluscan@0.1.0: {}
 
   unbox-primitive@1.1.0:
     dependencies:

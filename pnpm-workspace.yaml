@@ -5,3 +5,5 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+minimumReleaseAgeExclude:
+  - uluscan@0.1.0

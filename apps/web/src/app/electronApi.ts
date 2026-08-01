@@ -9,9 +9,17 @@ import type {
 } from '@ulugo/katago-core';
 
 export interface ElectronImportResult {
+  kind: 'gameRecord';
   content: string;
   fileName: string;
   filePath: string;
+}
+
+export interface ElectronImageImportResult {
+  kind: 'image';
+  data: Uint8Array;
+  fileName: string;
+  mimeType: string;
 }
 
 export interface ElectronExportRequest {
@@ -45,7 +53,7 @@ export interface ElectronGoogleDriveSaveResult {
 
 export interface UlugoElectronApi {
   platform: 'electron';
-  importSgf: () => Promise<ElectronImportResult | null>;
+  importFile: () => Promise<ElectronImportResult | ElectronImageImportResult | null>;
   consumeOpenGameRecord: () => Promise<ElectronImportResult | null>;
   onOpenGameRecord: (callback: (result: ElectronImportResult | null) => void) => () => void;
   exportSgf: (request: ElectronExportRequest) => Promise<ElectronExportResult>;

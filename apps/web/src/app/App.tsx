@@ -27,7 +27,7 @@ import {
   type SgfNode,
 } from '@ulugo/sgf-core';
 import type {BoardSize} from '@ulugo/ui-shared';
-import {useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
+import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
 import type {AnalysisSettings} from '@ulugo/analysis-core';
@@ -99,6 +99,7 @@ import {createLocalConsoleMessage} from './katagoConsoleUtils';
 
 const {Header, Content} = Layout;
 const lastSgfStorageKey = 'ulugo.lastSgf';
+const BoardRecognitionModal = lazy(() => import('../features/board-recognition/BoardRecognitionModal'));
 
 interface StartupState {
   document: SgfDocument;
@@ -153,6 +154,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
   const [selectionMoved, setSelectionMoved] = useState(false);
@@ -268,28 +270,31 @@ export function App() {
     skipEmptyInitialBoardLiveAnalysis: !selectionMoved,
     startFailedMessage: t('analysisStartFailed'),
   });
+  function handleImportedDocument(importedDocument: SgfDocument): void {
+    const startAnalysis =
+      capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
+    branchMemoryRef.current.clear();
+    setAnalysisModeActive(startAnalysis);
+    if (
+      capabilities.katago &&
+      analysisSettings.mode !== 'minimal' &&
+      !startAnalysis &&
+      !analysisButtonImportHintShownRef.current
+    ) {
+      analysisButtonImportHintShownRef.current = true;
+      setKataGoConsoleMessages((current) => [
+        ...current.slice(-499),
+        createLocalConsoleMessage('ulugo', 'info', t('analysisButtonImportHint')),
+      ]);
+    }
+    replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
+  }
+
   const gameRecordFiles = useGameRecordFiles({
     document,
     gameName: gameInfo.GN,
-    onImport: (importedDocument) => {
-      const startAnalysis =
-        capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
-      branchMemoryRef.current.clear();
-      setAnalysisModeActive(startAnalysis);
-      if (
-        capabilities.katago &&
-        analysisSettings.mode !== 'minimal' &&
-        !startAnalysis &&
-        !analysisButtonImportHintShownRef.current
-      ) {
-        analysisButtonImportHintShownRef.current = true;
-        setKataGoConsoleMessages((current) => [
-          ...current.slice(-499),
-          createLocalConsoleMessage('ulugo', 'info', t('analysisButtonImportHint')),
-        ]);
-      }
-      replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
-    },
+    onImport: handleImportedDocument,
+    onOpenImage: setRecognitionImage,
   });
   const showMarkup = analysisSettings.showMarkup;
   const showBoardMarkup = showMarkup && !selectedScoringNode;
@@ -1098,6 +1103,7 @@ export function App() {
                 language={currentLanguage}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
+                onOpenFromCamera={gameRecordFiles.openFromCamera}
                 onOpenFromSgfText={() => void gameRecordFiles.openFromSgfText()}
                 onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
                 onSave={() => void gameRecordFiles.save()}
@@ -1219,9 +1225,45 @@ export function App() {
         ref={gameRecordFiles.fileInputRef}
         className="hidden-file-input"
         type="file"
-        accept=".sgf,.gib,application/x-go-sgf,text/plain"
+        accept=".sgf,.gib,application/x-go-sgf,text/plain,image/*"
         onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
       />
+      <input
+        ref={gameRecordFiles.cameraInputRef}
+        className="hidden-file-input"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
+      />
+      {recognitionImage != null ? (
+        <Suspense
+          fallback={
+            <Modal
+              centered
+              open
+              closable={false}
+              footer={null}
+              maskClosable={false}
+              keyboard={false}
+              width={960}
+              className="board-recognition-modal"
+              title={t('boardRecognition')}
+            />
+          }
+        >
+          <BoardRecognitionModal
+            image={recognitionImage}
+            language={currentLanguage}
+            onClose={() => setRecognitionImage(null)}
+            onConfirm={(recognizedDocument) => {
+              gameRecordFiles.clearCurrentFile();
+              handleImportedDocument(recognizedDocument);
+              setRecognitionImage(null);
+            }}
+          />
+        </Suspense>
+      ) : null}
       {capabilities.katago ? (
         <KataGoSettingsModal
           open={kataGoSettingsOpen}

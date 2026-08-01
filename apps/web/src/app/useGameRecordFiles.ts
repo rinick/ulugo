@@ -8,15 +8,18 @@ import {currentSgfFileName, hasDraggedFiles, normalizeSgfFileName, type CurrentF
 import {capabilities, isElectron} from './capabilities';
 import {isGameRecordFile, parseGameRecord, readGameRecordFile, withImportedGameName} from './gameRecordFileUtils';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
+import type {ElectronImageImportResult, ElectronImportResult} from './electronApi';
 
 interface UseGameRecordFilesOptions {
   document: SgfDocument;
   gameName: string;
   onImport: (document: SgfDocument) => void;
+  onOpenImage: (image: File) => void;
 }
 
 interface GameRecordFiles {
   fileInputRef: RefObject<HTMLInputElement | null>;
+  cameraInputRef: RefObject<HTMLInputElement | null>;
   googleDrivePending: 'open' | 'save' | null;
   clearCurrentFile: () => void;
   save: () => Promise<void>;
@@ -24,6 +27,7 @@ interface GameRecordFiles {
   saveToClipboard: () => Promise<void>;
   saveToGoogleDrive: () => Promise<void>;
   open: () => Promise<void>;
+  openFromCamera: () => void;
   openFromSgfText: () => Promise<void>;
   openFromGoogleDrive: () => Promise<void>;
   importFile: (file: File | undefined) => Promise<void>;
@@ -32,16 +36,22 @@ interface GameRecordFiles {
   cancelGoogleDriveOperation: () => void;
 }
 
-export function useGameRecordFiles({document, gameName, onImport}: UseGameRecordFilesOptions): GameRecordFiles {
+export function useGameRecordFiles({
+  document,
+  gameName,
+  onImport,
+  onOpenImage,
+}: UseGameRecordFilesOptions): GameRecordFiles {
   const {t} = useTranslation();
   const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isElectron || window.ulugo == null) return;
 
-    const importOpenedGameRecord = (result: {content: string; fileName: string; filePath: string} | null): void => {
+    const importOpenedGameRecord = (result: ElectronImportResult | null): void => {
       if (result == null) return;
       importText(result.content, result.fileName, {
         name: result.fileName,
@@ -150,12 +160,16 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
   async function open(): Promise<void> {
     if (capabilities.storage === 'filesystem' && window.ulugo != null) {
       try {
-        const result = await window.ulugo.importSgf();
+        const result = await window.ulugo.importFile();
         if (result == null) return;
-        importText(result.content, result.fileName, {
-          name: result.fileName,
-          electronFilePath: result.filePath,
-        });
+        if (result.kind === 'image') {
+          openElectronImage(result);
+        } else {
+          importText(result.content, result.fileName, {
+            name: result.fileName,
+            electronFilePath: result.filePath,
+          });
+        }
       } catch (error) {
         message.error(error instanceof Error ? error.message : t('importFailed'));
       }
@@ -163,6 +177,10 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
     }
 
     fileInputRef.current?.click();
+  }
+
+  function openElectronImage(result: ElectronImageImportResult): void {
+    onOpenImage(new File([Uint8Array.from(result.data).buffer], result.fileName, {type: result.mimeType}));
   }
 
   async function openFromGoogleDrive(): Promise<void> {
@@ -200,12 +218,17 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
     if (file == null) return;
 
     try {
+      if (isImageFile(file)) {
+        onOpenImage(file);
+        return;
+      }
       const text = await readGameRecordFile(file);
       importText(text, file.name, {name: file.name, electronFilePath: electronFilePath(file)});
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('importFailed'));
     } finally {
       if (fileInputRef.current != null) fileInputRef.current.value = '';
+      if (cameraInputRef.current != null) cameraInputRef.current.value = '';
     }
   }
 
@@ -218,7 +241,7 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
     if (!hasDraggedFiles(event.dataTransfer)) return;
 
     event.preventDefault();
-    const file = Array.from(event.dataTransfer.files).find((item) => isGameRecordFile(item.name));
+    const file = Array.from(event.dataTransfer.files).find((item) => isGameRecordFile(item.name) || isImageFile(item));
     void importFile(file);
   }
 
@@ -230,6 +253,7 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
 
   return {
     fileInputRef,
+    cameraInputRef,
     googleDrivePending,
     clearCurrentFile: () => setCurrentFile(null),
     save,
@@ -237,6 +261,7 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
     saveToClipboard,
     saveToGoogleDrive,
     open,
+    openFromCamera: () => cameraInputRef.current?.click(),
     openFromSgfText,
     openFromGoogleDrive,
     importFile,
@@ -244,6 +269,10 @@ export function useGameRecordFiles({document, gameName, onImport}: UseGameRecord
     handleDrop,
     cancelGoogleDriveOperation: () => void window.ulugo?.googleDrive.cancel(),
   };
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith('image/') || /\.(avif|bmp|gif|heic|heif|jpe?g|png|webp)$/i.test(file.name);
 }
 
 function electronFilePath(file: File): string | undefined {

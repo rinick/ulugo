@@ -1517,6 +1517,219 @@ body.minimal .app-content > .right-region .capture-summary {
   display: none;
 }
 
+.board-recognition-modal .ant-modal-body {
+  display: flex;
+  min-height: min(660px, calc(100dvh - 112px));
+}
+
+.board-recognition-step {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.board-recognition-image-frame {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #f5f5f5;
+}
+
+.board-recognition-image-frame img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.board-recognition-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.board-recognition-field > span:first-child {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.board-recognition-field .ant-select,
+.board-recognition-field .ant-segmented {
+  min-width: 180px;
+}
+
+.board-recognition-actions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.board-recognition-state {
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  text-align: center;
+}
+
+.board-recognition-state .ant-alert {
+  max-width: 560px;
+  text-align: left;
+}
+
+.board-recognition-crop-stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  background: #141414;
+}
+
+.board-recognition-crop-image {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  line-height: 0;
+  touch-action: none;
+}
+
+.board-recognition-crop-image img {
+  display: block;
+  max-width: 100%;
+  max-height: min(570px, calc(100dvh - 210px));
+  object-fit: contain;
+}
+
+.board-recognition-crop-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.56);
+  cursor: move;
+}
+
+.board-recognition-crop-handle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #1677ff;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.board-recognition-crop-handle.nw {
+  top: -12px;
+  left: -12px;
+  cursor: nwse-resize;
+}
+
+.board-recognition-crop-handle.ne {
+  top: -12px;
+  right: -12px;
+  cursor: nesw-resize;
+}
+
+.board-recognition-crop-handle.sw {
+  bottom: -12px;
+  left: -12px;
+  cursor: nesw-resize;
+}
+
+.board-recognition-crop-handle.se {
+  right: -12px;
+  bottom: -12px;
+  cursor: nwse-resize;
+}
+
+.board-recognition-result-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 20px;
+  min-height: 0;
+}
+
+.board-recognition-result-side {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.board-recognition-result-image {
+  min-height: 220px;
+}
+
+.board-recognition-options {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.board-recognition-board {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 600px), (max-height: 600px) {
+  .board-recognition-modal {
+    top: 0;
+    width: 100% !important;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .board-recognition-modal .ant-modal-content {
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .board-recognition-modal .ant-modal-body {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .board-recognition-result-content {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .board-recognition-result-side {
+    flex: 0 0 auto;
+  }
+
+  .board-recognition-result-image {
+    display: none;
+  }
+
+  .board-recognition-board {
+    flex: 1;
+  }
+
+  .board-recognition-crop-image img {
+    max-height: calc(100dvh - 190px);
+  }
+}
+
 .ant-btn.analysis-button {
   position: absolute;
   right: min(8px, abs(20cqw - 20cqh));

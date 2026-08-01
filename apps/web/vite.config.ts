@@ -56,6 +56,9 @@ export default defineConfig(({mode}) => {
         },
       },
     },
+    optimizeDeps: {
+      exclude: ['uluscan'],
+    },
     server: {
       hmr: false,
       port: 5072,

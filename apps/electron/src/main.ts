@@ -155,9 +155,17 @@ interface KataGoAnalysisQuery {
 }
 
 interface GameRecordOpenResult {
+  kind: 'gameRecord';
   content: string;
   fileName: string;
   filePath: string;
+}
+
+interface ImageOpenResult {
+  kind: 'image';
+  data: Uint8Array;
+  fileName: string;
+  mimeType: string;
 }
 
 let katagoProcess: ChildProcessWithoutNullStreams | null = null;
@@ -170,9 +178,6 @@ const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
 
 app.setPath('userData', path.join(app.getPath('home'), '.ulugo'));
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
@@ -244,14 +249,21 @@ app.on('window-all-closed', () => {
 });
 
 function registerIpc(): void {
-  ipcMain.handle('ulugo:import-sgf', async () => {
+  ipcMain.handle('ulugo:import-file', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{name: 'Game records', extensions: ['sgf', 'gib']}],
+      filters: [
+        {
+          name: 'Game records and images',
+          extensions: ['sgf', 'gib', 'avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'webp'],
+        },
+      ],
     });
     if (result.canceled || result.filePaths[0] == null) return null;
 
-    return readGameRecordFile(result.filePaths[0]);
+    return isGameRecordFilePath(result.filePaths[0])
+      ? readGameRecordFile(result.filePaths[0])
+      : readImageFile(result.filePaths[0]);
   });
   ipcMain.handle('ulugo:consume-open-game-record', async () => {
     return consumePendingGameRecordFile();
@@ -426,10 +438,27 @@ async function consumePendingGameRecordFile(): Promise<GameRecordOpenResult | nu
 async function readGameRecordFile(filePath: string): Promise<GameRecordOpenResult> {
   const buffer = await fs.readFile(filePath);
   return {
+    kind: 'gameRecord',
     content: decodeGameRecordBuffer(buffer, filePath.toLowerCase().endsWith('.gib')),
     fileName: path.basename(filePath),
     filePath,
   };
+}
+
+async function readImageFile(filePath: string): Promise<ImageOpenResult> {
+  return {
+    kind: 'image',
+    data: await fs.readFile(filePath),
+    fileName: path.basename(filePath),
+    mimeType: imageMimeType(filePath),
+  };
+}
+
+function imageMimeType(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg';
+  if (extension === '.svg') return 'image/svg+xml';
+  return `image/${extension.slice(1)}`;
 }
 
 function gameRecordFilePathFromArgs(argv: string[]): string | null {
