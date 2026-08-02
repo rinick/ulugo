@@ -158,8 +158,9 @@ export function App() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
-  const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
+  const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(false);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
+  const [minimalShowCoordinates, setMinimalShowCoordinates] = useState(false);
   const [mobileHeaderRightOpen, setMobileHeaderRightOpen] = useState(false);
   const [selectionMoved, setSelectionMoved] = useState(false);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
@@ -696,7 +697,11 @@ export function App() {
           if (operationPath.length > 0) handleDeleteNode();
           break;
         case 'toggleShowCoordinates':
-          setShowCoordinates((current) => !current);
+          if (minimalMode) {
+            setMinimalShowCoordinates((current) => !current);
+          } else {
+            setShowCoordinates((current) => !current);
+          }
           break;
         case 'toggleShowNextMove':
           updateAnalysisSettings({showNextMove: !analysisSettings.showNextMove});
@@ -1106,47 +1111,49 @@ export function App() {
             showBasicTools={minimalBasicToolsOpen}
             showMoveNumber={analysisSettings.stoneOverlay === 'number'}
             showNextMove={analysisSettings.showNextMove}
-            showCoordinates={showCoordinates}
+            showCoordinates={minimalShowCoordinates}
             onShowRightPanelChange={setMinimalRightPanelOpen}
             onShowBasicToolsChange={setMinimalBasicToolsOpen}
             onShowMoveNumberChange={(show) => updateAnalysisSettings({stoneOverlay: show ? 'number' : 'none'})}
             onShowNextMoveChange={(show) => updateAnalysisSettings({showNextMove: show})}
-            onShowCoordinatesChange={setShowCoordinates}
+            onShowCoordinatesChange={setMinimalShowCoordinates}
             onQuit={() => handleModeChange('edit')}
           />
         ) : (
           <Header className="app-header">
-            <section className="app-header-left">
-              <div className="app-title">{appTitle}</div>
-              <AppToolbars
-                tool={tool}
-                nextColor={nextAutoColor}
-                canNavigatePrevious={canNavigatePrevious}
-                canNavigateNext={canNavigateNext}
-                canReplaceMove={canReplaceMove}
-                showMarkup={showMarkup}
-                labelText={labelText}
-                shortcutLabels={shortcutLabels}
-                onToolChange={handleToolChange}
-                onLabelTextChange={setLabelText}
-                onAutoToolClick={handleAutoToolClick}
-                onEraseAllMarkup={handleEraseAllMarkup}
-                onPass={handlePass}
-                onFirst={navigateToFirst}
-                onPrevious10={() => navigatePrevious(10)}
-                onPrevious={() => navigatePrevious()}
-                onNext={() => navigateFirstChild()}
-                onNext10={() => navigateFirstChild(10)}
-                onLast={() => navigateFirstChild(Infinity)}
-              />
-            </section>
-            <section className="app-header-middle">
-              <ModeToolbarOptions
-                katagoEnabled={capabilities.katago}
-                mode={analysisSettings.mode}
-                onChange={handleModeChange}
-              />
-            </section>
+            <div className="app-header-main">
+              <section className="app-header-left">
+                <div className="app-title">{appTitle}</div>
+                <AppToolbars
+                  tool={tool}
+                  nextColor={nextAutoColor}
+                  canNavigatePrevious={canNavigatePrevious}
+                  canNavigateNext={canNavigateNext}
+                  canReplaceMove={canReplaceMove}
+                  showMarkup={showMarkup}
+                  labelText={labelText}
+                  shortcutLabels={shortcutLabels}
+                  onToolChange={handleToolChange}
+                  onLabelTextChange={setLabelText}
+                  onAutoToolClick={handleAutoToolClick}
+                  onEraseAllMarkup={handleEraseAllMarkup}
+                  onPass={handlePass}
+                  onFirst={navigateToFirst}
+                  onPrevious10={() => navigatePrevious(10)}
+                  onPrevious={() => navigatePrevious()}
+                  onNext={() => navigateFirstChild()}
+                  onNext10={() => navigateFirstChild(10)}
+                  onLast={() => navigateFirstChild(Infinity)}
+                />
+              </section>
+              <section className="app-header-middle">
+                <ModeToolbarOptions
+                  katagoEnabled={capabilities.katago}
+                  mode={analysisSettings.mode}
+                  onChange={handleModeChange}
+                />
+              </section>
+            </div>
             <section className={`app-header-right${mobileHeaderRightOpen ? ' mobile-open' : ''}`}>
               <AppMenuBar
                 showAiConfig={capabilities.katago}
@@ -1175,8 +1182,8 @@ export function App() {
               />
             </section>
             <Button
-                className="mobile-header-right-toggle"
-                type='dashed'
+              className="mobile-header-right-toggle"
+              type="dashed"
               icon={mobileHeaderRightOpen ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               title={t(mobileHeaderRightOpen ? 'close' : 'open')}
               aria-expanded={mobileHeaderRightOpen}
@@ -1197,7 +1204,7 @@ export function App() {
           <AppBoardRegion
             document={document}
             path={path}
-            showCoordinates={showCoordinates}
+            showCoordinates={minimalMode ? minimalShowCoordinates : showCoordinates}
             showMarkup={showBoardMarkup}
             moveNumberLimit={boardMoveNumberLimit}
             analysis={selectedScoringNode ? null : currentAnalysis}

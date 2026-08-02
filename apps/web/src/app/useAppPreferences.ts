@@ -22,7 +22,16 @@ export function useAppPreferences() {
 
   useEffect(() => {
     const root = globalThis.document.getElementById('root');
-    if (root != null) root.style.zoom = `${uiScale}%`;
+    if (root != null) {
+      const scale = uiScale / 100;
+      root.style.setProperty('--board-region-min-width', `${360 / scale}px`);
+      root.style.setProperty('--board-region-max-width', `${768 / scale}px`);
+      root.style.removeProperty('zoom');
+      root.style.transform = `scale(${scale})`;
+      root.style.transformOrigin = 'top left';
+      root.style.width = `${100 / scale}%`;
+      root.style.height = `${100 / scale}%`;
+    }
     writeStoredValue(uiScaleStorageKey, uiScale);
   }, [uiScale]);
 

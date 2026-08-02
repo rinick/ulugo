@@ -52,6 +52,9 @@ export function SettingsModal({
   const [form] = Form.useForm<AnalysisSettings>();
   const [loading, setLoading] = useState(false);
   const [minVisitsDraft, setMinVisitsDraft] = useState(defaultAnalysisSettings.minVisits);
+  const [uiScaleDraft, setUiScaleDraft] = useState(uiScale);
+
+  useEffect(() => setUiScaleDraft(uiScale), [uiScale]);
 
   useEffect(() => {
     if (!open) return;
@@ -125,17 +128,29 @@ export function SettingsModal({
               icon={<ReloadOutlined />}
               title={t('resetUiScale')}
               aria-label={t('resetUiScale')}
-              onClick={() => onUiScaleChange(100)}
+              onClick={() => {
+                setUiScaleDraft(100);
+                onUiScaleChange(100);
+              }}
             />
-            <Slider min={25} max={400} value={uiScale} onChange={onUiScaleChange} />
+            <Slider
+              min={25}
+              max={400}
+              step={5}
+              value={uiScaleDraft}
+              onChange={setUiScaleDraft}
+              onChangeComplete={onUiScaleChange}
+            />
             <InputNumber
               size="small"
               min={25}
               max={400}
-              value={uiScale}
+              value={uiScaleDraft}
               addonAfter="%"
               onChange={(value) => {
-                if (value != null) onUiScaleChange(value);
+                if (value == null) return;
+                setUiScaleDraft(value);
+                onUiScaleChange(value);
               }}
             />
           </div>
