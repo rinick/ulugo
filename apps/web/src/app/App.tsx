@@ -1160,7 +1160,8 @@ export function App() {
               />
             </section>
             <Button
-              className="mobile-header-right-toggle"
+                className="mobile-header-right-toggle"
+                type='dashed'
               icon={mobileHeaderRightOpen ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               title={t(mobileHeaderRightOpen ? 'close' : 'open')}
               aria-expanded={mobileHeaderRightOpen}

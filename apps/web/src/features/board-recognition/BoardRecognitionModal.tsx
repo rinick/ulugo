@@ -1,7 +1,7 @@
 import {Board} from '@ulugo/go-board';
 import {createNewGame, type SgfDocument} from '@ulugo/sgf-core';
 import {Alert, Button, Modal, Segmented, Select, Spin} from 'antd';
-npm import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
+import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
