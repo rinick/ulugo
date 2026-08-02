@@ -16,6 +16,18 @@ export function shouldDeleteScoringNodeOnExit(document: SgfDocument, path: numbe
   return movePoint == null || normalizeMovePoint(movePoint, getBoardSize(document)) !== '';
 }
 
+export function scoringOperationPath(document: SgfDocument, path: number[]): number[] {
+  if (path.length === 0 || !isScoringNode(getNodeAtPath(document, path))) return path;
+  return path.slice(0, -1);
+}
+
+export function shouldAutoEstimateRecognizedGame(document: SgfDocument): boolean {
+  const root = document.root.data;
+  const stoneCount = (root.AB?.length ?? 0) + (root.AW?.length ?? 0);
+  const rules = root.RU?.[0]?.trim().toLowerCase().replace(/[^a-z]/g, '') ?? '';
+  return stoneCount > 100 && rules !== 'japanese' && rules !== 'korean';
+}
+
 export function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {
   if (samePath(selectedPath.slice(0, deletedPath.length), deletedPath)) {
     return deletedPath.slice(0, -1);

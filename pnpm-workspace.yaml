@@ -6,4 +6,4 @@ allowBuilds:
   electron-winstaller: true
   esbuild: true
 minimumReleaseAgeExclude:
-  - uluscan@0.1.0
+  - uluscan@0.1.0 || 0.1.1

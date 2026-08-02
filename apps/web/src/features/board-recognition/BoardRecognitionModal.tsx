@@ -24,7 +24,8 @@ interface BoardRecognitionModalProps {
 }
 
 const fullCrop: CropRect = {x: 0, y: 0, width: 1, height: 1};
-const ruleOptions = ['Japanese', 'Chinese', 'Korean', 'AGA'] as const;
+const maxScanImageDimension = 2048;
+const ruleOptions = ['Japanese', 'Chinese', 'Korean', 'AGA', 'New Zealand'] as const;
 
 export default function BoardRecognitionModal({image, language, onClose, onConfirm}: BoardRecognitionModalProps) {
   const {t} = useTranslation();
@@ -33,7 +34,7 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
   const [crop, setCrop] = useState<CropRect>(fullCrop);
   const [recognizedImage, setRecognizedImage] = useState<Blob>(image);
   const [board, setBoard] = useState<ScanBoard | null>(null);
-  const [rules, setRules] = useState<(typeof ruleOptions)[number]>('Japanese');
+  const [rules, setRules] = useState<(typeof ruleOptions)[number]>('Chinese');
   const [handicap, setHandicap] = useState(0);
   const [nextPlayer, setNextPlayer] = useState<'B' | 'W'>('B');
   const sourceUrl = useBlobUrl(image);
@@ -48,13 +49,14 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
   }, [image]);
 
   async function recognize(blob: Blob): Promise<void> {
-    setRecognizedImage(blob);
     setPhase('recognizing');
 
     try {
+      const scanImage = await resizeImageForScan(blob);
+      setRecognizedImage(scanImage);
       const {recognizeBoard} = await import('uluscan');
       const result = await new Promise<{d: number[][]} | {s: true} | {e: true}>((resolve) => {
-        recognizeBoard(blob, resolve, {lineCount: boardSize});
+        recognizeBoard(scanImage, resolve, {lineCount: boardSize});
       });
 
       if ('s' in result) {
@@ -202,7 +204,7 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
                 setPhase('crop');
               }}
             >
-              {t('recrop')}
+              {t('crop')}
             </Button>
             <Button onClick={onClose}>{t('close')}</Button>
             <Button type="primary" onClick={confirm}>
@@ -238,7 +240,7 @@ function RecognitionOptions({
         <span>{t('RU')}</span>
         <Select
           value={rules}
-          options={ruleOptions.map((value) => ({value, label: t(value.toLowerCase())}))}
+          options={ruleOptions.map((value) => ({value, label: t(ruleLabelKey(value))}))}
           onChange={onRulesChange}
         />
       </label>
@@ -435,6 +437,31 @@ async function cropImage(image: Blob, crop: CropRect): Promise<Blob> {
   );
 }
 
+async function resizeImageForScan(image: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(image);
+  if (bitmap.width <= maxScanImageDimension && bitmap.height <= maxScanImageDimension) {
+    bitmap.close();
+    return image;
+  }
+
+  const scale = Math.min(maxScanImageDimension / bitmap.width, maxScanImageDimension / bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext('2d');
+  if (context == null) {
+    bitmap.close();
+    throw new Error('Canvas is unavailable.');
+  }
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const type = image.type === 'image/png' ? 'image/png' : 'image/jpeg';
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob == null ? reject(new Error('Failed to resize image.')) : resolve(blob)), type, 0.95)
+  );
+}
+
 function createRecognizedGame(
   board: ScanBoard,
   rules: (typeof ruleOptions)[number],
@@ -459,6 +486,10 @@ function createRecognizedGame(
   if (white.length > 0) document.root.data.AW = white;
   if (handicap > 0) document.root.data.HA = [String(handicap)];
   return document;
+}
+
+function ruleLabelKey(rules: (typeof ruleOptions)[number]): string {
+  return rules === 'New Zealand' ? 'newZealand' : rules.toLowerCase();
 }
 
 function defaultNextPlayer(board: ScanBoard): 'B' | 'W' {

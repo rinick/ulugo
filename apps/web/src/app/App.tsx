@@ -64,7 +64,9 @@ import type {EditorTool} from '../features/toolbar/types';
 import {
   nextLabelText,
   resolveBoardBackground,
+  scoringOperationPath,
   selectedPathAfterDelete,
+  shouldAutoEstimateRecognizedGame,
   shouldDeleteScoringNodeOnExit,
 } from './appEditorUtils';
 import {capabilities, isElectron, supportsCameraCapture} from './capabilities';
@@ -171,6 +173,7 @@ export function App() {
   const boardSize = useMemo(() => getBoardSize(document), [document]);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const selectedScoringNode = path.length > 0 && isScoringNode(currentNode);
+  const operationPath = useMemo(() => scoringOperationPath(document, path), [document, path]);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const [scoringSummary, setScoringSummary] = useState<DisplayScoringSummary | null>(null);
   const displayedComment = useMemo(() => {
@@ -264,13 +267,13 @@ export function App() {
   } = useKataGoAnalysis({
     enabled: capabilities.katago,
     document,
-    path,
+    path: operationPath,
     analysisPaths,
     analysisChartPaths,
     skipEmptyInitialBoardLiveAnalysis: !selectionMoved,
     startFailedMessage: t('analysisStartFailed'),
   });
-  function handleImportedDocument(importedDocument: SgfDocument): void {
+  function handleImportedDocument(importedDocument: SgfDocument, initialPath: number[] = []): void {
     const startAnalysis =
       capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
     branchMemoryRef.current.clear();
@@ -287,7 +290,28 @@ export function App() {
         createLocalConsoleMessage('ulugo', 'info', t('analysisButtonImportHint')),
       ]);
     }
-    replaceDocument(importedDocument, [], {clearAnalysisCache: true, resetSelectionMoved: true});
+    replaceDocument(importedDocument, initialPath, {clearAnalysisCache: true, resetSelectionMoved: true});
+  }
+
+  async function handleRecognizedDocument(recognizedDocument: SgfDocument): Promise<void> {
+    let importedDocument = recognizedDocument;
+    let initialPath: number[] = [];
+    if (shouldAutoEstimateRecognizedGame(recognizedDocument)) {
+      const {estimateScoringPoints} = await import('@ulugo/scoring-core');
+      const scoringPoints = estimateScoringPoints(deriveBoardPosition(recognizedDocument, []));
+      const result = addScoringNode(
+        recognizedDocument,
+        [],
+        scoringPoints.blackPoints,
+        scoringPoints.whitePoints
+      );
+      importedDocument = result.document;
+      initialPath = result.path;
+    }
+
+    gameRecordFiles.clearCurrentFile();
+    handleImportedDocument(importedDocument, initialPath);
+    setRecognitionImage(null);
   }
 
   const gameRecordFiles = useGameRecordFiles({
@@ -335,13 +359,6 @@ export function App() {
   useEffect(() => {
     if (!showMarkup && isMarkupTool(tool)) setTool('auto');
   }, [showMarkup, tool]);
-
-  useEffect(() => {
-    if (!selectedScoringNode || tool === 'auto') return;
-    setTool('auto');
-    setAutoColorOverride(null);
-    setReplaceMoveState(null);
-  }, [selectedScoringNode, tool]);
 
   useEffect(() => {
     const currentPathKey = pathKey(path);
@@ -451,8 +468,7 @@ export function App() {
   }
 
   function handleCommentChange(value: string): void {
-    if (selectedScoringNode) return;
-    replaceDocument(updateComment(document, path, value), path);
+    replaceDocument(updateComment(document, operationPath, value), operationPath);
   }
 
   const navigateToFirst = useCallback(() => {
@@ -504,14 +520,13 @@ export function App() {
   );
 
   function handleToolChange(nextTool: EditorTool): void {
-    if (selectedScoringNode && nextTool !== 'auto') return;
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
-      if (!hasReplaceableContinuation(document, path, branchMemoryRef.current)) return;
+      if (!hasReplaceableContinuation(document, operationPath, branchMemoryRef.current)) return;
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
-      setReplaceMoveState({originalPath: path, replacementPath: path});
+      setReplaceMoveState({originalPath: operationPath, replacementPath: operationPath});
       setTool('replace');
       return;
     }
@@ -530,7 +545,6 @@ export function App() {
   }
 
   function handleAutoToolClick(): void {
-    if (selectedScoringNode) return;
     setReplaceMoveState(null);
 
     if (tool !== 'auto') {
@@ -539,9 +553,9 @@ export function App() {
       return;
     }
 
-    if (isSetupNode(getNodeAtPath(document, path))) {
-      replaceDocument(updateSetupNextColor(document, path, oppositeColor(position.nextColor)), path, {
-        invalidateAnalysisPath: path,
+    if (isSetupNode(getNodeAtPath(document, operationPath))) {
+      replaceDocument(updateSetupNextColor(document, operationPath, oppositeColor(position.nextColor)), operationPath, {
+        invalidateAnalysisPath: operationPath,
       });
       setTool('auto');
       return;
@@ -556,10 +570,9 @@ export function App() {
   const canNavigatePrevious = path.length > 0;
   const canNavigateNext = currentNode.children.length > 0;
   const canReplaceMove =
-    !selectedScoringNode &&
-    (tool === 'replace' && replaceMoveState != null && samePath(path, replaceMoveState.replacementPath)
-      ? canPlaceReplacementMove(path, replaceMoveState)
-      : hasReplaceableContinuation(document, path, branchMemoryRef.current));
+    tool === 'replace' && replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
+      ? canPlaceReplacementMove(operationPath, replaceMoveState)
+      : hasReplaceableContinuation(document, operationPath, branchMemoryRef.current);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -617,10 +630,10 @@ export function App() {
           navigateBranch(1, steps);
           break;
         case 'playBestMove':
-          if (!selectedScoringNode) handlePlayBestAnalysisMove();
+          handlePlayBestAnalysisMove();
           break;
         case 'pass':
-          if (!selectedScoringNode) handlePass();
+          handlePass();
           break;
         case 'toolAuto':
           handleToolChange('auto');
@@ -653,19 +666,19 @@ export function App() {
           handleToolChange('erase');
           break;
         case 'moveBranchToMain':
-          if (path.length > 0 && !selectedScoringNode) handleMoveBranchToMain();
+          if (operationPath.length > 0) handleMoveBranchToMain();
           break;
         case 'moveBranchLeft':
-          if (path.length > 0 && !selectedScoringNode) handleMoveBranchLeft();
+          if (operationPath.length > 0) handleMoveBranchLeft();
           break;
         case 'moveBranchRight':
-          if (path.length > 0 && !selectedScoringNode) handleMoveBranchRight();
+          if (operationPath.length > 0) handleMoveBranchRight();
           break;
         case 'pruneBranch':
-          if (path.length > 0 && !selectedScoringNode) handlePruneBranch();
+          if (operationPath.length > 0) handlePruneBranch();
           break;
         case 'deleteBranch':
-          if (path.length > 0 && !selectedScoringNode) handleDeleteNode();
+          if (operationPath.length > 0) handleDeleteNode();
           break;
         case 'toggleShowCoordinates':
           setShowCoordinates((current) => !current);
@@ -746,6 +759,7 @@ export function App() {
     navigateNext,
     navigatePrevious,
     path,
+    operationPath,
     printPreviewOpen,
     position.nextColor,
     selectedScoringNode,
@@ -776,13 +790,13 @@ export function App() {
   ): Promise<void> {
     if (options.shiftKey) {
       const nextPath = position.stones.has(point)
-        ? findCurrentStoneMovePath(document, path, point)
-        : findFutureMovePath(document, path, point, branchMemoryRef.current);
+        ? findCurrentStoneMovePath(document, operationPath, point)
+        : findFutureMovePath(document, operationPath, point, branchMemoryRef.current);
       if (nextPath != null) selectPath(nextPath);
       return;
     }
 
-    if (selectedScoringNode) {
+    if (selectedScoringNode && tool === 'auto' && position.stones.has(point)) {
       const {toggleScoringGroup} = await import('@ulugo/scoring-core');
       const scoringPoints = toggleScoringGroup(position, currentNode, point);
       if (scoringPoints == null) return;
@@ -797,7 +811,7 @@ export function App() {
     if (tool === 'replace') {
       const result = replaceNextMoveBranch({
         document,
-        path,
+        path: operationPath,
         point,
         rules: gameInfo.RU,
         branchMemory: branchMemoryRef.current,
@@ -813,14 +827,14 @@ export function App() {
     if (tool === 'auto') {
       if (position.stones.has(point)) return;
       const color = nextAutoColor;
-      const existingChildPath = findChildMovePath(document, path, color, point);
+      const existingChildPath = findChildMovePath(document, operationPath, color, point);
       if (existingChildPath != null) {
         selectPath(existingChildPath);
         return;
       }
 
       if (!isLegalMove(position, color, point, gameInfo.RU)) return;
-      const result = addMove(document, path, color, point);
+      const result = addMove(document, operationPath, color, point);
       replaceDocument(result.document, result.path);
       playPlaceStoneSound();
       return;
@@ -830,7 +844,7 @@ export function App() {
       const color = colorOverride ?? (tool === 'black' ? 'B' : 'W');
       const result = addSetupStone(
         document,
-        path,
+        operationPath,
         color,
         point,
         position.stones.get(point) ?? null,
@@ -853,7 +867,6 @@ export function App() {
   }
 
   function handleBoardRightClick(point: string, options: BoardVertexClickOptions): void {
-    if (selectedScoringNode) return;
     if (isMarkupTool(tool)) {
       if (!showMarkup) return;
       applyMarkupTool(point, true, options.clickCount);
@@ -865,10 +878,9 @@ export function App() {
   }
 
   function applyMarkupTool(point: string, rightClick: boolean, clickCount: number): void {
-    if (selectedScoringNode) return;
     const result = applyMarkupEdit({
       document,
-      path,
+      path: operationPath,
       point,
       clickCount,
       rightClick,
@@ -881,14 +893,13 @@ export function App() {
     });
     if (result == null) return;
 
-    replaceDocument(result.document, path);
+    replaceDocument(result.document, operationPath);
     markupActionRef.current = result.nextAction;
     if (result.incrementTextFrom != null) setLabelText(nextLabelText(result.incrementTextFrom));
   }
 
   function handleEraseAllMarkup(): void {
-    if (selectedScoringNode) return;
-    replaceDocument(eraseAllMarkup(document, path), path);
+    replaceDocument(eraseAllMarkup(document, operationPath), operationPath);
   }
 
   function resetLabelTextForUnmarkedSelection(nextDocument: SgfDocument, nextPath: number[]): void {
@@ -902,31 +913,29 @@ export function App() {
   }
 
   function handlePlayBestAnalysisMove(): void {
-    if (selectedScoringNode) return;
     const bestMove = currentAnalysis?.moveInfos?.[0]?.move;
     if (bestMove == null) return;
 
     const point = bestMove.toLowerCase() === 'pass' ? '' : gtpMoveToPoint(bestMove, boardSize);
     if (point == null || position.stones.has(point)) return;
 
-    const existingChildPath = findChildMovePath(document, path, position.nextColor, point);
+    const existingChildPath = findChildMovePath(document, operationPath, position.nextColor, point);
     if (existingChildPath != null) {
       selectPath(existingChildPath);
       return;
     }
 
     if (!isLegalMove(position, position.nextColor, point, gameInfo.RU)) return;
-    const result = addMove(document, path, position.nextColor, point);
+    const result = addMove(document, operationPath, position.nextColor, point);
     replaceDocument(result.document, result.path, point === '' ? {convertHiddenPassPath: result.path} : {});
     if (point !== '') playPlaceStoneSound();
   }
 
   function handlePass(): void {
-    if (selectedScoringNode) return;
     if (tool === 'replace') {
       const result = replaceNextMoveBranch({
         document,
-        path,
+        path: operationPath,
         point: '',
         rules: gameInfo.RU,
         branchMemory: branchMemoryRef.current,
@@ -941,32 +950,33 @@ export function App() {
       return;
     }
 
-    const existingChildPath = findChildMovePath(document, path, nextAutoColor, '');
+    const existingChildPath = findChildMovePath(document, operationPath, nextAutoColor, '');
     if (existingChildPath != null) {
       selectPath(existingChildPath);
       return;
     }
 
-    const result = addMove(document, path, nextAutoColor, '');
+    const result = addMove(document, operationPath, nextAutoColor, '');
     replaceDocument(result.document, result.path, {convertHiddenPassPath: result.path});
   }
 
   function handleMoveBranchToMain(targetPath = path): void {
-    const result = moveBranchToMain(document, targetPath);
+    const result = moveBranchToMain(document, scoringOperationPath(document, targetPath));
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchLeft(targetPath = path): void {
-    const result = moveBranch(document, targetPath, -1);
+    const result = moveBranch(document, scoringOperationPath(document, targetPath), -1);
     replaceDocument(result.document, result.path);
   }
 
   function handleMoveBranchRight(targetPath = path): void {
-    const result = moveBranch(document, targetPath, 1);
+    const result = moveBranch(document, scoringOperationPath(document, targetPath), 1);
     replaceDocument(result.document, result.path);
   }
 
   function handleDeleteNode(targetPath = path): void {
+    targetPath = scoringOperationPath(document, targetPath);
     const deleteTarget = () => {
       const result = deleteNode(document, targetPath);
       replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
@@ -989,6 +999,7 @@ export function App() {
   }
 
   function handlePruneBranch(targetPath = path): void {
+    targetPath = scoringOperationPath(document, targetPath);
     Modal.confirm({
       centered: true,
       title: t('pruneBranchConfirmTitle'),
@@ -1005,12 +1016,21 @@ export function App() {
   }
 
   async function handleEstimateScore(targetPath: number[]): Promise<void> {
+    targetPath = scoringOperationPath(document, targetPath);
     const targetNode = getNodeAtPath(document, targetPath);
-    if (isScoringNode(targetNode) || targetNode.children.some(isScoringNode)) return;
 
     const scoringPosition = deriveBoardPosition(document, targetPath);
     const {estimateScoringPoints} = await import('@ulugo/scoring-core');
     const scoringPoints = estimateScoringPoints(scoringPosition);
+    const existingScoringIndex = targetNode.children.findIndex(isScoringNode);
+    if (existingScoringIndex >= 0) {
+      const scoringPath = [...targetPath, existingScoringIndex];
+      replaceDocument(
+        updateScoringPoints(document, scoringPath, scoringPoints.blackPoints, scoringPoints.whitePoints),
+        scoringPath
+      );
+      return;
+    }
     const result = addScoringNode(document, targetPath, scoringPoints.blackPoints, scoringPoints.whitePoints);
     replaceDocument(result.document, result.path);
   }
@@ -1183,15 +1203,11 @@ export function App() {
                     <EditorToolbar
                       tool={tool}
                       nextColor={nextAutoColor}
-                      canReplaceMove={canReplaceMove && !selectedScoringNode}
-                      showMarkup={showMarkup}
+                      canReplaceMove={canReplaceMove}
                       showSetupTools={false}
-                      labelText={labelText}
                       shortcutLabels={shortcutLabels}
                       onToolChange={handleToolChange}
-                      onLabelTextChange={setLabelText}
                       onAutoToolClick={handleAutoToolClick}
-                      onEraseAllMarkup={handleEraseAllMarkup}
                       onPass={handlePass}
                     />
                   </div>
@@ -1259,11 +1275,7 @@ export function App() {
             image={recognitionImage}
             language={currentLanguage}
             onClose={() => setRecognitionImage(null)}
-            onConfirm={(recognizedDocument) => {
-              gameRecordFiles.clearCurrentFile();
-              handleImportedDocument(recognizedDocument);
-              setRecognitionImage(null);
-            }}
+            onConfirm={(recognizedDocument) => void handleRecognizedDocument(recognizedDocument)}
           />
         </Suspense>
       ) : null}

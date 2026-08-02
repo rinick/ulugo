@@ -1,5 +1,6 @@
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {EditorToolbar} from '../toolbar/EditorToolbar';
+import {MarkupToolbar} from '../toolbar/MarkupToolbar';
 import {NavigationToolbar} from '../toolbar/NavigationToolbar';
 import type {EditorTool} from '../toolbar/types';
 
@@ -52,15 +53,21 @@ export function AppToolbars({
         tool={tool}
         nextColor={nextColor}
         canReplaceMove={canReplaceMove}
-        showMarkup={showMarkup}
-        labelText={labelText}
         shortcutLabels={shortcutLabels}
         onToolChange={onToolChange}
-        onLabelTextChange={onLabelTextChange}
         onAutoToolClick={onAutoToolClick}
-        onEraseAllMarkup={onEraseAllMarkup}
         onPass={onPass}
       />
+      {showMarkup ? (
+        <MarkupToolbar
+          tool={tool}
+          labelText={labelText}
+          shortcutLabels={shortcutLabels}
+          onToolChange={onToolChange}
+          onLabelTextChange={onLabelTextChange}
+          onEraseAllMarkup={onEraseAllMarkup}
+        />
+      ) : null}
       <NavigationToolbar
         canNavigatePrevious={canNavigatePrevious}
         canNavigateNext={canNavigateNext}

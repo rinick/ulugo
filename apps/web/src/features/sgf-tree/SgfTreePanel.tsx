@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
-import {buildTree, getBoardSize, getNodeAtPath, isScoringNode, samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import {
   type WheelEvent,
 } from 'react';
 import {useTranslation} from 'react-i18next';
+import {scoringOperationPath} from '../../app/appEditorUtils';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
   cornerRadius,
@@ -168,13 +169,15 @@ export function SgfTreePanel({
     [onNextMove, onPreviousMove]
   );
 
-  const canEstimateScore = useMemo(() => {
-    if (!estimateScoreEnabled) return false;
-    if (validContextPath == null) return false;
-    if (validContextPath.length === 0) return false;
-    const node = getNodeAtPath(document, validContextPath);
-    return !isScoringNode(node) && !node.children.some(isScoringNode);
-  }, [document, estimateScoreEnabled, validContextPath]);
+  const canEstimateScore = estimateScoreEnabled && validContextPath != null;
+  const contextOperationPath = useMemo(
+    () => (validContextPath == null ? null : scoringOperationPath(document, validContextPath)),
+    [document, validContextPath]
+  );
+  const selectedOperationPath = useMemo(
+    () => scoringOperationPath(document, selectedPath),
+    [document, selectedPath]
+  );
 
   const contextMenuItems = useMemo<MenuProps['items']>(
     () => [
@@ -182,19 +185,19 @@ export function SgfTreePanel({
         key: 'moveBranchToMain',
         label: t('moveBranchToMain'),
         icon: <DoubleLeftOutlined />,
-        disabled: validContextPath == null || validContextPath.length === 0,
+        disabled: contextOperationPath == null || contextOperationPath.length === 0,
       },
       {
         key: 'moveBranchLeft',
         label: t('moveBranchLeft'),
         icon: <LeftOutlined />,
-        disabled: validContextPath == null || validContextPath.length === 0,
+        disabled: contextOperationPath == null || contextOperationPath.length === 0,
       },
       {
         key: 'moveBranchRight',
         label: t('moveBranchRight'),
         icon: <RightOutlined />,
-        disabled: validContextPath == null || validContextPath.length === 0,
+        disabled: contextOperationPath == null || contextOperationPath.length === 0,
       },
       ...(canEstimateScore
         ? [
@@ -210,17 +213,17 @@ export function SgfTreePanel({
         label: t('pruneBranch'),
         icon: <ScissorOutlined />,
         danger: true,
-        disabled: validContextPath == null || validContextPath.length === 0,
+        disabled: contextOperationPath == null || contextOperationPath.length === 0,
       },
       {
         key: 'deleteBranch',
         label: t('deleteBranch'),
         icon: <DeleteOutlined />,
         danger: true,
-        disabled: validContextPath == null || validContextPath.length === 0,
+        disabled: contextOperationPath == null || contextOperationPath.length === 0,
       },
     ],
-    [canEstimateScore, t, validContextPath]
+    [canEstimateScore, contextOperationPath, t]
   );
 
   const handleContextMenu = useCallback(
@@ -242,7 +245,6 @@ export function SgfTreePanel({
     switch (key) {
       case 'estimateScore':
         if (!estimateScoreEnabled) return;
-        if (targetPath.length === 0) return;
         onEstimateScore(targetPath);
         break;
       case 'moveBranchToMain':
@@ -274,32 +276,32 @@ export function SgfTreePanel({
         <Space.Compact>
           <TreeActionButton
             title={withShortcut(t('moveBranchToMain'), shortcutLabels.moveBranchToMain)}
-            disabled={selectedPath.length === 0}
+            disabled={selectedOperationPath.length === 0}
             icon={<DoubleLeftOutlined />}
             onClick={() => onMoveToMain()}
           />
           <TreeActionButton
             title={withShortcut(t('moveBranchLeft'), shortcutLabels.moveBranchLeft)}
-            disabled={selectedPath.length === 0}
+            disabled={selectedOperationPath.length === 0}
             icon={<LeftOutlined />}
             onClick={() => onMoveLeft()}
           />
           <TreeActionButton
             title={withShortcut(t('moveBranchRight'), shortcutLabels.moveBranchRight)}
-            disabled={selectedPath.length === 0}
+            disabled={selectedOperationPath.length === 0}
             icon={<RightOutlined />}
             onClick={() => onMoveRight()}
           />
           <TreeActionButton
             title={withShortcut(t('pruneBranch'), shortcutLabels.pruneBranch)}
-            disabled={selectedPath.length === 0}
+            disabled={selectedOperationPath.length === 0}
             icon={<ScissorOutlined />}
             danger
             onClick={() => onPrune()}
           />
           <TreeActionButton
             title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}
-            disabled={selectedPath.length === 0}
+            disabled={selectedOperationPath.length === 0}
             icon={<DeleteOutlined />}
             danger
             onClick={() => onDelete()}
