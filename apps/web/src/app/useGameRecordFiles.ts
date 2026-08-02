@@ -27,7 +27,7 @@ interface GameRecordFiles {
   saveToClipboard: () => Promise<void>;
   saveToGoogleDrive: () => Promise<void>;
   open: () => Promise<void>;
-  openFromClipboard: () => Promise<void>;
+  openFromClipboard: (clipboardData?: DataTransfer | null) => Promise<void>;
   openFromCamera: () => void;
   openFromSgfText: () => Promise<void>;
   openFromGoogleDrive: () => Promise<void>;
@@ -180,7 +180,34 @@ export function useGameRecordFiles({
     fileInputRef.current?.click();
   }
 
-  async function openFromClipboard(): Promise<void> {
+  async function openFromClipboard(clipboardData?: DataTransfer | null): Promise<void> {
+    if (clipboardData != null) {
+      const text = clipboardData.getData('text/plain');
+      if (text.trim() !== '') {
+        try {
+          importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+          return;
+        } catch {
+          // Fall through when clipboard text is not valid SGF.
+        }
+      }
+
+      const files = Array.from(clipboardData.files);
+      const gameRecord = files.find((file) => isGameRecordFile(file.name));
+      if (gameRecord != null) {
+        await importFile(gameRecord);
+        return;
+      }
+
+      const image =
+        files.find(isImageFile) ??
+        Array.from(clipboardData.items)
+          .find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+          ?.getAsFile();
+      if (image != null) onOpenImage(image);
+      return;
+    }
+
     if (!isElectron || window.ulugo == null) return;
 
     try {

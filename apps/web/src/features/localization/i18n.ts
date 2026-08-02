@@ -88,6 +88,8 @@ export const resources = {
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
       tipReplaceMove:
         'If you notice a misrecorded move while recording a game, go back to the move before the mistake and use Replace move to correct the mistaken moves. There is no need to replay everything after them.',
+      tipBoardRecognition:
+        'Ulugo can convert a photo of a Go board into an SGF file. Choose an image when opening a file to start board recognition.',
       tipMinimalPortrait:
         'Minimal mode rotates 90 degrees automatically in portrait orientation. On phones and tablets, portrait mode gives more board space while recording a game.',
       tipWebScoreEstimate:
@@ -102,6 +104,8 @@ export const resources = {
         'If AI analysis is slow, choose a smaller KataGo model in AI config, such as kata1-b18. You can also lower fast visits to make the chart render faster.',
       tipElectronPvPreview:
         'Hover over an AI recommended point to preview the following best sequence. You can also Alt-click the recommended point to show it.',
+      tipClipboardOpen:
+        'Press Ctrl+V to open an SGF game record or an image directly from the clipboard.',
       boardBackground: 'Board background',
       golden: 'Golden',
       natural: 'Natural',
@@ -339,6 +343,7 @@ export const resources = {
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
       tipReplaceMove:
         '在记谱的过程中如果发现之前的棋记错了，可以退到错误之前的一手，然后使用“替换着手”工具来纠正错误的几手，无需重摆之后所有的棋。',
+      tipBoardRecognition: 'Ulugo可以将棋盘照片转换为SGF文件。打开文件时选择图片即可开始棋盘识别。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
       tipWebScoreEstimate:
         '在右下窗口内，右键点击一手棋可进行目数估算。\n\n这项功能只适合终盘目数计算。{{downloadDesktopApp}}。',
@@ -350,6 +355,7 @@ export const resources = {
       tipElectronKatagoSpeed:
         '如果AI分析速度较慢，可以在AI设置里选择更小的KataGo模型，例如kata1-b18。也可以减少快速访问数值来加快图表的显示。',
       tipElectronPvPreview: '鼠标悬停在一个AI推荐位置会显示之后的最佳手顺。也可以按住Alt点击推荐位置来显示。',
+      tipClipboardOpen: '按Ctrl+V可以直接打开剪贴板中的SGF棋谱或图片。',
       boardBackground: '棋盘背景',
       golden: '金色',
       natural: '自然',
@@ -587,6 +593,8 @@ export const resources = {
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
       tipReplaceMove:
         '棋譜を記録している途中で以前の手の記録ミスに気づいた場合は、ミスの直前の手に戻り、「着手を置換」ツールで誤った数手を直せます。その後の手をすべて並べ直す必要はありません。',
+      tipBoardRecognition:
+        'Ulugoは碁盤の写真をSGFファイルに変換できます。ファイルを開くときに画像を選択すると、盤面認識が始まります。',
       tipMinimalPortrait:
         'ミニマルモードは縦画面で自動的に90度回転します。スマートフォンやタブレットで記録するとき、縦画面のほうが広く表示できます。',
       tipWebScoreEstimate:
@@ -601,6 +609,8 @@ export const resources = {
         'AI解析が遅い場合は、AI設定でkata1-b18など小さめのKataGoモデルを選べます。高速訪問数を減らすとグラフ表示も速くなります。',
       tipElectronPvPreview:
         'AIの推奨位置にマウスを重ねると、その後の最善手順を表示できます。Altを押しながら推奨位置をクリックしても表示できます。',
+      tipClipboardOpen:
+        'Ctrl+Vを押すと、クリップボード内のSGF棋譜または画像を直接開けます。',
       boardBackground: '盤面の背景',
       golden: 'ゴールド',
       natural: 'ナチュラル',
@@ -840,6 +850,8 @@ export const resources = {
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
       tipReplaceMove:
         '기보를 기록하는 중에 이전 수가 잘못 기록된 것을 발견하면, 잘못되기 전 수로 돌아가 "수 바꾸기" 도구로 잘못된 몇 수를 고칠 수 있습니다. 이후의 모든 수를 다시 놓을 필요는 없습니다.',
+      tipBoardRecognition:
+        'Ulugo는 바둑판 사진을 SGF 파일로 변환할 수 있습니다. 파일을 열 때 이미지를 선택하면 바둑판 인식이 시작됩니다.',
       tipMinimalPortrait:
         '미니멀 모드는 세로 화면에서 자동으로 90도 회전합니다. 휴대폰이나 태블릿에서 기록할 때 세로 화면이 더 넓은 표시 공간을 줍니다.',
       tipWebScoreEstimate:
@@ -854,6 +866,8 @@ export const resources = {
         'AI 분석 속도가 느리면 AI 설정에서 kata1-b18 같은 더 작은 KataGo 모델을 선택할 수 있습니다. 빠른 방문 수도 줄이면 차트 표시가 빨라집니다.',
       tipElectronPvPreview:
         'AI 추천 위치에 마우스를 올리면 이후 최선 수순이 표시됩니다. Alt를 누른 채 추천 위치를 클릭해도 표시할 수 있습니다.',
+      tipClipboardOpen:
+        'Ctrl+V를 누르면 클립보드의 SGF 기보 또는 이미지를 바로 열 수 있습니다.',
       boardBackground: '바둑판 배경',
       golden: '골든',
       natural: '내추럴',
@@ -1093,6 +1107,8 @@ export const resources = {
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
       tipReplaceMove:
         'Si vous remarquez une erreur de saisie pendant que vous notez une partie, revenez au coup avant l erreur puis utilisez Remplacer le coup pour corriger les quelques coups errones. Il n est pas necessaire de rejouer tous les coups suivants.',
+      tipBoardRecognition:
+        'Ulugo peut convertir une photo d un plateau de go en fichier SGF. Selectionnez une image lors de l ouverture d un fichier pour lancer la reconnaissance du plateau.',
       tipMinimalPortrait:
         'Le mode minimal pivote automatiquement de 90 degres en orientation portrait. Sur telephone ou tablette, le mode portrait donne plus d espace pour noter une partie.',
       tipWebScoreEstimate:
@@ -1107,6 +1123,8 @@ export const resources = {
         'Si l analyse IA est lente, choisissez un modele KataGo plus petit dans la configuration IA, par exemple kata1-b18. Vous pouvez aussi reduire les visites rapides pour accelerer le graphique.',
       tipElectronPvPreview:
         'Survolez un point recommande par l IA pour afficher la meilleure sequence qui suit. Vous pouvez aussi faire Alt-clic sur le point recommande pour l afficher.',
+      tipClipboardOpen:
+        'Appuyez sur Ctrl+V pour ouvrir directement un fichier SGF ou une image depuis le presse-papiers.',
       boardBackground: 'Fond du plateau',
       golden: 'Dore',
       natural: 'Naturel',
@@ -1349,6 +1367,8 @@ export const resources = {
         'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
       tipReplaceMove:
         'Wenn du beim Aufzeichnen einer Partie bemerkst, dass ein frueherer Zug falsch notiert wurde, gehe zum Zug vor dem Fehler zurueck und korrigiere die falschen Zuege mit Zug ersetzen. Du musst die danach folgenden Zuege nicht neu setzen.',
+      tipBoardRecognition:
+        'Ulugo kann ein Foto eines Go-Bretts in eine SGF-Datei umwandeln. Waehle beim Oeffnen einer Datei ein Bild aus, um die Bretterkennung zu starten.',
       tipMinimalPortrait:
         'Der Minimalmodus dreht sich im Hochformat automatisch um 90 Grad. Auf Telefonen und Tablets bietet Hochformat beim Notieren einer Partie mehr Platz.',
       tipWebScoreEstimate:
@@ -1363,6 +1383,8 @@ export const resources = {
         'Wenn die KI-Analyse langsam ist, waehle in der KI-Konfiguration ein kleineres KataGo-Modell, zum Beispiel kata1-b18. Du kannst auch die schnellen Besuche verringern, damit das Diagramm schneller angezeigt wird.',
       tipElectronPvPreview:
         'Wenn du den Mauszeiger ueber einen von der KI empfohlenen Punkt bewegst, wird die folgende beste Sequenz angezeigt. Du kannst auch Alt-Klick auf den empfohlenen Punkt verwenden.',
+      tipClipboardOpen:
+        'Druecke Ctrl+V, um eine SGF-Partie oder ein Bild direkt aus der Zwischenablage zu oeffnen.',
       boardBackground: 'Bretthintergrund',
       golden: 'Golden',
       natural: 'Natur',
@@ -1604,6 +1626,8 @@ export const resources = {
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
       tipReplaceMove:
         'Если во время записи партии вы заметили, что один из предыдущих ходов записан неверно, вернитесь к ходу перед ошибкой и используйте "Заменить ход", чтобы исправить ошибочные ходы. Не нужно заново расставлять все последующие ходы.',
+      tipBoardRecognition:
+        'Ulugo может преобразовать фотографию доски го в файл SGF. Выберите изображение при открытии файла, чтобы запустить распознавание доски.',
       tipMinimalPortrait:
         'Минимальный режим в портретной ориентации автоматически поворачивается на 90 градусов. На телефонах и планшетах портретный режим дает больше места для записи партии.',
       tipWebScoreEstimate:
@@ -1618,6 +1642,8 @@ export const resources = {
         'Если анализ ИИ идет медленно, выберите в настройках ИИ меньшую модель KataGo, например kata1-b18. Также можно уменьшить быстрые посещения, чтобы график отображался быстрее.',
       tipElectronPvPreview:
         'Наведите мышь на рекомендованный ИИ пункт, чтобы увидеть дальнейшую лучшую последовательность. Ее также можно показать, щелкнув рекомендованный пункт с Alt.',
+      tipClipboardOpen:
+        'Нажмите Ctrl+V, чтобы напрямую открыть партию SGF или изображение из буфера обмена.',
       boardBackground: 'Фон доски',
       golden: 'Золотой',
       natural: 'Натуральный',

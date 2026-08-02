@@ -45,6 +45,9 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
     <Tip key="replace-move">
       <p>{t('tipReplaceMove')}</p>
     </Tip>,
+    <Tip key="board-recognition">
+      <p>{t('tipBoardRecognition')}</p>
+    </Tip>,
     <Tip key="web-minimal-portrait" platform="web">
       <p>{t('tipMinimalPortrait')}</p>
     </Tip>,
@@ -65,6 +68,9 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
     </Tip>,
     <Tip key="electron-pv-preview" platform="electron">
       <p>{t('tipElectronPvPreview')}</p>
+    </Tip>,
+    <Tip key="clipboard-open">
+      <p>{t('tipClipboardOpen')}</p>
     </Tip>,
   ];
 }

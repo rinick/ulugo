@@ -19,6 +19,7 @@ Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an s
 
 #### Edit Mode
 - Open, edit, and save SGF game records
+- Convert a photo of a Go board into an SGF file
 - Work with SGF markup and comments
 ![](/screenshot/edit.webp)
 

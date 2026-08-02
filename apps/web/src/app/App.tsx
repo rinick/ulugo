@@ -749,8 +749,21 @@ export function App() {
       }
     }
 
+    function handlePaste(event: ClipboardEvent): void {
+      if (isElectron || printPreviewOpen) return;
+      if (isModalOpen() || isPopupOpen() || isTextInputActive()) return;
+      if (event.clipboardData == null) return;
+
+      event.preventDefault();
+      void gameRecordFiles.openFromClipboard(event.clipboardData);
+    }
+
     window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('paste', handlePaste, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('paste', handlePaste, true);
+    };
   }, [
     analysisSettings.autoAnalyze,
     analysisSettings.mode,
