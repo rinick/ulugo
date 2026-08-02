@@ -1874,10 +1874,6 @@ button.ant-btn.left-panel-toggle {
   }
 
   .app-header-right {
-    display: none;
-  }
-
-  .app-header-right.mobile-open {
     position: absolute;
     inset: 0 32px 0 0;
     z-index: 20;
@@ -1890,6 +1886,22 @@ button.ant-btn.left-panel-toggle {
     overflow-x: auto;
     overflow-y: hidden;
     background: #ffffff;
+    opacity: 0;
+    transform: translateX(100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 200ms ease,
+      opacity 200ms ease,
+      visibility 0s linear 200ms;
+  }
+
+  .app-header-right.mobile-open {
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
   }
 
   .app-header-right.mobile-open .app-menu-buttons,

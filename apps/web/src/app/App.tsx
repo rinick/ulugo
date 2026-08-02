@@ -962,17 +962,19 @@ export function App() {
         convertHiddenPassPath: result.path,
         replaceMoveState: result.state,
       });
-      return;
+    } else {
+      const existingChildPath = findChildMovePath(document, operationPath, nextAutoColor, '');
+      if (existingChildPath != null) {
+        selectPath(existingChildPath);
+      } else {
+        const result = addMove(document, operationPath, nextAutoColor, '');
+        replaceDocument(result.document, result.path, {convertHiddenPassPath: result.path});
+      }
     }
 
-    const existingChildPath = findChildMovePath(document, operationPath, nextAutoColor, '');
-    if (existingChildPath != null) {
-      selectPath(existingChildPath);
-      return;
-    }
-
-    const result = addMove(document, operationPath, nextAutoColor, '');
-    replaceDocument(result.document, result.path, {convertHiddenPassPath: result.path});
+    setTool('auto');
+    setAutoColorOverride(null);
+    setReplaceMoveState(null);
   }
 
   function handleMoveBranchToMain(targetPath = path): void {

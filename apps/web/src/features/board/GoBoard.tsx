@@ -97,8 +97,6 @@ export function GoBoard({
   const hoverTimerRef = useRef<number | null>(null);
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
-  const appContentScrollableRef = useRef(false);
-  const primaryInputUsesClickRef = useRef(false);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
@@ -305,24 +303,6 @@ export function GoBoard({
     (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMap.get(vertexKey(vertex)) ?? null,
     [allPvCandidateMap]
   );
-  const refreshAppContentScrollability = useCallback(() => {
-    const appContent = window.document.querySelector<HTMLElement>('.app-content');
-    if (appContent == null) {
-      appContentScrollableRef.current = false;
-      return;
-    }
-
-    const style = window.getComputedStyle(appContent);
-    const canScrollX = style.overflowX === 'auto' || style.overflowX === 'scroll';
-    const canScrollY = style.overflowY === 'auto' || style.overflowY === 'scroll';
-    appContentScrollableRef.current =
-      (canScrollX && appContent.scrollWidth > appContent.clientWidth) ||
-      (canScrollY && appContent.scrollHeight > appContent.clientHeight);
-  }, []);
-  const shouldUseClickForPrimaryInput = useCallback(
-    () => (window.visualViewport?.scale ?? 1) > 1 || appContentScrollableRef.current,
-    []
-  );
   const handlePrimaryVertexInput = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
       if (event.altKey) {
@@ -352,19 +332,14 @@ export function GoBoard({
       }
 
       if (event.button !== 0) return;
-      primaryInputUsesClickRef.current = shouldUseClickForPrimaryInput();
-      if (primaryInputUsesClickRef.current) {
-        return;
-      }
+      if (!('pointerType' in event) || event.pointerType !== 'mouse') return;
       handlePrimaryVertexInput(event, vertex);
     },
-    [handlePrimaryVertexInput, onVertexRightClick, shouldUseClickForPrimaryInput]
+    [handlePrimaryVertexInput, onVertexRightClick]
   );
   const handleVertexClick = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
-      const primaryInputUsesClick = primaryInputUsesClickRef.current || shouldUseClickForPrimaryInput();
-      primaryInputUsesClickRef.current = false;
-      if (primaryInputUsesClick) {
+      if (isTouchClick(event)) {
         handlePrimaryVertexInput(event, vertex);
         return;
       }
@@ -383,7 +358,7 @@ export function GoBoard({
         clickCount,
       });
     },
-    [handlePrimaryVertexInput, onVertexClick, shouldUseClickForPrimaryInput]
+    [handlePrimaryVertexInput, onVertexClick]
   );
   const handleVertexMouseEnter = useCallback(
     (_event: VertexEvent, vertex: Vertex) => {
@@ -408,25 +383,18 @@ export function GoBoard({
   );
 
   useLayoutEffect(() => {
-    refreshAppContentScrollability();
-    window.addEventListener('resize', refreshAppContentScrollability);
-    return () => window.removeEventListener('resize', refreshAppContentScrollability);
-  }, [refreshAppContentScrollability]);
-
-  useLayoutEffect(() => {
     const element = frameRef.current;
     if (element == null) return;
 
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
       if (rect == null) return;
-      refreshAppContentScrollability();
       setAvailableSize({width: rect.width, height: rect.height});
     });
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [refreshAppContentScrollability]);
+  }, []);
 
   useEffect(() => clearPvPreview, [clearPvPreview, document, path]);
 
@@ -459,3 +427,11 @@ export function GoBoard({
 }
 
 type VertexEvent = MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>;
+
+function isTouchClick(event: VertexEvent): boolean {
+  const nativeEvent = event.nativeEvent as globalThis.MouseEvent & {
+    pointerType?: string;
+    sourceCapabilities?: {firesTouchEvents?: boolean};
+  };
+  return nativeEvent.pointerType === 'touch' || nativeEvent.sourceCapabilities?.firesTouchEvents === true;
+}

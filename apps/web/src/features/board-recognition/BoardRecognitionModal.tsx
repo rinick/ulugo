@@ -167,11 +167,15 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
             type="warning"
             showIcon
             message={t('gameScreenshotDetected')}
-            description={t('gameScreenshotExplanation')}
+            description={
+              <>
+                <div>{t('gameScreenshotExplanation')}</div>
+                <a href={screenshotDetailsUrl} target="_blank" rel="noreferrer">
+                  {t('details')}
+                </a>
+              </>
+            }
           />
-          <a href={screenshotDetailsUrl} target="_blank" rel="noreferrer">
-            {t('details')}
-          </a>
           <div className="board-recognition-actions">
             <Button type="primary" onClick={onClose}>
               {t('close')}
