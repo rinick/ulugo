@@ -97,6 +97,7 @@ export function GoBoard({
   const hoverTimerRef = useRef<number | null>(null);
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
+  const pendingTouchClickRef = useRef<{vertexKey: string; time: number} | null>(null);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
@@ -322,6 +323,12 @@ export function GoBoard({
   );
   const handleVertexPointerDown = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
+      if ('pointerType' in event && event.pointerType === 'touch') {
+        pendingTouchClickRef.current = {vertexKey: vertexKey(vertex), time: performance.now()};
+        return;
+      }
+
+      pendingTouchClickRef.current = null;
       if (event.button === 2) {
         event.preventDefault();
         onVertexRightClick(vertexToPoint(vertex[0], vertex[1]), {
@@ -339,7 +346,12 @@ export function GoBoard({
   );
   const handleVertexClick = useCallback(
     (event: VertexEvent, vertex: Vertex) => {
-      if (isTouchClick(event)) {
+      const pendingTouchClick = pendingTouchClickRef.current;
+      pendingTouchClickRef.current = null;
+      const followsTouchPointerDown =
+        pendingTouchClick?.vertexKey === vertexKey(vertex) && performance.now() - pendingTouchClick.time < 1500;
+
+      if (isTouchClick(event) || followsTouchPointerDown) {
         handlePrimaryVertexInput(event, vertex);
         return;
       }
