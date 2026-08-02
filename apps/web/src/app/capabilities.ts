@@ -18,9 +18,10 @@ export const electronCapabilities: AppCapabilities = {
 
 export const isElectron = window.ulugo?.platform === 'electron';
 export const capabilities = isElectron ? electronCapabilities : webCapabilities;
-export const supportsCameraCapture = !isElectron && isMobileBrowser();
+export const isMobileBrowser = detectMobileBrowser();
+export const supportsCameraCapture = !isElectron && isMobileBrowser;
 
-function isMobileBrowser(): boolean {
+function detectMobileBrowser(): boolean {
   const navigatorWithUserAgentData = navigator as Navigator & {userAgentData?: {mobile?: boolean}};
   if (navigatorWithUserAgentData.userAgentData?.mobile != null) {
     return navigatorWithUserAgentData.userAgentData.mobile;

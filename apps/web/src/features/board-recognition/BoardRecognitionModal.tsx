@@ -1,8 +1,9 @@
 import {Board} from '@ulugo/go-board';
 import {createNewGame, type SgfDocument} from '@ulugo/sgf-core';
 import {Alert, Button, Modal, Segmented, Select, Spin} from 'antd';
-import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
+npm import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
 import {useTranslation} from 'react-i18next';
+import {isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
 
 type BoardSize = 9 | 13 | 19;
@@ -56,7 +57,7 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
       setRecognizedImage(scanImage);
       const {recognizeBoard} = await import('uluscan');
       const result = await new Promise<{d: number[][]} | {s: true} | {e: true}>((resolve) => {
-        recognizeBoard(scanImage, resolve, {lineCount: boardSize});
+        recognizeBoard(scanImage, resolve, {lineCount: boardSize, sCheck: !isMobileBrowser});
       });
 
       if ('s' in result) {

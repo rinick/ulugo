@@ -86,6 +86,10 @@ textarea,
   align-items: flex-end;
 }
 
+.mobile-header-right-toggle {
+  display: none;
+}
+
 .app-title {
   position: absolute;
   min-width: 150px;
@@ -456,7 +460,7 @@ textarea,
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .edit-tools,
@@ -656,7 +660,7 @@ textarea,
   flex: 1 1 420px;
   align-items: center;
   justify-content: center;
-  min-width: 420px;
+  min-width: clamp(360px, 100vw, 420px);
   min-height: 0;
 }
 
@@ -1859,5 +1863,52 @@ button.ant-btn.left-panel-toggle {
   }
   .comments-panel {
     max-height: 30%;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-header {
+    position: relative;
+    padding-right: 44px;
+    overflow: hidden;
+  }
+
+  .app-header-right {
+    display: none;
+  }
+
+  .app-header-right.mobile-open {
+    position: absolute;
+    inset: 0 32px 0 0;
+    z-index: 20;
+    display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 4px 8px;
+    align-items: stretch;
+    justify-content: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #ffffff;
+  }
+
+  .app-header-right.mobile-open .app-menu-buttons,
+  .app-header-right.mobile-open .analysis-toolbar-options {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  button.ant-btn.mobile-header-right-toggle {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 21;
+    display: inline-flex;
+    width: 32px;
+    min-width: 32px;
+    height: 100%;
+    padding: 0;
+    border-radius: 0;
   }
 }

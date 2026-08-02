@@ -97,8 +97,8 @@ importers:
         specifier: ^16.3.0
         version: 16.6.6(i18next@25.10.10(typescript@5.9.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
       uluscan:
-        specifier: 0.1.1
-        version: 0.1.1
+        specifier: 0.1.2
+        version: 0.1.2
       workbox-window:
         specifier: ^7.4.1
         version: 7.4.1
@@ -3516,8 +3516,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  uluscan@0.1.1:
-    resolution: {integrity: sha512-TDdOxUfg2VJACh8SJDj7ONDzaZNurdqrv5cUhRekx4snb4tqMHTrm2ILWZlVWwVJ0igoxBrWnb3IoRFWuV8tcQ==}
+  uluscan@0.1.2:
+    resolution: {integrity: sha512-NWVQwPZL3RAQiwyWIM/wU8l6SWi3yqJ99hIl46Wm/V3gaRPinKzvvZmgXudrbwE03nhllqoBdAo/euk4TXYZuA==}
 
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
@@ -7697,7 +7697,7 @@ snapshots:
 
   typescript@5.9.3: {}
 
-  uluscan@0.1.1: {}
+  uluscan@0.1.2: {}
 
   unbox-primitive@1.1.0:
     dependencies:

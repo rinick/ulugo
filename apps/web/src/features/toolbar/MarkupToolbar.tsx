@@ -1,5 +1,6 @@
 import {BorderOutlined, CloseOutlined, DeleteOutlined, FontSizeOutlined} from '@ant-design/icons';
-import {Input, Space} from 'antd';
+import {Input, Space, type InputRef} from 'antd';
+import {useEffect, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {ToolButton, withShortcut} from './EditorToolbar';
@@ -23,6 +24,12 @@ export function MarkupToolbar({
   onEraseAllMarkup,
 }: MarkupToolbarProps) {
   const {t} = useTranslation();
+  const labelInputRef = useRef<InputRef>(null);
+
+  useEffect(() => {
+    if (tool !== 'alphabet') return;
+    labelInputRef.current?.focus({cursor: 'all'});
+  }, [tool]);
 
   return (
     <Space.Compact className="markup-tools">
@@ -34,14 +41,16 @@ export function MarkupToolbar({
         title={withShortcut(t('addLabel'), shortcutLabels.addLabel)}
         onToolChange={onToolChange}
       >
-        <Input
-          size="small"
-          className="label-input"
-          value={labelText}
-          aria-label={t('addLabel')}
-          onFocus={() => onToolChange('alphabet')}
-          onChange={(event) => onLabelTextChange(event.target.value)}
-        />
+        {tool === 'alphabet' ? (
+          <Input
+            ref={labelInputRef}
+            size="small"
+            className="label-input"
+            value={labelText}
+            aria-label={t('addLabel')}
+            onChange={(event) => onLabelTextChange(event.target.value)}
+          />
+        ) : null}
       </ToolButton>
       <ToolButton
         tool="circle"

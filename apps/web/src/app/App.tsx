@@ -1,4 +1,5 @@
-import {ConfigProvider, Layout, Modal} from 'antd';
+import {Button, ConfigProvider, Layout, Modal} from 'antd';
+import {MenuFoldOutlined, MenuUnfoldOutlined} from '@ant-design/icons';
 import {
   addMove,
   addScoringNode,
@@ -159,6 +160,7 @@ export function App() {
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(true);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
+  const [mobileHeaderRightOpen, setMobileHeaderRightOpen] = useState(false);
   const [selectionMoved, setSelectionMoved] = useState(false);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
@@ -1130,7 +1132,7 @@ export function App() {
                 onChange={handleModeChange}
               />
             </section>
-            <section className="app-header-right">
+            <section className={`app-header-right${mobileHeaderRightOpen ? ' mobile-open' : ''}`}>
               <AppMenuBar
                 showAiConfig={capabilities.katago}
                 showCameraOpen={supportsCameraCapture}
@@ -1157,6 +1159,13 @@ export function App() {
                 onSettingsChange={updateAnalysisSettings}
               />
             </section>
+            <Button
+              className="mobile-header-right-toggle"
+              icon={mobileHeaderRightOpen ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              title={t(mobileHeaderRightOpen ? 'close' : 'open')}
+              aria-expanded={mobileHeaderRightOpen}
+              onClick={() => setMobileHeaderRightOpen((open) => !open)}
+            />
           </Header>
         )}
         <Content className="app-content">
