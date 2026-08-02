@@ -579,6 +579,19 @@ export function App() {
       if (printPreviewOpen) return;
       if (isModalOpen() || isPopupOpen()) return;
 
+      if (
+        isElectron &&
+        event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        event.key.toLowerCase() === 'v'
+      ) {
+        if (isTextInputActive()) return;
+        event.preventDefault();
+        void gameRecordFiles.openFromClipboard();
+        return;
+      }
+
       if (event.key === 'Escape' && selectedScoringNode) {
         event.preventDefault();
         selectPath(path.slice(0, -1));

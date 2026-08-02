@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Menu, dialog, ipcMain, type MessageBoxOptions, type WebContents} from 'electron';
+import {app, BrowserWindow, Menu, clipboard, dialog, ipcMain, type MessageBoxOptions, type WebContents} from 'electron';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -208,7 +208,12 @@ async function createWindow(): Promise<void> {
   });
   window.setMenuBarVisibility(false);
   window.webContents.on('before-input-event', (event, input) => {
-    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+    if (
+      input.control &&
+      input.alt &&
+      input.shift &&
+      (input.code === 'Equal' || input.key === '=' || input.key === '+')
+    ) {
       event.preventDefault();
       window.webContents.toggleDevTools();
     }
@@ -249,6 +254,20 @@ app.on('window-all-closed', () => {
 });
 
 function registerIpc(): void {
+  ipcMain.handle('ulugo:read-clipboard', () => {
+    const image = clipboard.readImage();
+    return {
+      text: clipboard.readText(),
+      image: image.isEmpty()
+        ? null
+        : {
+            kind: 'image',
+            data: image.toPNG(),
+            fileName: 'clipboard.png',
+            mimeType: 'image/png',
+          },
+    };
+  });
   ipcMain.handle('ulugo:import-file', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],

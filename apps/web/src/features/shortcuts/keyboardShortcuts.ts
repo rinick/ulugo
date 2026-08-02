@@ -207,6 +207,7 @@ export function assignKeyboardShortcut(
 ): KeyboardShortcutConfig {
   const action = shortcutActions.find((item) => item.id === actionId);
   if (action == null) return config;
+  if (shortcutValue != null && isReservedKeyboardShortcut(shortcutValue)) return config;
 
   const nextShortcut = shortcutValue == null ? null : normalizeShortcut(shortcutValue, action.navigation === true);
   const next = {...config, [actionId]: nextShortcut};
@@ -259,6 +260,15 @@ export function shortcutLabel(shortcutValue: KeyboardShortcut | null): string {
   return parts.join('+');
 }
 
+export function isReservedKeyboardShortcut(shortcutValue: KeyboardShortcut): boolean {
+  return (
+    shortcutValue.key === 'v' &&
+    shortcutValue.ctrl &&
+    !shortcutValue.alt &&
+    !shortcutValue.shift
+  );
+}
+
 function shortcut(key: string, modifiers: Partial<Omit<KeyboardShortcut, 'key'>> = {}): KeyboardShortcut {
   return {
     key,
@@ -274,15 +284,14 @@ function normalizeStoredShortcut(
 ): KeyboardShortcut | null {
   if (value == null) return value === null ? null : action.defaultShortcut;
   if (typeof value.key !== 'string') return action.defaultShortcut;
-  return normalizeShortcut(
-    {
-      key: normalizeKey(value.key) ?? value.key,
-      ctrl: value.ctrl === true,
-      alt: value.alt === true,
-      shift: value.shift === true,
-    },
-    action.navigation === true
-  );
+  const shortcutValue = {
+    key: normalizeKey(value.key) ?? value.key,
+    ctrl: value.ctrl === true,
+    alt: value.alt === true,
+    shift: value.shift === true,
+  };
+  if (isReservedKeyboardShortcut(shortcutValue)) return null;
+  return normalizeShortcut(shortcutValue, action.navigation === true);
 }
 
 function normalizeShortcut(value: KeyboardShortcut, navigation: boolean): KeyboardShortcut {

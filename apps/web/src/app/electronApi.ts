@@ -22,6 +22,11 @@ export interface ElectronImageImportResult {
   mimeType: string;
 }
 
+export interface ElectronClipboardResult {
+  text: string;
+  image: ElectronImageImportResult | null;
+}
+
 export interface ElectronExportRequest {
   content: string;
   suggestedName: string;
@@ -53,6 +58,7 @@ export interface ElectronGoogleDriveSaveResult {
 
 export interface UlugoElectronApi {
   platform: 'electron';
+  readClipboard: () => Promise<ElectronClipboardResult>;
   importFile: () => Promise<ElectronImportResult | ElectronImageImportResult | null>;
   consumeOpenGameRecord: () => Promise<ElectronImportResult | null>;
   onOpenGameRecord: (callback: (result: ElectronImportResult | null) => void) => () => void;

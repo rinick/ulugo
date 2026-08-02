@@ -27,6 +27,7 @@ interface GameRecordFiles {
   saveToClipboard: () => Promise<void>;
   saveToGoogleDrive: () => Promise<void>;
   open: () => Promise<void>;
+  openFromClipboard: () => Promise<void>;
   openFromCamera: () => void;
   openFromSgfText: () => Promise<void>;
   openFromGoogleDrive: () => Promise<void>;
@@ -179,6 +180,25 @@ export function useGameRecordFiles({
     fileInputRef.current?.click();
   }
 
+  async function openFromClipboard(): Promise<void> {
+    if (!isElectron || window.ulugo == null) return;
+
+    try {
+      const result = await window.ulugo.readClipboard();
+      if (result.text.trim() !== '') {
+        try {
+          importText(result.text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+          return;
+        } catch {
+          // Fall through to an image when the clipboard text is not valid SGF.
+        }
+      }
+      if (result.image != null) openElectronImage(result.image);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('importFailed'));
+    }
+  }
+
   function openElectronImage(result: ElectronImageImportResult): void {
     onOpenImage(new File([Uint8Array.from(result.data).buffer], result.fileName, {type: result.mimeType}));
   }
@@ -261,6 +281,7 @@ export function useGameRecordFiles({
     saveToClipboard,
     saveToGoogleDrive,
     open,
+    openFromClipboard,
     openFromCamera: () => cameraInputRef.current?.click(),
     openFromSgfText,
     openFromGoogleDrive,
