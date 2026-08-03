@@ -87,9 +87,7 @@ import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './
 import {getAppFontFamily} from './fonts';
 import {appTheme} from './appTheme';
 import {
-  canPlaceReplacementMove,
   gtpMoveToPoint,
-  hasReplaceableContinuation,
   replaceMoveStateForSelection,
   replaceNextMoveBranch,
   type ReplaceMoveState,
@@ -526,10 +524,12 @@ export function App() {
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
-      if (!hasReplaceableContinuation(document, operationPath, branchMemoryRef.current)) return;
+      if (operationPath.length === 0) return;
+      const replacementPath = operationPath.slice(0, -1);
+      selectPath(replacementPath);
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
-      setReplaceMoveState({originalPath: operationPath, replacementPath: operationPath});
+      setReplaceMoveState({originalPath: replacementPath, replacementPath});
       setTool('replace');
       return;
     }
@@ -573,9 +573,9 @@ export function App() {
   const canNavigatePrevious = path.length > 0;
   const canNavigateNext = currentNode.children.length > 0;
   const canReplaceMove =
-    tool === 'replace' && replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
-      ? canPlaceReplacementMove(operationPath, replaceMoveState)
-      : hasReplaceableContinuation(document, operationPath, branchMemoryRef.current);
+    tool === 'replace'
+      ? replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
+      : operationPath.length > 0;
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {

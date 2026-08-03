@@ -92,23 +92,6 @@ export function replaceMoveStateForSelection(
   return {...state, originalPath, replacementPath: path};
 }
 
-export function hasReplaceableContinuation(
-  document: SgfDocument,
-  path: number[],
-  branchMemory: Map<string, number>
-): boolean {
-  const nextPath = nextOriginalBranchPath(document, path, branchMemory);
-  return nextPath != null && nextOriginalBranchPath(document, nextPath, branchMemory) != null;
-}
-
-export function canPlaceReplacementMove(
-  path: number[],
-  state: ReplaceMoveState | null
-): boolean {
-  if (state == null || !samePath(path, state.replacementPath)) return false;
-  return state.originalStartPath != null && state.replacementStartPath != null;
-}
-
 export function gtpMoveToPoint(move: string, size: number): string | null {
   const match = /^([A-Za-z])(\d+)$/.exec(move);
   if (match == null) return null;

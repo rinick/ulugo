@@ -87,7 +87,7 @@ export const resources = {
       tipMarkupText:
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
       tipReplaceMove:
-        'If you notice a misrecorded move while recording a game, go back to the move before the mistake and use Replace move to correct the mistaken moves. There is no need to replay everything after them.',
+        'If you notice a misrecorded move, select that move and use Replace move. Ulugo returns to the previous position so you can correct it without replaying all later moves.',
       tipBoardRecognition:
         'Ulugo can convert a photo of a Go board into an SGF file. Choose an image when opening a file to start board recognition.',
       tipMinimalPortrait:
@@ -342,7 +342,7 @@ export const resources = {
       tipMarkup: '添加标记时，双击可以将连续的棋子全部加上标记。',
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
       tipReplaceMove:
-        '在记谱的过程中如果发现之前的棋记错了，可以退到错误之前的一手，然后使用“替换着手”工具来纠正错误的几手，无需重摆之后所有的棋。',
+        '在记谱过程中如果发现某一手记错了，选中错误的那一手并使用“替换着手”工具。程序会自动退回上一手，让你纠正错误，无需重摆之后所有的棋。',
       tipBoardRecognition: 'Ulugo可以将棋盘照片转换为SGF文件。打开文件时选择图片即可开始棋盘识别。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
       tipWebScoreEstimate:
@@ -592,7 +592,7 @@ export const resources = {
       tipMarkupText:
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
       tipReplaceMove:
-        '棋譜を記録している途中で以前の手の記録ミスに気づいた場合は、ミスの直前の手に戻り、「着手を置換」ツールで誤った数手を直せます。その後の手をすべて並べ直す必要はありません。',
+        '記録ミスに気づいたら、その誤った手を選択して「着手を置換」を使います。自動的に一手前へ戻るので、その後の手をすべて並べ直さずに修正できます。',
       tipBoardRecognition:
         'Ulugoは碁盤の写真をSGFファイルに変換できます。ファイルを開くときに画像を選択すると、盤面認識が始まります。',
       tipMinimalPortrait:
@@ -849,7 +849,7 @@ export const resources = {
       tipMarkupText:
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
       tipReplaceMove:
-        '기보를 기록하는 중에 이전 수가 잘못 기록된 것을 발견하면, 잘못되기 전 수로 돌아가 "수 바꾸기" 도구로 잘못된 몇 수를 고칠 수 있습니다. 이후의 모든 수를 다시 놓을 필요는 없습니다.',
+        '잘못 기록된 수를 발견하면 그 수를 선택하고 "수 바꾸기"를 사용하세요. 자동으로 한 수 전으로 돌아가므로 이후의 모든 수를 다시 놓지 않고 수정할 수 있습니다.',
       tipBoardRecognition:
         'Ulugo는 바둑판 사진을 SGF 파일로 변환할 수 있습니다. 파일을 열 때 이미지를 선택하면 바둑판 인식이 시작됩니다.',
       tipMinimalPortrait:
@@ -1106,7 +1106,7 @@ export const resources = {
       tipMarkupText:
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
       tipReplaceMove:
-        'Si vous remarquez une erreur de saisie pendant que vous notez une partie, revenez au coup avant l erreur puis utilisez Remplacer le coup pour corriger les quelques coups errones. Il n est pas necessaire de rejouer tous les coups suivants.',
+        'Si vous remarquez un coup mal saisi, selectionnez ce coup et utilisez Remplacer le coup. Ulugo revient automatiquement au coup precedent afin de le corriger sans rejouer tous les coups suivants.',
       tipBoardRecognition:
         'Ulugo peut convertir une photo d un plateau de go en fichier SGF. Selectionnez une image lors de l ouverture d un fichier pour lancer la reconnaissance du plateau.',
       tipMinimalPortrait:
@@ -1366,7 +1366,7 @@ export const resources = {
       tipMarkupText:
         'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
       tipReplaceMove:
-        'Wenn du beim Aufzeichnen einer Partie bemerkst, dass ein frueherer Zug falsch notiert wurde, gehe zum Zug vor dem Fehler zurueck und korrigiere die falschen Zuege mit Zug ersetzen. Du musst die danach folgenden Zuege nicht neu setzen.',
+        'Wenn du einen falsch notierten Zug bemerkst, waehle diesen Zug aus und verwende Zug ersetzen. Ulugo geht automatisch einen Zug zurueck, damit du ihn korrigieren kannst, ohne alle folgenden Zuege neu zu setzen.',
       tipBoardRecognition:
         'Ulugo kann ein Foto eines Go-Bretts in eine SGF-Datei umwandeln. Waehle beim Oeffnen einer Datei ein Bild aus, um die Bretterkennung zu starten.',
       tipMinimalPortrait:
@@ -1625,7 +1625,7 @@ export const resources = {
       tipMarkupText:
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
       tipReplaceMove:
-        'Если во время записи партии вы заметили, что один из предыдущих ходов записан неверно, вернитесь к ходу перед ошибкой и используйте "Заменить ход", чтобы исправить ошибочные ходы. Не нужно заново расставлять все последующие ходы.',
+        'Если вы заметили неверно записанный ход, выберите его и используйте «Заменить ход». Ulugo автоматически вернется на ход назад, чтобы вы могли исправить ошибку, не расставляя заново все последующие ходы.',
       tipBoardRecognition:
         'Ulugo может преобразовать фотографию доски го в файл SGF. Выберите изображение при открытии файла, чтобы запустить распознавание доски.',
       tipMinimalPortrait:
