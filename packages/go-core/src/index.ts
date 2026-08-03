@@ -1,5 +1,6 @@
 import {
   getBoardSize,
+  getInitialCaptures,
   getLine,
   normalizeMovePoint,
   pointToVertex,
@@ -38,7 +39,7 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
   const size = getBoardSize(document);
   const stones = new Map<SgfPoint, Stone>();
   const moveNumbers = new Map<SgfPoint, number>();
-  const captures: Record<Stone, number> = {B: 0, W: 0};
+  const captures = getInitialCaptures(document);
   const line = getLine(document, path);
   let moveNumber = 0;
   let lastMove: SgfPoint | null = null;

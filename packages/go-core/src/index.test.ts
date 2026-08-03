@@ -40,6 +40,13 @@ describe('go-core', () => {
     expect(position.captures.W).toBe(0);
   });
 
+  it('starts from capture counts stored on a recognized position', () => {
+    const document = parseSgf('(;GM[1]SZ[19]XBC[3]XWC[1]AB[dd]AW[pp])');
+    const position = deriveBoardPosition(document, []);
+
+    expect(position.captures).toEqual({B: 3, W: 1});
+  });
+
   it('uses PL on setup nodes as the next color', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd];PL[B]AW[pp])');
 

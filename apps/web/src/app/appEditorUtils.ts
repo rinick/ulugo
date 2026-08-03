@@ -5,6 +5,7 @@ import {
   isScoringNode,
   normalizeMovePoint,
   samePath,
+  type SgfColor,
   type SgfDocument,
 } from '@ulugo/sgf-core';
 
@@ -24,8 +25,24 @@ export function scoringOperationPath(document: SgfDocument, path: number[]): num
 export function shouldAutoEstimateRecognizedGame(document: SgfDocument): boolean {
   const root = document.root.data;
   const stoneCount = (root.AB?.length ?? 0) + (root.AW?.length ?? 0);
-  const rules = root.RU?.[0]?.trim().toLowerCase().replace(/[^a-z]/g, '') ?? '';
-  return stoneCount > 100 && rules !== 'japanese' && rules !== 'korean';
+  return stoneCount > 100;
+}
+
+export function recognizedCaptureCounts(
+  blackStones: number,
+  whiteStones: number,
+  handicap: number,
+  nextPlayer: SgfColor
+): Record<SgfColor, number> {
+  const initialBlackStones = handicap >= 2 ? handicap : 0;
+  const whiteMovesMinusBlackMoves =
+    handicap >= 2 ? (nextPlayer === 'B' ? 1 : 0) : nextPlayer === 'W' ? -1 : 0;
+  const blackMinusWhiteCaptures =
+    whiteMovesMinusBlackMoves - initialBlackStones + blackStones - whiteStones;
+
+  return blackMinusWhiteCaptures >= 0
+    ? {B: blackMinusWhiteCaptures, W: 0}
+    : {B: 0, W: -blackMinusWhiteCaptures};
 }
 
 export function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {

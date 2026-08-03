@@ -1,6 +1,6 @@
 import {message} from 'antd';
-import {serializeSgf, type SgfDocument} from '@ulugo/sgf-core';
-import {useEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
+import {serializeSgf, type SgfDocument, type SgfNode} from '@ulugo/sgf-core';
+import {useCallback, useEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
 import {promptSgfText} from '../features/files/promptSgfText';
@@ -8,11 +8,12 @@ import {currentSgfFileName, hasDraggedFiles, normalizeSgfFileName, type CurrentF
 import {capabilities, isElectron} from './capabilities';
 import {isGameRecordFile, parseGameRecord, readGameRecordFile, withImportedGameName} from './gameRecordFileUtils';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
-import type {ElectronImageImportResult, ElectronImportResult} from './electronApi';
+import type {ElectronImageImportResult, ElectronImportResult, ElectronRecentFile} from './electronApi';
 
 interface UseGameRecordFilesOptions {
   document: SgfDocument;
   gameName: string;
+  startedFromEmpty: boolean;
   onImport: (document: SgfDocument) => void;
   onOpenImage: (image: File) => void;
 }
@@ -21,12 +22,15 @@ interface GameRecordFiles {
   fileInputRef: RefObject<HTMLInputElement | null>;
   cameraInputRef: RefObject<HTMLInputElement | null>;
   googleDrivePending: 'open' | 'save' | null;
-  clearCurrentFile: () => void;
+  recentFiles: ElectronRecentFile[];
+  clearCurrentFile: (startedFromEmpty?: boolean) => void;
+  archiveUnsavedGame: () => Promise<boolean>;
   save: () => Promise<void>;
   saveAs: () => Promise<void>;
   saveToClipboard: () => Promise<void>;
   saveToGoogleDrive: () => Promise<void>;
   open: () => Promise<void>;
+  openRecentFile: (filePath: string) => Promise<void>;
   openFromClipboard: (clipboardData?: DataTransfer | null) => Promise<void>;
   openFromCamera: () => void;
   openFromSgfText: () => Promise<void>;
@@ -40,11 +44,14 @@ interface GameRecordFiles {
 export function useGameRecordFiles({
   document,
   gameName,
+  startedFromEmpty: initiallyStartedFromEmpty,
   onImport,
   onOpenImage,
 }: UseGameRecordFilesOptions): GameRecordFiles {
   const {t} = useTranslation();
   const [currentFile, setCurrentFile] = useState<CurrentFileMetadata | null>(null);
+  const [startedFromEmpty, setStartedFromEmpty] = useState(initiallyStartedFromEmpty);
+  const [recentFiles, setRecentFiles] = useState<ElectronRecentFile[]>([]);
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -54,17 +61,55 @@ export function useGameRecordFiles({
 
     const importOpenedGameRecord = (result: ElectronImportResult | null): void => {
       if (result == null) return;
-      importText(result.content, result.fileName, {
+      void importText(result.content, result.fileName, {
         name: result.fileName,
         electronFilePath: result.filePath,
-      });
+      }).catch(showImportError);
     };
     void window.ulugo
       .consumeOpenGameRecord()
       .then(importOpenedGameRecord)
-      .catch((error) => message.error(error instanceof Error ? error.message : t('importFailed')));
+      .catch(showImportError);
     return window.ulugo.onOpenGameRecord(importOpenedGameRecord);
   }, [onImport, t]);
+
+  const refreshRecentFiles = useCallback(async (): Promise<void> => {
+    if (!isElectron || window.ulugo == null) return;
+    try {
+      setRecentFiles(await window.ulugo.getRecentFiles());
+    } catch {
+      setRecentFiles([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRecentFiles();
+  }, [refreshRecentFiles]);
+
+  useEffect(() => {
+    if (!isElectron || window.ulugo == null) return;
+    window.ulugo.updateAutoSaveCandidate(
+      startedFromEmpty && currentFile == null
+        ? {
+            content: serializeSgf(document),
+            fileName: currentSgfFileName(null, gameName),
+            moveCount: maximumMoveCount(document),
+          }
+        : null
+    );
+  }, [currentFile, document, gameName, startedFromEmpty]);
+
+  async function archiveUnsavedGame(): Promise<boolean> {
+    if (!isElectron || window.ulugo == null) return true;
+    try {
+      await window.ulugo.archiveUnsavedGame();
+      await refreshRecentFiles();
+      return true;
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t('exportFailed'));
+      return false;
+    }
+  }
 
   async function save(): Promise<void> {
     if (currentFile == null) {
@@ -107,6 +152,7 @@ export function useGameRecordFiles({
       });
       if (result == null) return;
       setCurrentFile({name: result.fileName, googleDriveFileId: result.fileId});
+      setStartedFromEmpty(false);
       message.success(t('savedToGoogleDrive'));
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('googleDriveFailed'));
@@ -138,6 +184,7 @@ export function useGameRecordFiles({
         });
         if (!result.canceled && result.fileName != null) {
           setCurrentFile({name: result.fileName, electronFilePath: result.filePath});
+          setStartedFromEmpty(false);
           message.success(t('saved'));
         }
       } catch (error) {
@@ -166,10 +213,11 @@ export function useGameRecordFiles({
         if (result.kind === 'image') {
           openElectronImage(result);
         } else {
-          importText(result.content, result.fileName, {
+          await importText(result.content, result.fileName, {
             name: result.fileName,
             electronFilePath: result.filePath,
           });
+          await refreshRecentFiles();
         }
       } catch (error) {
         message.error(error instanceof Error ? error.message : t('importFailed'));
@@ -180,12 +228,31 @@ export function useGameRecordFiles({
     fileInputRef.current?.click();
   }
 
+  async function openRecentFile(filePath: string): Promise<void> {
+    if (!isElectron || window.ulugo == null) return;
+    try {
+      const result = await window.ulugo.openRecentFile(filePath);
+      if (result.kind === 'image') {
+        openElectronImage(result);
+      } else {
+        await importText(result.content, result.fileName, {
+          name: result.fileName,
+          electronFilePath: result.filePath,
+        });
+      }
+      await refreshRecentFiles();
+    } catch (error) {
+      showImportError(error);
+      await refreshRecentFiles();
+    }
+  }
+
   async function openFromClipboard(clipboardData?: DataTransfer | null): Promise<void> {
     if (clipboardData != null) {
       const text = clipboardData.getData('text/plain');
       if (text.trim() !== '') {
         try {
-          importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+          await importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
           return;
         } catch {
           // Fall through when clipboard text is not valid SGF.
@@ -214,7 +281,7 @@ export function useGameRecordFiles({
       const result = await window.ulugo.readClipboard();
       if (result.text.trim() !== '') {
         try {
-          importText(result.text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+          await importText(result.text, 'clipboard.sgf', {name: 'clipboard.sgf'});
           return;
         } catch {
           // Fall through to an image when the clipboard text is not valid SGF.
@@ -235,7 +302,7 @@ export function useGameRecordFiles({
     try {
       const result = await openSgfFromGoogleDrive(capabilities.platform);
       if (result == null) return;
-      importText(result.content, result.fileName, {
+      await importText(result.content, result.fileName, {
         name: result.fileName,
         googleDriveFileId: result.fileId,
       });
@@ -255,7 +322,7 @@ export function useGameRecordFiles({
     if (text == null) return;
 
     try {
-      importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
+      await importText(text, 'clipboard.sgf', {name: 'clipboard.sgf'});
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('importFailed'));
     }
@@ -266,11 +333,16 @@ export function useGameRecordFiles({
 
     try {
       if (isImageFile(file)) {
+        const filePath = electronFilePath(file);
+        if (filePath != null && window.ulugo != null) {
+          await window.ulugo.addRecentFile(filePath);
+          await refreshRecentFiles();
+        }
         onOpenImage(file);
         return;
       }
       const text = await readGameRecordFile(file);
-      importText(text, file.name, {name: file.name, electronFilePath: electronFilePath(file)});
+      await importText(text, file.name, {name: file.name, electronFilePath: electronFilePath(file)});
     } catch (error) {
       message.error(error instanceof Error ? error.message : t('importFailed'));
     } finally {
@@ -292,22 +364,38 @@ export function useGameRecordFiles({
     void importFile(file);
   }
 
-  function importText(text: string, fileName: string, metadata: CurrentFileMetadata): void {
+  async function importText(text: string, fileName: string, metadata: CurrentFileMetadata): Promise<void> {
     const importedDocument = withImportedGameName(parseGameRecord(text, fileName), fileName);
+    if (!(await archiveUnsavedGame())) return;
+    if (metadata.electronFilePath != null && window.ulugo != null) {
+      await window.ulugo.addRecentFile(metadata.electronFilePath);
+      await refreshRecentFiles();
+    }
     setCurrentFile(metadata);
+    setStartedFromEmpty(false);
     onImport(importedDocument);
+  }
+
+  function showImportError(error: unknown): void {
+    message.error(error instanceof Error ? error.message : t('importFailed'));
   }
 
   return {
     fileInputRef,
     cameraInputRef,
     googleDrivePending,
-    clearCurrentFile: () => setCurrentFile(null),
+    recentFiles,
+    clearCurrentFile: (nextStartedFromEmpty = false) => {
+      setCurrentFile(null);
+      setStartedFromEmpty(nextStartedFromEmpty);
+    },
+    archiveUnsavedGame,
     save,
     saveAs,
     saveToClipboard,
     saveToGoogleDrive,
     open,
+    openRecentFile,
     openFromClipboard,
     openFromCamera: () => cameraInputRef.current?.click(),
     openFromSgfText,
@@ -326,6 +414,15 @@ function isImageFile(file: File): boolean {
 function electronFilePath(file: File): string | undefined {
   const path = window.ulugo?.getPathForFile(file) ?? (file as File & {path?: unknown}).path;
   return typeof path === 'string' && path !== '' ? path : undefined;
+}
+
+function maximumMoveCount(document: SgfDocument): number {
+  function count(node: SgfNode): number {
+    const current = node.data.B != null || node.data.W != null ? 1 : 0;
+    return current + Math.max(0, ...node.children.map(count));
+  }
+
+  return count(document.root);
 }
 
 async function writeTextToClipboard(text: string): Promise<void> {

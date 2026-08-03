@@ -3,6 +3,7 @@ import {createNewGame, type SgfDocument} from '@ulugo/sgf-core';
 import {Alert, Button, Modal, Segmented, Select, Spin} from 'antd';
 import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
 import {useTranslation} from 'react-i18next';
+import {recognizedCaptureCounts} from '../../app/appEditorUtils';
 import {isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
 
@@ -485,11 +486,14 @@ function createRecognizedGame(
   }
 
   document.root.data.RU = [rules];
-  document.root.data.KM = [rules === 'Japanese' || rules === 'Korean' ? '6.5' : '7.5'];
+  document.root.data.KM = [handicap > 0 ? '0.5' : rules === 'Japanese' || rules === 'Korean' ? '6.5' : '7.5'];
   document.root.data.PL = [nextPlayer];
   if (black.length > 0) document.root.data.AB = black;
   if (white.length > 0) document.root.data.AW = white;
   if (handicap > 0) document.root.data.HA = [String(handicap)];
+  const captures = recognizedCaptureCounts(black.length, white.length, handicap, nextPlayer);
+  document.root.data.XBC = [String(captures.B)];
+  document.root.data.XWC = [String(captures.W)];
   return document;
 }
 

@@ -12,6 +12,7 @@ import {
   eraseAllMarkup,
   eraseMarkup,
   formatPoint,
+  getInitialCaptures,
   moveBranch,
   moveBranchToMain,
   parseGib,
@@ -42,6 +43,11 @@ describe('sgf-core', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd](;W[pp])(;W[dp]))');
     expect(document.root.children[0].children).toHaveLength(2);
     expect(serializeSgf(document)).toBe('(;GM[1]SZ[19];B[dd](;W[pp])(;W[dp]))');
+  });
+
+  it('reads initial capture counts from Ulugo SGF properties', () => {
+    expect(getInitialCaptures(parseSgf('(;GM[1]SZ[19]XBC[3]XWC[1])'))).toEqual({B: 3, W: 1});
+    expect(getInitialCaptures(parseSgf('(;GM[1]SZ[19]XBC[-1]XWC[invalid])'))).toEqual({B: 0, W: 0});
   });
 
   it('parses Tygem GIB files into SGF documents', () => {
@@ -208,6 +214,12 @@ describe('sgf-core', () => {
       isScoring: true,
       scoreColor: null,
     });
+  });
+
+  it('uses initial capture counts for score node color', () => {
+    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[Japanese]XBC[1]XWC[0];TB[]TW[])'))[0];
+
+    expect(tree.children[0]).toMatchObject({isScoring: true, scoreColor: 'B'});
   });
 
   it('adds and updates scoring nodes', () => {

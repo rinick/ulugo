@@ -105,6 +105,7 @@ const BoardRecognitionModal = lazy(() => import('../features/board-recognition/B
 interface StartupState {
   document: SgfDocument;
   path: number[];
+  startedFromEmpty: boolean;
 }
 
 interface ReplaceDocumentOptions {
@@ -295,6 +296,7 @@ export function App() {
   }
 
   async function handleRecognizedDocument(recognizedDocument: SgfDocument): Promise<void> {
+    if (!(await gameRecordFiles.archiveUnsavedGame())) return;
     let importedDocument = recognizedDocument;
     let initialPath: number[] = [];
     if (shouldAutoEstimateRecognizedGame(recognizedDocument)) {
@@ -310,7 +312,7 @@ export function App() {
       initialPath = result.path;
     }
 
-    gameRecordFiles.clearCurrentFile();
+    gameRecordFiles.clearCurrentFile(false);
     handleImportedDocument(importedDocument, initialPath);
     setRecognitionImage(null);
   }
@@ -318,6 +320,7 @@ export function App() {
   const gameRecordFiles = useGameRecordFiles({
     document,
     gameName: gameInfo.GN,
+    startedFromEmpty: startupState.startedFromEmpty,
     onImport: handleImportedDocument,
     onOpenImage: setRecognitionImage,
   });
@@ -450,9 +453,10 @@ export function App() {
     void audio.play().catch(() => undefined);
   }
 
-  function handleNew(size: BoardSize = 19): void {
+  async function handleNew(size: BoardSize = 19): Promise<void> {
+    if (!(await gameRecordFiles.archiveUnsavedGame())) return;
     branchMemoryRef.current.clear();
-    gameRecordFiles.clearCurrentFile();
+    gameRecordFiles.clearCurrentFile(true);
     setAnalysisModeActive(false);
     replaceDocument(createNewGame(size), [], {clearAnalysisCache: true, resetSelectionMoved: true});
   }
@@ -1158,9 +1162,12 @@ export function App() {
               <AppMenuBar
                 showAiConfig={capabilities.katago}
                 showCameraOpen={supportsCameraCapture}
+                showRecentFiles={isElectron}
+                recentFiles={gameRecordFiles.recentFiles}
                 language={currentLanguage}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
+                onOpenRecent={(filePath) => void gameRecordFiles.openRecentFile(filePath)}
                 onOpenFromCamera={gameRecordFiles.openFromCamera}
                 onOpenFromSgfText={() => void gameRecordFiles.openFromSgfText()}
                 onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
@@ -1391,20 +1398,20 @@ function isSetupNode(node: SgfNode): boolean {
 }
 
 function readStartupState(): StartupState {
-  if (!readOpenLastSgfOnStartupPreference()) return newStartupState(createNewGame(), []);
+  if (!readOpenLastSgfOnStartupPreference()) return newStartupState(createNewGame(), [], true);
 
   try {
     const sgf = localStorage.getItem(lastSgfStorageKey);
-    if (sgf == null) return newStartupState(createNewGame(), []);
+    if (sgf == null) return newStartupState(createNewGame(), [], true);
     const document = parseSgf(sgf);
-    return newStartupState(document, lastMainBranchMovePath(document));
+    return newStartupState(document, lastMainBranchMovePath(document), false);
   } catch {
-    return newStartupState(createNewGame(), []);
+    return newStartupState(createNewGame(), [], true);
   }
 }
 
-function newStartupState(document: SgfDocument, path: number[]): StartupState {
-  return {document, path};
+function newStartupState(document: SgfDocument, path: number[], startedFromEmpty: boolean): StartupState {
+  return {document, path, startedFromEmpty};
 }
 
 function lastMainBranchMovePath(document: SgfDocument): number[] {

@@ -39,6 +39,17 @@ export interface ElectronExportResult {
   fileName?: string;
 }
 
+export interface ElectronRecentFile {
+  filePath: string;
+  fileName: string;
+}
+
+export interface ElectronAutoSaveCandidate {
+  content: string;
+  fileName: string;
+  moveCount: number;
+}
+
 export interface ElectronGoogleDriveOpenResult {
   content: string;
   fileId: string;
@@ -61,6 +72,11 @@ export interface UlugoElectronApi {
   readClipboard: () => Promise<ElectronClipboardResult>;
   importFile: () => Promise<ElectronImportResult | ElectronImageImportResult | null>;
   consumeOpenGameRecord: () => Promise<ElectronImportResult | null>;
+  getRecentFiles: () => Promise<ElectronRecentFile[]>;
+  openRecentFile: (filePath: string) => Promise<ElectronImportResult | ElectronImageImportResult>;
+  addRecentFile: (filePath: string) => Promise<void>;
+  archiveUnsavedGame: () => Promise<void>;
+  updateAutoSaveCandidate: (candidate: ElectronAutoSaveCandidate | null) => void;
   onOpenGameRecord: (callback: (result: ElectronImportResult | null) => void) => () => void;
   exportSgf: (request: ElectronExportRequest) => Promise<ElectronExportResult>;
   getPathForFile: (file: File) => string;

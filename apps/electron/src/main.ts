@@ -4,6 +4,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {cancelGoogleDriveBridge, openGoogleDriveSgf, saveGoogleDriveSgf} from './googleDriveBridge';
 import {
+  addRecentFile,
+  autoSaveGame,
+  readRecentFiles,
+  type AutoSaveCandidate,
+} from './recentFiles';
+import {
   downloadKataGoAsset,
   fileExists,
   findDefaultKataGoConfig,
@@ -173,6 +179,9 @@ let katagoOutputBuffer = '';
 let katagoSender: WebContents | null = null;
 let mainWindow: BrowserWindow | null = null;
 let pendingOpenFilePath: string | null = gameRecordFilePathFromArgs(process.argv);
+let autoSaveCandidate: AutoSaveCandidate | null = null;
+let autoSaveBeforeQuit = false;
+let autoSaveBeforeQuitComplete = false;
 let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
@@ -253,6 +262,22 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+app.on('before-quit', (event) => {
+  if (autoSaveBeforeQuitComplete || autoSaveCandidate == null || autoSaveCandidate.moveCount <= 16) return;
+  event.preventDefault();
+  if (autoSaveBeforeQuit) return;
+
+  autoSaveBeforeQuit = true;
+  void archiveCurrentUnsavedGame()
+    .catch((error) => {
+      dialog.showErrorBox('Ulugo', error instanceof Error ? error.message : 'Failed to auto-save the game.');
+    })
+    .finally(() => {
+      autoSaveBeforeQuitComplete = true;
+      app.quit();
+    });
+});
+
 function registerIpc(): void {
   ipcMain.handle('ulugo:read-clipboard', () => {
     const image = clipboard.readImage();
@@ -280,12 +305,28 @@ function registerIpc(): void {
     });
     if (result.canceled || result.filePaths[0] == null) return null;
 
-    return isGameRecordFilePath(result.filePaths[0])
-      ? readGameRecordFile(result.filePaths[0])
-      : readImageFile(result.filePaths[0]);
+    if (!isGameRecordFilePath(result.filePaths[0])) return readImageFile(result.filePaths[0]);
+    await archiveCurrentUnsavedGame();
+    return readGameRecordFile(result.filePaths[0]);
   });
   ipcMain.handle('ulugo:consume-open-game-record', async () => {
     return consumePendingGameRecordFile();
+  });
+  ipcMain.handle('ulugo:get-recent-files', () => readRecentFiles(ulugoDataDirectory()));
+  ipcMain.handle('ulugo:open-recent-file', async (_event, filePath: string) => {
+    const recent = await readRecentFiles(ulugoDataDirectory());
+    if (!recent.some((item) => item.filePath === filePath)) throw new Error('Recent file no longer exists.');
+    if (!isGameRecordFilePath(filePath)) return readImageFile(filePath);
+    await archiveCurrentUnsavedGame();
+    return readGameRecordFile(filePath);
+  });
+  ipcMain.handle('ulugo:add-recent-file', async (_event, filePath: string) => {
+    if (!isGameRecordFilePath(filePath) && !isImageFilePath(filePath)) return;
+    await addRecentFile(ulugoDataDirectory(), filePath);
+  });
+  ipcMain.handle('ulugo:archive-unsaved-game', () => archiveCurrentUnsavedGame());
+  ipcMain.on('ulugo:update-auto-save-candidate', (_event, candidate: unknown) => {
+    autoSaveCandidate = normalizeAutoSaveCandidate(candidate);
   });
 
   ipcMain.handle(
@@ -427,6 +468,7 @@ function focusMainWindow(): void {
 
 async function openGameRecordFile(filePath: string): Promise<void> {
   if (!isGameRecordFilePath(filePath)) return;
+  await archiveCurrentUnsavedGame();
   pendingOpenFilePath = filePath;
 
   if (!app.isReady() || mainWindow == null || mainWindow.isDestroyed()) {
@@ -456,6 +498,7 @@ async function consumePendingGameRecordFile(): Promise<GameRecordOpenResult | nu
 
 async function readGameRecordFile(filePath: string): Promise<GameRecordOpenResult> {
   const buffer = await fs.readFile(filePath);
+  await addRecentFile(ulugoDataDirectory(), filePath);
   return {
     kind: 'gameRecord',
     content: decodeGameRecordBuffer(buffer, filePath.toLowerCase().endsWith('.gib')),
@@ -464,10 +507,34 @@ async function readGameRecordFile(filePath: string): Promise<GameRecordOpenResul
   };
 }
 
+async function archiveCurrentUnsavedGame(): Promise<void> {
+  const candidate = autoSaveCandidate;
+  if (candidate == null) return;
+  await autoSaveGame(ulugoDataDirectory(), candidate);
+  if (autoSaveCandidate === candidate) autoSaveCandidate = null;
+}
+
+function normalizeAutoSaveCandidate(value: unknown): AutoSaveCandidate | null {
+  if (value == null || typeof value !== 'object') return null;
+  const candidate = value as Partial<AutoSaveCandidate>;
+  if (
+    typeof candidate.content !== 'string' ||
+    typeof candidate.fileName !== 'string' ||
+    typeof candidate.moveCount !== 'number' ||
+    !Number.isInteger(candidate.moveCount) ||
+    candidate.moveCount < 0
+  ) {
+    return null;
+  }
+  return {content: candidate.content, fileName: candidate.fileName, moveCount: candidate.moveCount};
+}
+
 async function readImageFile(filePath: string): Promise<ImageOpenResult> {
+  const data = await fs.readFile(filePath);
+  await addRecentFile(ulugoDataDirectory(), filePath);
   return {
     kind: 'image',
-    data: await fs.readFile(filePath),
+    data,
     fileName: path.basename(filePath),
     mimeType: imageMimeType(filePath),
   };
@@ -486,6 +553,10 @@ function gameRecordFilePathFromArgs(argv: string[]): string | null {
 
 function isGameRecordFilePath(filePath: string): boolean {
   return /\.(sgf|gib)$/i.test(filePath);
+}
+
+function isImageFilePath(filePath: string): boolean {
+  return /\.(avif|bmp|gif|heic|heif|jpe?g|png|webp)$/i.test(filePath);
 }
 
 async function getKataGoAssetInventory(): Promise<{

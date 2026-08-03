@@ -1,6 +1,7 @@
 import {parseSgf} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
 import {
+  recognizedCaptureCounts,
   scoringOperationPath,
   shouldAutoEstimateRecognizedGame,
   shouldDeleteScoringNodeOnExit,
@@ -16,16 +17,35 @@ describe('shouldAutoEstimateRecognizedGame', () => {
     expect(shouldAutoEstimateRecognizedGame(document)).toBe(true);
   });
 
-  it('does not estimate at 100 stones or under Japanese and Korean rules', () => {
+  it('does not estimate at 100 stones', () => {
     const document = parseSgf('(;SZ[19]RU[Chinese])');
     document.root.data.AB = Array.from({length: 100}, () => 'aa');
     expect(shouldAutoEstimateRecognizedGame(document)).toBe(false);
+  });
 
-    document.root.data.AB.push('bb');
-    document.root.data.RU = ['Japanese'];
-    expect(shouldAutoEstimateRecognizedGame(document)).toBe(false);
+  it('estimates Japanese and Korean games with more than 100 stones', () => {
+    const document = parseSgf('(;SZ[19]RU[Japanese])');
+    document.root.data.AB = Array.from({length: 101}, () => 'aa');
+    expect(shouldAutoEstimateRecognizedGame(document)).toBe(true);
+
     document.root.data.RU = ['Korean'];
-    expect(shouldAutoEstimateRecognizedGame(document)).toBe(false);
+    expect(shouldAutoEstimateRecognizedGame(document)).toBe(true);
+  });
+});
+
+describe('recognizedCaptureCounts', () => {
+  it('derives the capture difference from stone counts and the next player', () => {
+    expect(recognizedCaptureCounts(52, 49, 0, 'W')).toEqual({B: 2, W: 0});
+    expect(recognizedCaptureCounts(50, 52, 0, 'B')).toEqual({B: 0, W: 2});
+  });
+
+  it('treats handicap one like handicap zero for stone counts', () => {
+    expect(recognizedCaptureCounts(50, 49, 1, 'W')).toEqual(recognizedCaptureCounts(50, 49, 0, 'W'));
+  });
+
+  it('accounts for handicap stones and White playing first', () => {
+    expect(recognizedCaptureCounts(51, 49, 2, 'W')).toEqual({B: 0, W: 0});
+    expect(recognizedCaptureCounts(50, 50, 2, 'B')).toEqual({B: 0, W: 1});
   });
 });
 

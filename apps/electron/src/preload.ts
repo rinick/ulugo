@@ -5,6 +5,11 @@ contextBridge.exposeInMainWorld('ulugo', {
   readClipboard: () => ipcRenderer.invoke('ulugo:read-clipboard'),
   importFile: () => ipcRenderer.invoke('ulugo:import-file'),
   consumeOpenGameRecord: () => ipcRenderer.invoke('ulugo:consume-open-game-record'),
+  getRecentFiles: () => ipcRenderer.invoke('ulugo:get-recent-files'),
+  openRecentFile: (filePath: string) => ipcRenderer.invoke('ulugo:open-recent-file', filePath),
+  addRecentFile: (filePath: string) => ipcRenderer.invoke('ulugo:add-recent-file', filePath),
+  archiveUnsavedGame: () => ipcRenderer.invoke('ulugo:archive-unsaved-game'),
+  updateAutoSaveCandidate: (candidate: unknown) => ipcRenderer.send('ulugo:update-auto-save-candidate', candidate),
   onOpenGameRecord: (callback: (result: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, result: unknown) => callback(result);
     ipcRenderer.on('ulugo:open-game-record', listener);

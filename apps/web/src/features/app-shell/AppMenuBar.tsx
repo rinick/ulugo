@@ -17,9 +17,12 @@ import {LanguageDropdown} from '../../components/LanguageSelect';
 interface AppMenuBarProps {
   showAiConfig: boolean;
   showCameraOpen: boolean;
+  showRecentFiles: boolean;
+  recentFiles: Array<{filePath: string; fileName: string}>;
   language: AppLanguage;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
+  onOpenRecent: (filePath: string) => void;
   onOpenFromCamera: () => void;
   onOpenFromSgfText: () => void;
   onOpenFromGoogleDrive: () => void;
@@ -37,9 +40,12 @@ interface AppMenuBarProps {
 export function AppMenuBar({
   showAiConfig,
   showCameraOpen,
+  showRecentFiles,
+  recentFiles,
   language,
   onNew,
   onOpen,
+  onOpenRecent,
   onOpenFromCamera,
   onOpenFromSgfText,
   onOpenFromGoogleDrive,
@@ -62,6 +68,21 @@ export function AppMenuBar({
       label: t('new'),
       children: boardSizes.map((size) => ({key: `new:${size}`, label: t(`new${size}`)})),
     },
+    ...(showRecentFiles
+      ? [
+          {
+            key: 'open:recent',
+            label: t('recent'),
+            children:
+              recentFiles.length > 0
+                ? recentFiles.map((file, index) => ({
+                    key: `open:recent:${index}`,
+                    label: <span title={file.filePath}>{file.fileName}</span>,
+                  }))
+                : [{key: 'open:recent:empty', label: t('noRecentFiles'), disabled: true}],
+          },
+        ]
+      : []),
     ...(showCameraOpen ? [{key: 'open:camera', icon: <CameraOutlined />, label: t('openFromCamera')}] : []),
     {key: 'open:sgfText', label: t('openFromSgfText')},
     {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
@@ -78,6 +99,9 @@ export function AppMenuBar({
   function handleMenuClick(info: {key: string}): void {
     if (info.key.startsWith('new:')) {
       onNew(Number(info.key.split(':')[1]) as BoardSize);
+    } else if (info.key.startsWith('open:recent:') && info.key !== 'open:recent:empty') {
+      const file = recentFiles[Number(info.key.split(':')[2])];
+      if (file != null) onOpenRecent(file.filePath);
     } else if (info.key === 'open:sgfText') {
       onOpenFromSgfText();
     } else if (info.key === 'open:camera') {

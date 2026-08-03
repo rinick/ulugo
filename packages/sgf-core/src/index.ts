@@ -76,6 +76,13 @@ export function cloneNode(node: SgfNode): SgfNode {
   };
 }
 
+export function getInitialCaptures(document: SgfDocument): Record<SgfColor, number> {
+  return {
+    B: captureCount(document.root.data.XBC?.[0]),
+    W: captureCount(document.root.data.XWC?.[0]),
+  };
+}
+
 export function parseSgf(input: string): SgfDocument {
   const parser = new Parser(input);
   const root = parser.parseCollection();
@@ -772,7 +779,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
     };
   }
 
-  items.push(walk(document.root, [], 0, {stones: new Map(), captures: {B: 0, W: 0}}));
+  items.push(walk(document.root, [], 0, {stones: new Map(), captures: getInitialCaptures(document)}));
   return items;
 }
 
@@ -1036,6 +1043,11 @@ function serializeNode(node: SgfNode): string {
 
 function escapeValue(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/\]/g, '\\]');
+}
+
+function captureCount(value: string | undefined): number {
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 0 ? count : 0;
 }
 
 function unescapeValue(value: string): string {
