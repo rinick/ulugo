@@ -4,7 +4,7 @@ import {Alert, Button, Modal, Segmented, Select, Spin} from 'antd';
 import {useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {recognizedCaptureCounts} from '../../app/appEditorUtils';
-import {isMobileBrowser} from '../../app/capabilities';
+import {isElectron, isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
 
 type BoardSize = 9 | 13 | 19;
@@ -88,7 +88,7 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
     onConfirm(createRecognizedGame(board, rules, handicap, nextPlayer));
   }
 
-  const screenshotDetailsUrl = `https://deepmess.com/${language}/ulugo/screenshot.html`;
+  const screenshotDetailsUrl = `https://deepmess.com/${language}/ulugo/scan.html#screenshot`;
 
   return (
     <Modal
@@ -171,7 +171,16 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
             description={
               <>
                 <div>{t('gameScreenshotExplanation')}</div>
-                <a href={screenshotDetailsUrl} target="_blank" rel="noreferrer">
+                <a
+                  href={screenshotDetailsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => {
+                    if (!isElectron || window.ulugo == null) return;
+                    event.preventDefault();
+                    void window.ulugo.openExternal(screenshotDetailsUrl);
+                  }}
+                >
                   {t('details')}
                 </a>
               </>

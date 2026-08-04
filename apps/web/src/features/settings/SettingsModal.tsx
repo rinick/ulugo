@@ -1,4 +1,4 @@
-import {ReloadOutlined} from '@ant-design/icons';
+import {QuestionCircleOutlined, ReloadOutlined} from '@ant-design/icons';
 import {Button, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -100,6 +100,15 @@ export function SettingsModal({
     updateSettings({minVisits});
   }
 
+  function openHelp(): void {
+    const url = `https://deepmess.com/${language}/ulugo/`;
+    if (window.ulugo != null) {
+      void window.ulugo.openExternal(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   return (
     <Modal
       centered
@@ -107,9 +116,14 @@ export function SettingsModal({
       open={open}
       onCancel={onCancel}
       footer={
-        <Button type="primary" onClick={onCancel}>
-          {t('close')}
-        </Button>
+        <div className="app-settings-footer">
+          <Button icon={<QuestionCircleOutlined />} onClick={openHelp}>
+            {t('help')}
+          </Button>
+          <Button type="primary" onClick={onCancel}>
+            {t('close')}
+          </Button>
+        </div>
       }
       width={420}
       destroyOnHidden

@@ -69,6 +69,7 @@ export interface ElectronGoogleDriveSaveResult {
 
 export interface UlugoElectronApi {
   platform: 'electron';
+  openExternal: (url: string) => Promise<void>;
   readClipboard: () => Promise<ElectronClipboardResult>;
   importFile: () => Promise<ElectronImportResult | ElectronImageImportResult | null>;
   consumeOpenGameRecord: () => Promise<ElectronImportResult | null>;

@@ -1,4 +1,4 @@
-import {app, BrowserWindow, Menu, clipboard, dialog, ipcMain, type MessageBoxOptions, type WebContents} from 'electron';
+import {app, BrowserWindow, Menu, clipboard, dialog, ipcMain, shell, type MessageBoxOptions, type WebContents} from 'electron';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -292,6 +292,11 @@ function registerIpc(): void {
             mimeType: 'image/png',
           },
     };
+  });
+  ipcMain.handle('ulugo:open-external', async (_event, value: string) => {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') throw new Error('Only HTTPS links can be opened externally.');
+    await shell.openExternal(url.toString());
   });
   ipcMain.handle('ulugo:import-file', async () => {
     const result = await dialog.showOpenDialog({

@@ -245,6 +245,11 @@ textarea,
   gap: 16px;
 }
 
+.app-settings-footer {
+  display: flex;
+  justify-content: space-between;
+}
+
 .app-settings-scale-row {
   display: flex;
   align-items: center;
