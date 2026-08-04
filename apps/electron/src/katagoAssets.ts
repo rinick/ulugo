@@ -219,9 +219,10 @@ async function mergeAvailableAndInstalledAssets(
 
   for (const file of files) {
     if ([...byId.values()].some((asset) => asset.path === file)) continue;
+    const details = kind === 'katago' ? await installedKataGoDetails(file) : {label: path.basename(file)};
     byId.set(`custom:${file}`, {
       id: `custom:${file}`,
-      label: path.basename(file),
+      ...details,
       available: false,
       installed: true,
       path: file,
@@ -334,6 +335,27 @@ async function readInstallMetadata(directory: string): Promise<KataGoAvailableAs
   } catch {
     return null;
   }
+}
+
+async function installedKataGoDetails(filePath: string): Promise<{label: string; notes?: string}> {
+  try {
+    const raw = await fs.readFile(path.join(path.dirname(filePath), 'ulugo-install.json'), 'utf8');
+    const metadata = JSON.parse(raw) as {label?: unknown; notes?: unknown};
+    if (typeof metadata.label === 'string' && metadata.label.trim() !== '') {
+      return {
+        label: metadata.label,
+        notes: typeof metadata.notes === 'string' ? metadata.notes : undefined,
+      };
+    }
+  } catch {
+    // Older installations may not have metadata.
+  }
+
+  const relative = path.relative(katagoInstallDirectory(), filePath);
+  const directoryName = relative.split(path.sep)[0];
+  return {
+    label: directoryName !== '' && directoryName !== path.basename(filePath) ? directoryName : path.basename(filePath),
+  };
 }
 
 async function findFirstFile(directory: string, predicate: (file: string) => boolean): Promise<string | null> {

@@ -98,7 +98,7 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
 
 function defaultLeftPanelOpen(): boolean {
   if (typeof window === 'undefined') return true;
-  return window.innerWidth >= 1200;
+  return window.innerWidth > 1366;
 }
 
 function writeStoredValue(key: string, value: boolean | number): void {

@@ -578,9 +578,10 @@ textarea,
 
 .left-panel {
   display: flex;
-  flex: 0 0 360px;
+  flex: 0 1 360px;
   flex-direction: column;
   width: 360px;
+  min-width: 240px;
   min-height: 0;
   border-right: 1px solid #d9d9d9;
   background: #ffffff;
@@ -1868,7 +1869,7 @@ button.ant-btn.left-panel-toggle {
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1366px) {
   .app-header, .app-content {
     overflow: auto;
   }
