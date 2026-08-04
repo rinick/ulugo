@@ -84,7 +84,7 @@ export const resources = {
       openLastSgfOnStartup: 'Open the last SGF on startup',
       showTipsOnStartup: 'Show tips on startup',
       autoIncrementMarkupText: 'Auto increment markup text',
-      welcomeTip: 'Welcome to Ulugo Go, a Go game AI analysis and game record editing app.',
+      welcomeTip: 'Welcome to Ulugo, a Go game AI analysis and game record editing app.',
       tipShiftJump: 'Shift-click a stone or future move on the board to jump to that move.',
       tipMarkup: 'When adding markup, double-click to mark all connected stones.',
       tipMarkupText:
@@ -1115,7 +1115,7 @@ export const resources = {
       openLastSgfOnStartup: 'Ouvrir le dernier SGF au demarrage',
       showTipsOnStartup: 'Afficher les astuces au demarrage',
       autoIncrementMarkupText: "Incrementer automatiquement le texte d'annotation",
-      welcomeTip: 'Bienvenue dans Ulugo Go, une application d analyse IA de parties de go et d edition de kifu.',
+      welcomeTip: 'Bienvenue dans Ulugo, une application d analyse IA de parties de go et d edition de kifu.',
       tipShiftJump: 'Maj-clic sur une pierre ou un coup futur du plateau permet de sauter vers ce coup.',
       tipMarkup: 'Lorsque vous ajoutez un marquage, double-cliquez pour marquer toutes les pierres connectees.',
       tipMarkupText:
@@ -1378,7 +1378,7 @@ export const resources = {
       showTipsOnStartup: 'Tipps beim Start anzeigen',
       autoIncrementMarkupText: 'Markierungstext automatisch erhoehen',
       welcomeTip:
-        'Willkommen bei Ulugo Go, einer App fuer KI-Analyse von Go-Partien und Bearbeitung von Partieaufzeichnungen.',
+        'Willkommen bei Ulugo, einer App fuer KI-Analyse von Go-Partien und Bearbeitung von Partieaufzeichnungen.',
       tipShiftJump: 'Umschalt-Klick auf einen Stein oder spaeteren Zug auf dem Brett springt zu diesem Zug.',
       tipMarkup: 'Beim Hinzufuegen von Markierungen kannst du doppelklicken, um alle verbundenen Steine zu markieren.',
       tipMarkupText:
@@ -1640,7 +1640,7 @@ export const resources = {
       openLastSgfOnStartup: 'Открывать последний SGF при запуске',
       showTipsOnStartup: 'Показывать советы при запуске',
       autoIncrementMarkupText: 'Автоматически увеличивать текст разметки',
-      welcomeTip: 'Добро пожаловать в Ulugo Go, приложение для ИИ-анализа партий го и редактирования записей партий.',
+      welcomeTip: 'Добро пожаловать в Ulugo, приложение для ИИ-анализа партий го и редактирования записей партий.',
       tipShiftJump: 'Щелкните камень или будущий ход на доске с Shift, чтобы перейти к этому ходу.',
       tipMarkup: 'При добавлении разметки дважды щелкните, чтобы отметить все соединенные камни.',
       tipMarkupText:
