@@ -1334,6 +1334,7 @@ export function App() {
       {capabilities.katago ? (
         <KataGoSettingsModal
           open={kataGoSettingsOpen}
+          language={currentLanguage}
           onCurrentAssetUninstalled={() => setAnalysisModeActive(false)}
           onCancel={() => {
             setKataGoSettingsOpen(false);
@@ -1370,6 +1371,7 @@ export function App() {
       />
       <KeyboardShortcutsModal
         open={keyboardShortcutsOpen}
+        language={currentLanguage}
         shortcuts={keyboardShortcuts}
         showElectronShortcuts={capabilities.katago}
         onApply={handleKeyboardShortcutsApply}

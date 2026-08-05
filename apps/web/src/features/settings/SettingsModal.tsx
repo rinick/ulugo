@@ -4,6 +4,7 @@ import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
 import type {AppLanguage} from '../../app/localizationUtils';
+import {openExternalUrl} from '../../app/openExternalUrl';
 import {LanguageSelect} from '../../components/LanguageSelect';
 import {Select12} from '../../components/Select12';
 
@@ -101,12 +102,7 @@ export function SettingsModal({
   }
 
   function openHelp(): void {
-    const url = `https://deepmess.com/${language}/ulugo/`;
-    if (window.ulugo != null) {
-      void window.ulugo.openExternal(url);
-    } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
+    openExternalUrl(`https://deepmess.com/${language}/ulugo/`);
   }
 
   return (

@@ -1,6 +1,9 @@
+import {QuestionCircleOutlined} from '@ant-design/icons';
 import {Button, Modal, Space} from 'antd';
 import {useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import type {AppLanguage} from '../../app/localizationUtils';
+import {openExternalUrl} from '../../app/openExternalUrl';
 import {
   assignKeyboardShortcut,
   defaultKeyboardShortcuts,
@@ -13,6 +16,7 @@ import {
 
 interface KeyboardShortcutsModalProps {
   open: boolean;
+  language: AppLanguage;
   shortcuts: KeyboardShortcutConfig;
   showElectronShortcuts: boolean;
   onApply: (shortcuts: KeyboardShortcutConfig) => void;
@@ -21,6 +25,7 @@ interface KeyboardShortcutsModalProps {
 
 export function KeyboardShortcutsModal({
   open,
+  language,
   shortcuts,
   showElectronShortcuts,
   onApply,
@@ -81,7 +86,15 @@ export function KeyboardShortcutsModal({
       destroyOnHidden
       footer={
         <div className="keyboard-shortcuts-footer">
-          <Button onClick={() => setDraft(defaultKeyboardShortcuts)}>{t('default')}</Button>
+          <Space>
+            <Button
+              icon={<QuestionCircleOutlined />}
+              onClick={() => openExternalUrl(`https://deepmess.com/${language}/ulugo/shortcut.html`)}
+            >
+              {t('help')}
+            </Button>
+            <Button onClick={() => setDraft(defaultKeyboardShortcuts)}>{t('default')}</Button>
+          </Space>
           <Space>
             <Button onClick={onCancel}>{t('cancel')}</Button>
             <Button type="primary" onClick={() => onApply(draft)}>

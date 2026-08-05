@@ -1,3 +1,4 @@
+import {QuestionCircleOutlined} from '@ant-design/icons';
 import {Button, Form, InputNumber, Modal, Progress, Space, Table, Typography, message} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
 import {useEffect, useMemo, useState} from 'react';
@@ -9,16 +10,19 @@ import {
   type KataGoDownloadProgress,
   type KataGoSettings,
 } from '@ulugo/katago-core';
+import type {AppLanguage} from '../../app/localizationUtils';
+import {openExternalUrl} from '../../app/openExternalUrl';
 
 type AssetKind = 'katago' | 'model';
 
 interface KataGoSettingsModalProps {
   open: boolean;
+  language: AppLanguage;
   onCancel: () => void;
   onCurrentAssetUninstalled: () => void;
 }
 
-export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}: KataGoSettingsModalProps) {
+export function KataGoSettingsModal({open, language, onCancel, onCurrentAssetUninstalled}: KataGoSettingsModalProps) {
   const {t} = useTranslation();
   const [form] = Form.useForm<KataGoSettings>();
   const [loading, setLoading] = useState(false);
@@ -231,10 +235,24 @@ export function KataGoSettingsModal({open, onCancel, onCurrentAssetUninstalled}:
       title={t('aiConfig')}
       open={open}
       onCancel={onCancel}
-      onOk={() => void handleSave()}
-      okText={t('save')}
-      confirmLoading={saving}
-      cancelButtonProps={{disabled: cancelDisabled}}
+      footer={
+        <div className="app-settings-footer">
+          <Button
+            icon={<QuestionCircleOutlined />}
+            onClick={() => openExternalUrl(`https://deepmess.com/${language}/ulugo/analysis.html`)}
+          >
+            {t('help')}
+          </Button>
+          <Space>
+            <Button disabled={cancelDisabled} onClick={onCancel}>
+              {t('cancel')}
+            </Button>
+            <Button type="primary" loading={saving} onClick={() => void handleSave()}>
+              {t('save')}
+            </Button>
+          </Space>
+        </div>
+      }
       closable={false}
       keyboard={false}
       maskClosable={false}
