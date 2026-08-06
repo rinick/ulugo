@@ -37,6 +37,11 @@ interface TreeBoardState {
 
 const letters = 'abcdefghijklmnopqrstuvwxyz';
 const coordinateLetters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
+const normalizedKomiByEncodedValue: Record<number, string> = {
+  375: '7.5',
+  650: '6.5',
+  750: '7.5',
+};
 
 let nodeCounter = 0;
 
@@ -215,15 +220,13 @@ export function parseGib(input: string): SgfDocument {
 
 function normalizeRootProperties(root: SgfNode): void {
   const komi = Number(root.data.KM?.[0]?.trim().replace(',', '.'));
-  if (komi === 650 || komi === 750) {
-    root.data.KM = [String(komi / 100)];
-    return;
+  const normalizedKomi = normalizedKomiByEncodedValue[komi];
+  if (normalizedKomi == null) return;
+
+  root.data.KM = [normalizedKomi];
+  if (komi === 375 && (root.data.RU?.[0]?.trim() == null || root.data.RU[0].trim() === '')) {
+    root.data.RU = ['Chinese'];
   }
-
-  if (komi !== 375) return;
-
-  root.data.KM = ['7.5'];
-  if (root.data.RU?.[0]?.trim() == null || root.data.RU[0].trim() === '') root.data.RU = ['Chinese'];
 }
 
 function readGibTag(line: string, key: string): string | null {

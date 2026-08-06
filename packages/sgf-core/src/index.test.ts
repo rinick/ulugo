@@ -87,17 +87,13 @@ describe('sgf-core', () => {
     expect(serializeSgf(document)).toContain(';B[ee];W[pp]');
   });
 
-  it('normalizes Chinese stone komi during parsing', () => {
-    const document = parseSgf('(;GM[1]SZ[19]KM[375])');
-    expect(serializeSgf(document)).toBe('(;GM[1]SZ[19]KM[7.5]RU[Chinese])');
-  });
-
   it.each([
-    ['650', '6.5'],
-    ['750', '7.5'],
-  ])('normalizes scaled komi %s to %s during parsing', (input, expected) => {
+    ['375', '(;GM[1]SZ[19]KM[7.5]RU[Chinese])'],
+    ['650', '(;GM[1]SZ[19]KM[6.5])'],
+    ['750', '(;GM[1]SZ[19]KM[7.5])'],
+  ])('normalizes encoded komi %s during parsing', (input, expected) => {
     const document = parseSgf(`(;GM[1]SZ[19]KM[${input}])`);
-    expect(serializeSgf(document)).toBe(`(;GM[1]SZ[19]KM[${expected}])`);
+    expect(serializeSgf(document)).toBe(expected);
   });
 
   it('preserves explicit rules when normalizing Chinese stone komi', () => {
