@@ -1,6 +1,6 @@
 {
   "name": "ulugo",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @ulugo/web dev",
