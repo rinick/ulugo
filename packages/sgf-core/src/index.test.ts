@@ -92,6 +92,14 @@ describe('sgf-core', () => {
     expect(serializeSgf(document)).toBe('(;GM[1]SZ[19]KM[7.5]RU[Chinese])');
   });
 
+  it.each([
+    ['650', '6.5'],
+    ['750', '7.5'],
+  ])('normalizes scaled komi %s to %s during parsing', (input, expected) => {
+    const document = parseSgf(`(;GM[1]SZ[19]KM[${input}])`);
+    expect(serializeSgf(document)).toBe(`(;GM[1]SZ[19]KM[${expected}])`);
+  });
+
   it('preserves explicit rules when normalizing Chinese stone komi', () => {
     const document = parseSgf('(;GM[1]SZ[19]KM[375]RU[AGA])');
     expect(serializeSgf(document)).toBe('(;GM[1]SZ[19]KM[7.5]RU[AGA])');
