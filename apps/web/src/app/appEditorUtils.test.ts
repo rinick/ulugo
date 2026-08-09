@@ -2,6 +2,7 @@ import {parseSgf} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
 import {
   recognizedCaptureCounts,
+  recognizedSetupChanges,
   scoringOperationPath,
   shouldAutoEstimateRecognizedGame,
   shouldDeleteScoringNodeOnExit,
@@ -46,6 +47,27 @@ describe('recognizedCaptureCounts', () => {
   it('accounts for handicap stones and White playing first', () => {
     expect(recognizedCaptureCounts(51, 49, 2, 'W')).toEqual({B: 0, W: 0});
     expect(recognizedCaptureCounts(50, 50, 2, 'B')).toEqual({B: 0, W: 1});
+  });
+});
+
+describe('recognizedSetupChanges', () => {
+  it('keeps only added, removed, and changed stones', () => {
+    const current = new Map([
+      ['aa', 'B'],
+      ['bb', 'W'],
+      ['cc', 'B'],
+    ] as const);
+    const recognized = new Map([
+      ['aa', 'B'],
+      ['bb', 'B'],
+      ['dd', 'W'],
+    ] as const);
+
+    expect(recognizedSetupChanges(['aa', 'bb', 'cc', 'dd'], current, recognized)).toEqual({
+      black: ['bb'],
+      white: ['dd'],
+      empty: ['cc'],
+    });
   });
 });
 

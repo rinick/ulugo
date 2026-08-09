@@ -32,6 +32,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   vertexSize?: number;
   showCoordinates?: boolean;
   signMap?: Map<Sign>;
+  futureStoneMap?: Map<boolean>;
   markerMap?: Map<Marker | null>;
   ownershipMap?: Map<number>;
   hotZoneMap?: Map<HotZone | null>;
@@ -75,6 +76,7 @@ export default class Board extends Component<BoardProps, BoardState> {
     let {
       vertexSize = 24,
       signMap,
+      futureStoneMap,
       ownershipMap,
       hotZoneMap,
       analysisOverlayMap,
@@ -167,6 +169,7 @@ export default class Board extends Component<BoardProps, BoardState> {
 
                     random: randomMap?.[y]?.[x],
                     sign: signMap?.[y]?.[x],
+                    futureStone: futureStoneMap?.[y]?.[x],
 
                     analysisOverlay: analysisOverlayMap?.[y]?.[x],
                     moveHint: moveHintMap?.[y]?.[x],

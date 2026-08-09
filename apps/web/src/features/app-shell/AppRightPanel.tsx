@@ -1,6 +1,7 @@
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
 import type {ReactNode} from 'react';
+import type {ReplaceMoveMode} from '../../app/replaceMoveUtils';
 import {CommentsPanel, type AnalysisChartSummary} from '../comments/CommentsPanel';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {SgfTreePanel} from '../sgf-tree/SgfTreePanel';
@@ -31,12 +32,20 @@ interface AppRightPanelProps {
   onSelectChartMove: (moveNumber: number) => void;
   onSelectPath: (path: number[]) => void;
   onMoveToMain: (path?: number[]) => void;
+  onRecordWithCamera?: () => void;
   onMoveLeft: (path?: number[]) => void;
   onMoveRight: (path?: number[]) => void;
   onPrune: (path?: number[]) => void;
   onDelete: (path?: number[]) => void;
   onEstimateScore: (path: number[]) => void;
   estimateScoreEnabled: boolean;
+  replaceControls?: {
+    mode: ReplaceMoveMode;
+    forceInsert: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+    onModeChange: (mode: ReplaceMoveMode) => void;
+  };
 }
 
 export function AppRightPanel({
@@ -65,12 +74,14 @@ export function AppRightPanel({
   onSelectChartMove,
   onSelectPath,
   onMoveToMain,
+  onRecordWithCamera,
   onMoveLeft,
   onMoveRight,
   onPrune,
   onDelete,
   onEstimateScore,
   estimateScoreEnabled,
+  replaceControls,
 }: AppRightPanelProps) {
   return (
     <aside className="right-region">
@@ -113,6 +124,7 @@ export function AppRightPanel({
         selectedPath={path}
         onSelectPath={onSelectPath}
         onMoveToMain={onMoveToMain}
+        onRecordWithCamera={onRecordWithCamera}
         onMoveLeft={onMoveLeft}
         onMoveRight={onMoveRight}
         onPrune={onPrune}
@@ -122,6 +134,7 @@ export function AppRightPanel({
         onPreviousMove={onPreviousMove}
         onNextMove={onNextMove}
         shortcutLabels={shortcutLabels}
+        replaceControls={replaceControls}
       />
     </aside>
   );

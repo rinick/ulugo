@@ -1,10 +1,15 @@
 import {
+  CheckOutlined,
+  CameraOutlined,
+  CloseOutlined,
   QuestionCircleOutlined,
   DeleteOutlined,
   DoubleLeftOutlined,
   LeftOutlined,
   RightOutlined,
   ScissorOutlined,
+  SwapOutlined,
+  VerticalAlignMiddleOutlined,
 } from '@ant-design/icons';
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
@@ -21,6 +26,7 @@ import {
 } from 'react';
 import {useTranslation} from 'react-i18next';
 import {scoringOperationPath} from '../../app/appEditorUtils';
+import type {ReplaceMoveMode} from '../../app/replaceMoveUtils';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
   cornerRadius,
@@ -41,6 +47,7 @@ interface SgfTreePanelProps {
   selectedPath: number[];
   onSelectPath: (path: number[]) => void;
   onMoveToMain: (path?: number[]) => void;
+  onRecordWithCamera?: () => void;
   onMoveLeft: (path?: number[]) => void;
   onMoveRight: (path?: number[]) => void;
   onPrune: (path?: number[]) => void;
@@ -50,6 +57,13 @@ interface SgfTreePanelProps {
   onPreviousMove: () => void;
   onNextMove: () => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
+  replaceControls?: {
+    mode: ReplaceMoveMode;
+    forceInsert: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+    onModeChange: (mode: ReplaceMoveMode) => void;
+  };
 }
 
 export function SgfTreePanel({
@@ -57,6 +71,7 @@ export function SgfTreePanel({
   selectedPath,
   onSelectPath,
   onMoveToMain,
+  onRecordWithCamera,
   onMoveLeft,
   onMoveRight,
   onPrune,
@@ -66,6 +81,7 @@ export function SgfTreePanel({
   onPreviousMove,
   onNextMove,
   shortcutLabels = {},
+  replaceControls,
 }: SgfTreePanelProps) {
   const {t} = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -174,10 +190,9 @@ export function SgfTreePanel({
     () => (validContextPath == null ? null : scoringOperationPath(document, validContextPath)),
     [document, validContextPath]
   );
-  const selectedOperationPath = useMemo(
-    () => scoringOperationPath(document, selectedPath),
-    [document, selectedPath]
-  );
+  const selectedOperationPath = useMemo(() => scoringOperationPath(document, selectedPath), [document, selectedPath]);
+  const showRecordWithCamera =
+    onRecordWithCamera != null && selectedOperationPath.every((childIndex) => childIndex === 0);
 
   const contextMenuItems = useMemo<MenuProps['items']>(
     () => [
@@ -273,40 +288,87 @@ export function SgfTreePanel({
   return (
     <section className="side-panel tree-panel">
       <div className="tree-panel-header">
-        <Space.Compact>
-          <TreeActionButton
-            title={withShortcut(t('moveBranchToMain'), shortcutLabels.moveBranchToMain)}
-            disabled={selectedOperationPath.length === 0}
-            icon={<DoubleLeftOutlined />}
-            onClick={() => onMoveToMain()}
-          />
-          <TreeActionButton
-            title={withShortcut(t('moveBranchLeft'), shortcutLabels.moveBranchLeft)}
-            disabled={selectedOperationPath.length === 0}
-            icon={<LeftOutlined />}
-            onClick={() => onMoveLeft()}
-          />
-          <TreeActionButton
-            title={withShortcut(t('moveBranchRight'), shortcutLabels.moveBranchRight)}
-            disabled={selectedOperationPath.length === 0}
-            icon={<RightOutlined />}
-            onClick={() => onMoveRight()}
-          />
-          <TreeActionButton
-            title={withShortcut(t('pruneBranch'), shortcutLabels.pruneBranch)}
-            disabled={selectedOperationPath.length === 0}
-            icon={<ScissorOutlined />}
-            danger
-            onClick={() => onPrune()}
-          />
-          <TreeActionButton
-            title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}
-            disabled={selectedOperationPath.length === 0}
-            icon={<DeleteOutlined />}
-            danger
-            onClick={() => onDelete()}
-          />
-        </Space.Compact>
+        {replaceControls == null ? (
+          <Space.Compact>
+            {showRecordWithCamera ? (
+              <TreeActionButton
+                title={t('recordWithCamera')}
+                disabled={false}
+                icon={<CameraOutlined />}
+                onClick={onRecordWithCamera}
+              />
+            ) : (
+              <TreeActionButton
+                title={withShortcut(t('moveBranchToMain'), shortcutLabels.moveBranchToMain)}
+                disabled={selectedOperationPath.length === 0}
+                icon={<DoubleLeftOutlined />}
+                onClick={() => onMoveToMain()}
+              />
+            )}
+            <TreeActionButton
+              title={withShortcut(t('moveBranchLeft'), shortcutLabels.moveBranchLeft)}
+              disabled={selectedOperationPath.length === 0}
+              icon={<LeftOutlined />}
+              onClick={() => onMoveLeft()}
+            />
+            <TreeActionButton
+              title={withShortcut(t('moveBranchRight'), shortcutLabels.moveBranchRight)}
+              disabled={selectedOperationPath.length === 0}
+              icon={<RightOutlined />}
+              onClick={() => onMoveRight()}
+            />
+            <TreeActionButton
+              title={withShortcut(t('pruneBranch'), shortcutLabels.pruneBranch)}
+              disabled={selectedOperationPath.length === 0}
+              icon={<ScissorOutlined />}
+              danger
+              onClick={() => onPrune()}
+            />
+            <TreeActionButton
+              title={withShortcut(t('deleteBranch'), shortcutLabels.deleteBranch)}
+              disabled={selectedOperationPath.length === 0}
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => onDelete()}
+            />
+          </Space.Compact>
+        ) : (
+          <Space.Compact>
+            <TreeActionButton
+              title={`${t('confirm')} (Enter)`}
+              disabled={false}
+              icon={<CheckOutlined />}
+              onClick={replaceControls.onConfirm}
+            />
+            <TreeActionButton
+              title={withShortcut(t('deleteMove'), shortcutLabels.deleteBranch)}
+              disabled={selectedOperationPath.length === 0}
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => onDelete()}
+            />
+            <TreeActionButton
+              title={`${t('cancel')} (Esc)`}
+              disabled={false}
+              icon={<CloseOutlined />}
+              onClick={replaceControls.onCancel}
+            />
+            <TreeActionButton
+              title={t('insertMove')}
+              disabled={false}
+              type={replaceControls.mode === 'insert' ? 'primary' : 'default'}
+              icon={<VerticalAlignMiddleOutlined />}
+              onClick={() => replaceControls.onModeChange('insert')}
+            />
+            <TreeActionButton
+              title={t('replaceMove')}
+              disabled={replaceControls.forceInsert}
+              type={replaceControls.mode === 'replace' ? 'primary' : 'default'}
+              icon={<SwapOutlined />}
+              onClick={() => replaceControls.onModeChange('replace')}
+            />
+          </Space.Compact>
+        )}
       </div>
       <div className="tree-scroll" ref={scrollRef} onScroll={handleScroll} onWheel={handleWheel}>
         <Dropdown

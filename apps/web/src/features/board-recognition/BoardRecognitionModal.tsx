@@ -7,7 +7,6 @@ import {recognizedCaptureCounts} from '../../app/appEditorUtils';
 import {isElectron, isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
 
-type BoardSize = 9 | 13 | 19;
 type ScanBoard = number[][];
 type Phase = 'select' | 'crop' | 'recognizing' | 'error' | 'screenshot' | 'result';
 
@@ -21,6 +20,7 @@ interface CropRect {
 interface BoardRecognitionModalProps {
   image: Blob;
   language: AppLanguage;
+  setupBoardSize?: number;
   onClose: () => void;
   onConfirm: (document: SgfDocument) => void;
 }
@@ -29,10 +29,16 @@ const fullCrop: CropRect = {x: 0, y: 0, width: 1, height: 1};
 const maxScanImageDimension = 2048;
 const ruleOptions = ['Japanese', 'Chinese', 'Korean', 'AGA', 'New Zealand'] as const;
 
-export default function BoardRecognitionModal({image, language, onClose, onConfirm}: BoardRecognitionModalProps) {
+export default function BoardRecognitionModal({
+  image,
+  language,
+  setupBoardSize,
+  onClose,
+  onConfirm,
+}: BoardRecognitionModalProps) {
   const {t} = useTranslation();
   const [phase, setPhase] = useState<Phase>('select');
-  const [boardSize, setBoardSize] = useState<BoardSize>(19);
+  const [boardSize, setBoardSize] = useState(setupBoardSize ?? 19);
   const [crop, setCrop] = useState<CropRect>(fullCrop);
   const [recognizedImage, setRecognizedImage] = useState<Blob>(image);
   const [board, setBoard] = useState<ScanBoard | null>(null);
@@ -44,11 +50,11 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
 
   useEffect(() => {
     setPhase('select');
-    setBoardSize(19);
+    setBoardSize(setupBoardSize ?? 19);
     setCrop(fullCrop);
     setRecognizedImage(image);
     setBoard(null);
-  }, [image]);
+  }, [image, setupBoardSize]);
 
   async function recognize(blob: Blob): Promise<void> {
     setPhase('recognizing');
@@ -107,14 +113,16 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
           <div className="board-recognition-image-frame">
             <img src={sourceUrl} alt={t('boardRecognitionImage')} />
           </div>
-          <label className="board-recognition-field">
-            <span>{t('boardSize')}</span>
-            <Segmented<BoardSize>
-              value={boardSize}
-              options={[9, 13, 19].map((value) => ({label: `${value} × ${value}`, value: value as BoardSize}))}
-              onChange={setBoardSize}
-            />
-          </label>
+          {setupBoardSize == null ? (
+            <label className="board-recognition-field">
+              <span>{t('boardSize')}</span>
+              <Segmented<number>
+                value={boardSize}
+                options={[9, 13, 19].map((value) => ({label: `${value} × ${value}`, value}))}
+                onChange={setBoardSize}
+              />
+            </label>
+          ) : null}
           <div className="board-recognition-actions">
             <Button onClick={() => setPhase('crop')}>{t('crop')}</Button>
             <Button onClick={onClose}>{t('close')}</Button>
@@ -205,6 +213,7 @@ export default function BoardRecognitionModal({image, language, onClose, onConfi
                 rules={rules}
                 handicap={handicap}
                 nextPlayer={nextPlayer}
+                setupOnly={setupBoardSize != null}
                 onRulesChange={setRules}
                 onHandicapChange={setHandicap}
                 onNextPlayerChange={setNextPlayer}
@@ -236,6 +245,7 @@ function RecognitionOptions({
   rules,
   handicap,
   nextPlayer,
+  setupOnly,
   onRulesChange,
   onHandicapChange,
   onNextPlayerChange,
@@ -243,6 +253,7 @@ function RecognitionOptions({
   rules: (typeof ruleOptions)[number];
   handicap: number;
   nextPlayer: 'B' | 'W';
+  setupOnly: boolean;
   onRulesChange: (value: (typeof ruleOptions)[number]) => void;
   onHandicapChange: (value: number) => void;
   onNextPlayerChange: (value: 'B' | 'W') => void;
@@ -251,22 +262,29 @@ function RecognitionOptions({
 
   return (
     <div className="board-recognition-options">
-      <label className="board-recognition-field">
-        <span>{t('RU')}</span>
-        <Select
-          value={rules}
-          options={ruleOptions.map((value) => ({value, label: t(ruleLabelKey(value))}))}
-          onChange={onRulesChange}
-        />
-      </label>
-      <label className="board-recognition-field">
-        <span>{t('HA')}</span>
-        <Select
-          value={handicap}
-          options={Array.from({length: 10}, (_, value) => ({value, label: value === 0 ? t('none') : String(value)}))}
-          onChange={onHandicapChange}
-        />
-      </label>
+      {setupOnly ? null : (
+        <>
+          <label className="board-recognition-field">
+            <span>{t('RU')}</span>
+            <Select
+              value={rules}
+              options={ruleOptions.map((value) => ({value, label: t(ruleLabelKey(value))}))}
+              onChange={onRulesChange}
+            />
+          </label>
+          <label className="board-recognition-field">
+            <span>{t('HA')}</span>
+            <Select
+              value={handicap}
+              options={Array.from({length: 10}, (_, value) => ({
+                value,
+                label: value === 0 ? t('none') : String(value),
+              }))}
+              onChange={onHandicapChange}
+            />
+          </label>
+        </>
+      )}
       <label className="board-recognition-field">
         <span>{t('nextPlayer')}</span>
         <Segmented<'B' | 'W'>

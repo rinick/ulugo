@@ -89,6 +89,13 @@
   width: calc(100% - 0.08em);
   height: calc(100% - 0.08em);
 }
+.ulugo-vertex .ulugo-stone.ulugo-future-stone {
+  top: 0.3em;
+  left: 0.3em;
+  width: calc(100% - 0.6em);
+  height: calc(100% - 0.6em);
+  opacity: 0.6;
+}
 .ulugo-vertex.ulugo-sign_0 .ulugo-stone {
   pointer-events: none;
 }

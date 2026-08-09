@@ -1,7 +1,7 @@
 import {LeftSquareOutlined, RightSquareOutlined, ThunderboltOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {AnalysisSettings, KataGoAnalysisResult} from '@ulugo/analysis-core';
-import type {SgfDocument} from '@ulugo/sgf-core';
+import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
 import type {MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {GoBoard, type BoardVertexClickOptions, type MoveNumberLimit} from '../board/GoBoard';
@@ -16,6 +16,7 @@ interface AppBoardRegionProps {
   passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
+  futureMoveStones: Map<string, SgfColor>;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
   rules: string | undefined;
   katagoEnabled: boolean;
@@ -43,6 +44,7 @@ export function AppBoardRegion({
   passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
+  futureMoveStones,
   boardBackground,
   rules,
   katagoEnabled,
@@ -84,6 +86,7 @@ export function AppBoardRegion({
         passAnalysis={passAnalysis}
         stoneScoreDeltas={stoneScoreDeltas}
         analysisSettings={analysisSettings}
+        futureMoveStones={futureMoveStones}
         boardBackground={boardBackground}
         rules={rules}
         onVertexClick={onBoardClick}

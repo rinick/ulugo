@@ -3,6 +3,7 @@ import {MenuFoldOutlined, MenuUnfoldOutlined} from '@ant-design/icons';
 import {
   addMove,
   addScoringNode,
+  addSetupNode,
   addSetupStone,
   createNewGame,
   deleteNode,
@@ -25,7 +26,6 @@ import {
   updateSetupNextColor,
   type SgfColor,
   type SgfDocument,
-  type SgfNode,
 } from '@ulugo/sgf-core';
 import type {BoardSize} from '@ulugo/ui-shared';
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
@@ -64,6 +64,7 @@ import {
 import type {EditorTool} from '../features/toolbar/types';
 import {
   nextLabelText,
+  recognizedSetupChanges,
   resolveBoardBackground,
   scoringOperationPath,
   selectedPathAfterDelete,
@@ -87,9 +88,18 @@ import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './
 import {getAppFontFamily} from './fonts';
 import {appTheme} from './appTheme';
 import {
+  confirmReplaceMove,
+  createReplaceMoveState,
+  deleteReplaceMove,
+  futureReplaceMoveStones,
   gtpMoveToPoint,
+  hasNonEmptyRootSetup,
+  insertEmptyMoveZeroBeforeRootSetup,
+  isSetupNode,
+  replaceMoveForcesInsert,
   replaceMoveStateForSelection,
   replaceNextMoveBranch,
+  type ReplaceMoveMode,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
 import {readOpenLastSgfOnStartupPreference, useAppPreferences} from './useAppPreferences';
@@ -108,6 +118,12 @@ interface StartupState {
   startedFromEmpty: boolean;
 }
 
+interface ReplaceMoveSnapshot {
+  document: SgfDocument;
+  path: number[];
+  branchMemory: Map<string, number>;
+}
+
 interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   convertHiddenPassPath?: number[];
@@ -115,8 +131,6 @@ interface ReplaceDocumentOptions {
   replaceMoveState?: ReplaceMoveState | null;
   resetSelectionMoved?: boolean;
 }
-
-const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
 
 interface DisplayScoringSummary {
   blackScoreText: string;
@@ -157,6 +171,7 @@ export function App() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
+  const [recognitionSetupMode, setRecognitionSetupMode] = useState(false);
   const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(false);
   const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
   const [minimalShowCoordinates, setMinimalShowCoordinates] = useState(false);
@@ -166,7 +181,9 @@ export function App() {
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
+  const recordCameraInputRef = useRef<HTMLInputElement>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
+  const replaceMoveSnapshotRef = useRef<ReplaceMoveSnapshot | null>(null);
   const labelResetPathKeyRef = useRef(pathKey([]));
   const setupToolPathKeyRef = useRef(pathKey([]));
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
@@ -198,6 +215,13 @@ export function App() {
   const analysisPaths = useMemo(
     () => getAnalysisQueuePaths(document, analysisChartPaths),
     [analysisChartPaths, document]
+  );
+  const futureMoveStones = useMemo(
+    () =>
+      tool === 'replace'
+        ? futureReplaceMoveStones(document, operationPath, branchMemoryRef.current, replaceMoveState)
+        : new Map<string, SgfColor>(),
+    [document, operationPath, replaceMoveState, tool]
   );
   const shortcutLabels = useMemo(
     () =>
@@ -317,12 +341,35 @@ export function App() {
     setRecognitionImage(null);
   }
 
+  function handleRecognizedSetup(recognizedDocument: SgfDocument): void {
+    const recognizedStones = deriveBoardPosition(recognizedDocument, []).stones;
+    const {black, white, empty} = recognizedSetupChanges(
+      position.points.map(({point}) => point),
+      position.stones,
+      recognizedStones
+    );
+
+    const nextColor = recognizedDocument.root.data.PL?.[0] === 'W' ? 'W' : 'B';
+    const result = addSetupNode(document, operationPath, black, white, empty, nextColor);
+    replaceDocument(result.document, result.path);
+    setRecognitionImage(null);
+    setRecognitionSetupMode(false);
+  }
+
+  function closeBoardRecognition(): void {
+    setRecognitionImage(null);
+    setRecognitionSetupMode(false);
+  }
+
   const gameRecordFiles = useGameRecordFiles({
     document,
     gameName: gameInfo.GN,
     startedFromEmpty: startupState.startedFromEmpty,
     onImport: handleImportedDocument,
-    onOpenImage: setRecognitionImage,
+    onOpenImage: (image) => {
+      setRecognitionSetupMode(false);
+      setRecognitionImage(image);
+    },
   });
   const showMarkup = analysisSettings.showMarkup;
   const showBoardMarkup = showMarkup && !selectedScoringNode;
@@ -375,6 +422,7 @@ export function App() {
 
   useEffect(() => {
     if (!minimalMode) return;
+    replaceMoveSnapshotRef.current = null;
     setTool('auto');
     setAutoColorOverride(null);
     setReplaceMoveState(null);
@@ -398,6 +446,65 @@ export function App() {
     }
   }
 
+  function finishReplaceSession(nextTool: EditorTool = 'auto'): void {
+    replaceMoveSnapshotRef.current = null;
+    setReplaceMoveState(null);
+    setTool(nextTool);
+    if (nextTool !== 'auto') setAutoColorOverride(null);
+  }
+
+  function handleConfirmReplace(): void {
+    const result = confirmReplaceMove({
+      document,
+      path: operationPath,
+      branchMemory: branchMemoryRef.current,
+      state: replaceMoveState,
+    });
+    replaceMoveSnapshotRef.current = null;
+    if (result != null && result.document !== document) {
+      replaceDocument(result.document, result.path);
+    } else {
+      setReplaceMoveState(null);
+      setTool('auto');
+    }
+  }
+
+  function handleCancelReplace(): void {
+    const cancel = () => {
+      const snapshot = replaceMoveSnapshotRef.current;
+      if (snapshot == null) {
+        finishReplaceSession();
+        return;
+      }
+
+      replaceMoveSnapshotRef.current = null;
+      branchMemoryRef.current = new Map(snapshot.branchMemory);
+      replaceDocument(snapshot.document, snapshot.path);
+    };
+
+    if ((replaceMoveState?.createdNodeIds?.length ?? 0) < 2) {
+      cancel();
+      return;
+    }
+
+    Modal.confirm({
+      centered: true,
+      title: t('cancelReplaceConfirmTitle'),
+      content: t('cancelReplaceConfirmContent'),
+      okText: t('confirm'),
+      cancelText: t('cancel'),
+      okButtonProps: {danger: true},
+      onOk: cancel,
+    });
+  }
+
+  function handleReplaceModeChange(mode: ReplaceMoveMode): void {
+    setReplaceMoveState((current) => {
+      if (current == null || (mode === 'replace' && replaceMoveForcesInsert(current))) return current;
+      return {...current, mode, preferredMode: mode};
+    });
+  }
+
   function replaceDocument(next: SgfDocument, nextPath: number[] = [], options: ReplaceDocumentOptions = {}): void {
     const normalizedPath = normalizeSelectedPath(next, nextPath);
     resetAnalysisForDocumentChange(next, options);
@@ -412,6 +519,7 @@ export function App() {
     if (options.replaceMoveState != null) {
       setTool('replace');
     } else if (tool === 'replace') {
+      replaceMoveSnapshotRef.current = null;
       setTool('auto');
     }
     rememberPath(normalizedPath);
@@ -437,8 +545,11 @@ export function App() {
         branchMemoryRef.current,
         replaceMoveState
       );
-      setReplaceMoveState(nextReplaceMoveState);
-      if (nextReplaceMoveState == null) setTool('auto');
+      if (nextReplaceMoveState == null) {
+        finishReplaceSession();
+      } else {
+        setReplaceMoveState(nextReplaceMoveState);
+      }
     } else {
       setReplaceMoveState(null);
     }
@@ -528,20 +639,40 @@ export function App() {
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
-      if (operationPath.length === 0) return;
+      replaceMoveSnapshotRef.current = {
+        document,
+        path,
+        branchMemory: new Map(branchMemoryRef.current),
+      };
+      if (operationPath.length === 0) {
+        if (path.length !== 0) {
+          replaceMoveSnapshotRef.current = null;
+          return;
+        }
+        const nextDocument = insertEmptyMoveZeroBeforeRootSetup(document);
+        if (nextDocument == null) {
+          replaceMoveSnapshotRef.current = null;
+          return;
+        }
+        shiftBranchMemoryForInsertedRoot(branchMemoryRef.current);
+        setAnalysisModeActive(false);
+        setAutoColorOverride(null);
+        replaceDocument(nextDocument, [], {
+          replaceMoveState: createReplaceMoveState(nextDocument, [], branchMemoryRef.current),
+        });
+        return;
+      }
       const replacementPath = operationPath.slice(0, -1);
       selectPath(replacementPath);
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
-      setReplaceMoveState({originalPath: replacementPath, replacementPath});
+      setReplaceMoveState(createReplaceMoveState(document, replacementPath, branchMemoryRef.current));
       setTool('replace');
       return;
     }
 
     if (tool === 'replace') {
-      setReplaceMoveState(null);
-      setTool(nextTool);
-      if (nextTool !== 'auto') setAutoColorOverride(null);
+      finishReplaceSession(nextTool);
       return;
     }
 
@@ -552,8 +683,12 @@ export function App() {
   }
 
   function handleAutoToolClick(): void {
-    setReplaceMoveState(null);
+    if (tool === 'replace') {
+      finishReplaceSession();
+      return;
+    }
 
+    setReplaceMoveState(null);
     if (tool !== 'auto') {
       selectPath(path);
       setTool('auto');
@@ -579,7 +714,7 @@ export function App() {
   const canReplaceMove =
     tool === 'replace'
       ? replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
-      : operationPath.length > 0;
+      : operationPath.length > 0 || (path.length === 0 && hasNonEmptyRootSetup(document));
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -596,6 +731,18 @@ export function App() {
         if (isTextInputActive()) return;
         event.preventDefault();
         void gameRecordFiles.openFromClipboard();
+        return;
+      }
+
+      if (event.key === 'Enter' && tool === 'replace') {
+        event.preventDefault();
+        handleConfirmReplace();
+        return;
+      }
+
+      if (event.key === 'Escape' && tool === 'replace') {
+        event.preventDefault();
+        handleCancelReplace();
         return;
       }
 
@@ -741,18 +888,12 @@ export function App() {
           break;
         case 'toggleAnalysisMode':
           if (minimalMode) break;
-          if (tool === 'replace') {
-            setReplaceMoveState(null);
-            setTool('auto');
-          }
+          if (tool === 'replace') finishReplaceSession();
           toggleAnalysisMode();
           break;
         case 'toggleDeepAnalysisMode':
           if (minimalMode) break;
-          if (tool === 'replace') {
-            setReplaceMoveState(null);
-            setTool('auto');
-          }
+          if (tool === 'replace') finishReplaceSession();
           toggleDeepAnalysisMode();
           break;
       }
@@ -799,6 +940,7 @@ export function App() {
     operationPath,
     printPreviewOpen,
     position.nextColor,
+    replaceMoveState,
     selectedScoringNode,
     tool,
     toggleDeepAnalysisMode,
@@ -808,10 +950,7 @@ export function App() {
   ]);
 
   function handleAnalysisButtonClick(event: MouseEvent<HTMLElement>): void {
-    if (tool === 'replace') {
-      setReplaceMoveState(null);
-      setTool('auto');
-    }
+    if (tool === 'replace') finishReplaceSession();
 
     if (event.shiftKey) {
       toggleDeepAnalysisMode();
@@ -984,6 +1123,7 @@ export function App() {
         convertHiddenPassPath: result.path,
         replaceMoveState: result.state,
       });
+      return;
     } else {
       const existingChildPath = findChildMovePath(document, operationPath, nextAutoColor, '');
       if (existingChildPath != null) {
@@ -1016,6 +1156,32 @@ export function App() {
 
   function handleDeleteNode(targetPath = path): void {
     targetPath = scoringOperationPath(document, targetPath);
+    if (
+      tool === 'replace' &&
+      replaceMoveState?.replacementStartPath != null &&
+      samePath(targetPath, replaceMoveState.replacementPath)
+    ) {
+      const result = deleteReplaceMove(document, targetPath);
+      if (result == null) return;
+      const removedIds = new Set(result.removedNodeIds);
+      const referencesByNodeId = Object.fromEntries(
+        Object.entries(replaceMoveState.referencesByNodeId ?? {}).filter(([nodeId]) => !removedIds.has(nodeId))
+      );
+      const stateAfterDelete = {
+        ...replaceMoveState,
+        createdNodeIds: (replaceMoveState.createdNodeIds ?? []).filter((nodeId) => !removedIds.has(nodeId)),
+        referencesByNodeId,
+      };
+      const nextReplaceMoveState = replaceMoveStateForSelection(
+        result.document,
+        result.path,
+        branchMemoryRef.current,
+        stateAfterDelete
+      ) ?? {...stateAfterDelete, replacementPath: result.path, replacementStartPath: result.path};
+      replaceDocument(result.document, result.path, {replaceMoveState: nextReplaceMoveState});
+      return;
+    }
+
     const deleteTarget = () => {
       const result = deleteNode(document, targetPath);
       replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
@@ -1218,6 +1384,7 @@ export function App() {
             passAnalysis={selectedScoringNode ? null : currentPassAnalysis}
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
+            futureMoveStones={futureMoveStones}
             boardBackground={boardBackground}
             rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}
@@ -1280,12 +1447,26 @@ export function App() {
               }}
               onSelectPath={selectPath}
               onMoveToMain={handleMoveBranchToMain}
+              onRecordWithCamera={
+                supportsCameraCapture ? () => recordCameraInputRef.current?.click() : undefined
+              }
               onMoveLeft={handleMoveBranchLeft}
               onMoveRight={handleMoveBranchRight}
               onPrune={handlePruneBranch}
               onDelete={handleDeleteNode}
               onEstimateScore={handleEstimateScore}
               estimateScoreEnabled={!kataGoInitialized}
+              replaceControls={
+                tool === 'replace' && replaceMoveState?.replacementStartPath != null
+                  ? {
+                      mode: replaceMoveState.mode ?? 'replace',
+                      forceInsert: replaceMoveForcesInsert(replaceMoveState),
+                      onConfirm: handleConfirmReplace,
+                      onCancel: handleCancelReplace,
+                      onModeChange: handleReplaceModeChange,
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </Content>
@@ -1298,14 +1479,30 @@ export function App() {
         onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
       />
       {supportsCameraCapture ? (
-        <input
-          ref={gameRecordFiles.cameraInputRef}
-          className="hidden-file-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
-        />
+        <>
+          <input
+            ref={gameRecordFiles.cameraInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => void gameRecordFiles.importFile(event.target.files?.[0])}
+          />
+          <input
+            ref={recordCameraInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => {
+              const image = event.target.files?.[0];
+              event.target.value = '';
+              if (image == null) return;
+              setRecognitionSetupMode(true);
+              setRecognitionImage(image);
+            }}
+          />
+        </>
       ) : null}
       {recognitionImage != null ? (
         <Suspense
@@ -1316,7 +1513,7 @@ export function App() {
               footer={null}
               maskClosable={false}
               keyboard={false}
-              onCancel={() => setRecognitionImage(null)}
+              onCancel={closeBoardRecognition}
               width={960}
               className="board-recognition-modal"
               title={t('boardRecognition')}
@@ -1326,8 +1523,12 @@ export function App() {
           <BoardRecognitionModal
             image={recognitionImage}
             language={currentLanguage}
-            onClose={() => setRecognitionImage(null)}
-            onConfirm={(recognizedDocument) => void handleRecognizedDocument(recognizedDocument)}
+            setupBoardSize={recognitionSetupMode ? boardSize : undefined}
+            onClose={closeBoardRecognition}
+            onConfirm={(recognizedDocument) => {
+              if (recognitionSetupMode) handleRecognizedSetup(recognizedDocument);
+              else void handleRecognizedDocument(recognizedDocument);
+            }}
           />
         </Suspense>
       ) : null}
@@ -1393,12 +1594,6 @@ export function App() {
   );
 }
 
-function isSetupNode(node: SgfNode): boolean {
-  return (
-    node.data.B == null && node.data.W == null && setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
-  );
-}
-
 function readStartupState(): StartupState {
   if (!readOpenLastSgfOnStartupPreference()) return newStartupState(createNewGame(), [], true);
 
@@ -1409,6 +1604,15 @@ function readStartupState(): StartupState {
     return newStartupState(document, lastMainBranchMovePath(document), false);
   } catch {
     return newStartupState(createNewGame(), [], true);
+  }
+}
+
+function shiftBranchMemoryForInsertedRoot(branchMemory: Map<string, number>): void {
+  const entries = [...branchMemory.entries()];
+  branchMemory.clear();
+  branchMemory.set(pathKey([]), 0);
+  for (const [key, childIndex] of entries) {
+    branchMemory.set(key === '' ? '0' : `0.${key}`, childIndex);
   }
 }
 

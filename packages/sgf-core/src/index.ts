@@ -475,6 +475,25 @@ export function addScoringNode(
   return {document: next, path: [...path, parent.children.length - 1]};
 }
 
+export function addSetupNode(
+  document: SgfDocument,
+  path: number[],
+  black: SgfPoint[],
+  white: SgfPoint[],
+  empty: SgfPoint[],
+  nextColor: SgfColor
+): {document: SgfDocument; path: number[]} {
+  const data: Record<string, string[]> = {PL: [nextColor]};
+  if (black.length > 0) data.AB = black;
+  if (white.length > 0) data.AW = white;
+  if (empty.length > 0) data.AE = empty;
+
+  const next = cloneDocument(document);
+  const parent = getNodeAtPath(next, path);
+  parent.children.unshift(createNode(data));
+  return {document: next, path: [...path, 0]};
+}
+
 export function updateScoringPoints(
   document: SgfDocument,
   path: number[],

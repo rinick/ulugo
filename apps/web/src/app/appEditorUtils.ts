@@ -7,6 +7,7 @@ import {
   samePath,
   type SgfColor,
   type SgfDocument,
+  type SgfPoint,
 } from '@ulugo/sgf-core';
 
 export function shouldDeleteScoringNodeOnExit(document: SgfDocument, path: number[]): boolean {
@@ -35,14 +36,27 @@ export function recognizedCaptureCounts(
   nextPlayer: SgfColor
 ): Record<SgfColor, number> {
   const initialBlackStones = handicap >= 2 ? handicap : 0;
-  const whiteMovesMinusBlackMoves =
-    handicap >= 2 ? (nextPlayer === 'B' ? 1 : 0) : nextPlayer === 'W' ? -1 : 0;
-  const blackMinusWhiteCaptures =
-    whiteMovesMinusBlackMoves - initialBlackStones + blackStones - whiteStones;
+  const whiteMovesMinusBlackMoves = handicap >= 2 ? (nextPlayer === 'B' ? 1 : 0) : nextPlayer === 'W' ? -1 : 0;
+  const blackMinusWhiteCaptures = whiteMovesMinusBlackMoves - initialBlackStones + blackStones - whiteStones;
 
-  return blackMinusWhiteCaptures >= 0
-    ? {B: blackMinusWhiteCaptures, W: 0}
-    : {B: 0, W: -blackMinusWhiteCaptures};
+  return blackMinusWhiteCaptures >= 0 ? {B: blackMinusWhiteCaptures, W: 0} : {B: 0, W: -blackMinusWhiteCaptures};
+}
+
+export function recognizedSetupChanges(
+  points: Iterable<SgfPoint>,
+  currentStones: ReadonlyMap<SgfPoint, SgfColor>,
+  recognizedStones: ReadonlyMap<SgfPoint, SgfColor>
+): {black: SgfPoint[]; white: SgfPoint[]; empty: SgfPoint[]} {
+  const changes = {black: [] as SgfPoint[], white: [] as SgfPoint[], empty: [] as SgfPoint[]};
+  for (const point of points) {
+    const currentColor = currentStones.get(point) ?? null;
+    const recognizedColor = recognizedStones.get(point) ?? null;
+    if (recognizedColor === currentColor) continue;
+    if (recognizedColor === 'B') changes.black.push(point);
+    else if (recognizedColor === 'W') changes.white.push(point);
+    else changes.empty.push(point);
+  }
+  return changes;
 }
 
 export function selectedPathAfterDelete(selectedPath: number[], deletedPath: number[]): number[] {

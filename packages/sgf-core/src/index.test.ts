@@ -4,6 +4,7 @@ import {
   addMarkup,
   addMove,
   addScoringNode,
+  addSetupNode,
   addSetupStone,
   buildTree,
   countMoves,
@@ -249,6 +250,14 @@ describe('sgf-core', () => {
       isScoring: true,
       moveNumber: 5,
     });
+  });
+
+  it('adds a setup node as the leftmost next branch', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd](;W[pp])(;W[qq]))');
+    const result = addSetupNode(document, [0], ['aa'], ['bb'], ['dd'], 'W');
+
+    expect(result.path).toEqual([0, 0]);
+    expect(serializeSgf(result.document)).toContain(';B[dd](;PL[W]AB[aa]AW[bb]AE[dd])(;W[pp])(;W[qq]))');
   });
 
   it('adds setup stones as setup nodes after regular moves', () => {
