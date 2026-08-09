@@ -6,16 +6,12 @@ import {useTranslation} from 'react-i18next';
 import {recognizedCaptureCounts} from '../../app/appEditorUtils';
 import {isElectron, isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
+import {scanCropGeometry, type NormalizedCrop} from './boardRecognitionImageUtils';
 
 type ScanBoard = number[][];
-type Phase = 'select' | 'crop' | 'recognizing' | 'error' | 'screenshot' | 'result';
+type Phase = 'preparing' | 'select' | 'crop' | 'recognizing' | 'error' | 'screenshot' | 'result';
 
-interface CropRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+type CropRect = NormalizedCrop;
 
 interface BoardRecognitionModalProps {
   image: Blob;
@@ -37,34 +33,51 @@ export default function BoardRecognitionModal({
   onConfirm,
 }: BoardRecognitionModalProps) {
   const {t} = useTranslation();
-  const [phase, setPhase] = useState<Phase>('select');
+  const [phase, setPhase] = useState<Phase>('preparing');
   const [boardSize, setBoardSize] = useState(setupBoardSize ?? 19);
   const [crop, setCrop] = useState<CropRect>(fullCrop);
-  const [recognizedImage, setRecognizedImage] = useState<Blob>(image);
+  const [sourceImage, setSourceImage] = useState<Blob | null>(null);
+  const [recognizedImage, setRecognizedImage] = useState<Blob | null>(null);
   const [board, setBoard] = useState<ScanBoard | null>(null);
   const [rules, setRules] = useState<(typeof ruleOptions)[number]>('Chinese');
   const [handicap, setHandicap] = useState(0);
   const [nextPlayer, setNextPlayer] = useState<'B' | 'W'>('B');
-  const sourceUrl = useBlobUrl(image);
+  const sourceUrl = useBlobUrl(sourceImage);
   const recognizedUrl = useBlobUrl(recognizedImage);
 
   useEffect(() => {
-    setPhase('select');
+    let canceled = false;
+    setPhase('preparing');
     setBoardSize(setupBoardSize ?? 19);
     setCrop(fullCrop);
-    setRecognizedImage(image);
+    setSourceImage(null);
+    setRecognizedImage(null);
     setBoard(null);
+
+    void resizeImageForScan(image)
+      .then((preparedImage) => {
+        if (canceled) return;
+        setSourceImage(preparedImage);
+        setRecognizedImage(preparedImage);
+        setPhase('select');
+      })
+      .catch(() => {
+        if (!canceled) setPhase('error');
+      });
+
+    return () => {
+      canceled = true;
+    };
   }, [image, setupBoardSize]);
 
   async function recognize(blob: Blob): Promise<void> {
     setPhase('recognizing');
 
     try {
-      const scanImage = await resizeImageForScan(blob);
-      setRecognizedImage(scanImage);
+      setRecognizedImage(blob);
       const {recognizeBoard} = await import('uluscan');
       const result = await new Promise<{d: number[][]} | {s: true} | {e: true}>((resolve) => {
-        recognizeBoard(scanImage, resolve, {lineCount: boardSize, sCheck: !isMobileBrowser});
+        recognizeBoard(blob, resolve, {lineCount: boardSize, sCheck: !isMobileBrowser});
       });
 
       if ('s' in result) {
@@ -82,8 +95,9 @@ export default function BoardRecognitionModal({
   }
 
   async function applyCrop(): Promise<void> {
+    if (sourceImage == null) return;
     try {
-      await recognize(await cropImage(image, crop));
+      await recognize(await cropImageForScan(image, crop));
     } catch {
       setPhase('error');
     }
@@ -108,6 +122,13 @@ export default function BoardRecognitionModal({
       className="board-recognition-modal"
       title={t('boardRecognition')}
     >
+      {phase === 'preparing' ? (
+        <div className="board-recognition-state">
+          <Spin size="large" />
+          <span>{t('preparingImage')}</span>
+        </div>
+      ) : null}
+
       {phase === 'select' ? (
         <div className="board-recognition-step board-recognition-select">
           <div className="board-recognition-image-frame">
@@ -126,7 +147,7 @@ export default function BoardRecognitionModal({
           <div className="board-recognition-actions">
             <Button onClick={() => setPhase('crop')}>{t('crop')}</Button>
             <Button onClick={onClose}>{t('close')}</Button>
-            <Button type="primary" onClick={() => void recognize(image)}>
+            <Button type="primary" onClick={() => sourceImage != null && void recognize(sourceImage)}>
               {t('apply')}
             </Button>
           </div>
@@ -435,9 +456,13 @@ function CropEditor({
   );
 }
 
-function useBlobUrl(blob: Blob): string {
+function useBlobUrl(blob: Blob | null): string {
   const [url, setUrl] = useState('');
   useEffect(() => {
+    if (blob == null) {
+      setUrl('');
+      return;
+    }
     const nextUrl = URL.createObjectURL(blob);
     setUrl(nextUrl);
     return () => URL.revokeObjectURL(nextUrl);
@@ -445,33 +470,36 @@ function useBlobUrl(blob: Blob): string {
   return url;
 }
 
-async function cropImage(image: Blob, crop: CropRect): Promise<Blob> {
+async function cropImageForScan(image: Blob, crop: CropRect): Promise<Blob> {
   const bitmap = await createImageBitmap(image, {imageOrientation: 'from-image'});
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(bitmap.width * crop.width));
-  canvas.height = Math.max(1, Math.round(bitmap.height * crop.height));
-  const context = canvas.getContext('2d');
-  if (context == null) throw new Error('Canvas is unavailable.');
-  context.drawImage(
-    bitmap,
-    Math.round(bitmap.width * crop.x),
-    Math.round(bitmap.height * crop.y),
-    canvas.width,
-    canvas.height,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-  bitmap.close();
-  const type = image.type === 'image/png' ? 'image/png' : 'image/jpeg';
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob == null ? reject(new Error('Failed to crop image.')) : resolve(blob)), type, 0.95)
-  );
+  try {
+    const geometry = scanCropGeometry(bitmap.width, bitmap.height, crop, maxScanImageDimension);
+    canvas.width = geometry.outputWidth;
+    canvas.height = geometry.outputHeight;
+    const context = canvas.getContext('2d');
+    if (context == null) throw new Error('Canvas is unavailable.');
+    context.drawImage(
+      bitmap,
+      geometry.sourceX,
+      geometry.sourceY,
+      geometry.sourceWidth,
+      geometry.sourceHeight,
+      0,
+      0,
+      geometry.outputWidth,
+      geometry.outputHeight
+    );
+    return await canvasToBlob(canvas, image, 'Failed to crop image.');
+  } finally {
+    bitmap.close();
+    canvas.width = 1;
+    canvas.height = 1;
+  }
 }
 
 async function resizeImageForScan(image: Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(image);
+  const bitmap = await createImageBitmap(image, {imageOrientation: 'from-image'});
   if (bitmap.width <= maxScanImageDimension && bitmap.height <= maxScanImageDimension) {
     bitmap.close();
     return image;
@@ -479,19 +507,24 @@ async function resizeImageForScan(image: Blob): Promise<Blob> {
 
   const scale = Math.min(maxScanImageDimension / bitmap.width, maxScanImageDimension / bitmap.height);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  const context = canvas.getContext('2d');
-  if (context == null) {
+  try {
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (context == null) throw new Error('Canvas is unavailable.');
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return await canvasToBlob(canvas, image, 'Failed to resize image.');
+  } finally {
     bitmap.close();
-    throw new Error('Canvas is unavailable.');
+    canvas.width = 1;
+    canvas.height = 1;
   }
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
+}
 
+function canvasToBlob(canvas: HTMLCanvasElement, image: Blob, errorMessage: string): Promise<Blob> {
   const type = image.type === 'image/png' ? 'image/png' : 'image/jpeg';
   return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob == null ? reject(new Error('Failed to resize image.')) : resolve(blob)), type, 0.95)
+    canvas.toBlob((blob) => (blob == null ? reject(new Error(errorMessage)) : resolve(blob)), type, 0.95)
   );
 }
 
