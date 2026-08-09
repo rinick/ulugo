@@ -73,7 +73,7 @@ describe('insertEmptyMoveZeroBeforeRootSetup', () => {
 });
 
 describe('replaceNextMoveBranch', () => {
-  it('supports switching between insert and replace modes', () => {
+  it('inserts one move when requested, then returns to replacing', () => {
     const branchMemory = new Map<string, number>();
     const document = parseSgf('(;SZ[9];B[aa];W[bb])');
     const inserted = replaceNextMoveBranch({
@@ -81,7 +81,8 @@ describe('replaceNextMoveBranch', () => {
       path: [],
       point: 'cc',
       branchMemory,
-      state: {...createReplaceMoveState(document, [], branchMemory), mode: 'insert', preferredMode: 'insert'},
+      state: createReplaceMoveState(document, [], branchMemory),
+      insert: true,
     })!;
 
     expect(getNodeAtPath(inserted.document, [0]).data).toEqual({B: ['cc']});
@@ -92,19 +93,27 @@ describe('replaceNextMoveBranch', () => {
       path: inserted.path,
       point: 'dd',
       branchMemory,
-      state: {...inserted.state!, mode: 'replace'},
+      state: inserted.state,
     })!;
 
     expect(serializeSgf(replaced.document)).toContain(';B[cc];B[dd];W[bb]');
     expect(replaced.state?.createdNodeIds).toHaveLength(2);
   });
 
-  it('forces insert mode when the next reference node is setup', () => {
+  it('inserts automatically when the next reference node is setup', () => {
     const document = parseSgf('(;SZ[9];AB[aa];B[bb])');
     const state = createReplaceMoveState(document, [], new Map());
+    const result = replaceNextMoveBranch({
+      document,
+      path: [],
+      point: 'cc',
+      branchMemory: new Map(),
+      state,
+    })!;
 
-    expect(state.mode).toBe('insert');
     expect(state.setupPath).toEqual([0]);
+    expect(getNodeAtPath(result.document, [0]).data).toEqual({B: ['cc']});
+    expect(getNodeAtPath(result.document, [0, 0]).data).toEqual({AB: ['aa']});
   });
 
   it('keeps the first setup node after moves inserted beyond the replacement range', () => {

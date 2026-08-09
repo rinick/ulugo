@@ -92,6 +92,8 @@ export const resources = {
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
       tipReplaceMove:
         'If you notice a misrecorded move, select that move and use Replace move. Ulugo returns to the previous position so you can correct it without replaying all later moves.',
+      tipReplaceInsert:
+        'In Replace move mode, left-click to replace the next move and right-click to insert a move before it. Ulugo inserts automatically when the next node is a setup move.',
       tipBoardRecognition:
         'Ulugo can convert a photo of a Go board into an SGF file. Choose an image when opening a file to start board recognition.',
       tipMinimalPortrait:
@@ -128,7 +130,6 @@ export const resources = {
       placeBlackStone: 'Place black stone',
       placeWhiteStone: 'Place white stone',
       replaceMove: 'Replace move',
-      insertMove: 'Insert move',
       addLabel: 'Add label',
       addCircle: 'Add circle',
       addSquare: 'Add square',
@@ -355,6 +356,8 @@ export const resources = {
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
       tipReplaceMove:
         '在记谱过程中如果发现某一手记错了，选中错误的那一手并使用“替换着手”工具。程序会自动退回上一手，让你纠正错误，无需重摆之后所有的棋。',
+      tipReplaceInsert:
+        '在“替换着手”模式下，左键落子会替换下一手，右键落子会在下一手之前插入一手。如果下一手是setup move，程序会自动插入。',
       tipBoardRecognition: 'Ulugo可以将棋盘照片转换为SGF文件。打开文件时选择图片即可开始棋盘识别。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
       tipWebScoreEstimate:
@@ -387,7 +390,6 @@ export const resources = {
       placeBlackStone: '放置黑子',
       placeWhiteStone: '放置白子',
       replaceMove: '替换着手',
-      insertMove: '插入着手',
       addLabel: '添加标记',
       addCircle: '添加圆形',
       addSquare: '添加方形',
@@ -614,6 +616,8 @@ export const resources = {
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
       tipReplaceMove:
         '記録ミスに気づいたら、その誤った手を選択して「着手を置換」を使います。自動的に一手前へ戻るので、その後の手をすべて並べ直さずに修正できます。',
+      tipReplaceInsert:
+        '「着手を置換」モードでは、左クリックで次の手を置換し、右クリックでその前に手を挿入します。次のノードがセットアップ手の場合は自動的に挿入されます。',
       tipBoardRecognition:
         'Ulugoは碁盤の写真をSGFファイルに変換できます。ファイルを開くときに画像を選択すると、盤面認識が始まります。',
       tipMinimalPortrait:
@@ -650,7 +654,6 @@ export const resources = {
       placeBlackStone: '黒石を置く',
       placeWhiteStone: '白石を置く',
       replaceMove: '着手を置換',
-      insertMove: '着手を挿入',
       addLabel: 'ラベルを追加',
       addCircle: '丸を追加',
       addSquare: '四角を追加',
@@ -879,6 +882,8 @@ export const resources = {
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
       tipReplaceMove:
         '잘못 기록된 수를 발견하면 그 수를 선택하고 "수 바꾸기"를 사용하세요. 자동으로 한 수 전으로 돌아가므로 이후의 모든 수를 다시 놓지 않고 수정할 수 있습니다.',
+      tipReplaceInsert:
+        '"수 바꾸기" 모드에서는 왼쪽 클릭으로 다음 수를 바꾸고 오른쪽 클릭으로 그 앞에 한 수를 삽입합니다. 다음 노드가 설정 수이면 자동으로 삽입합니다.',
       tipBoardRecognition:
         'Ulugo는 바둑판 사진을 SGF 파일로 변환할 수 있습니다. 파일을 열 때 이미지를 선택하면 바둑판 인식이 시작됩니다.',
       tipMinimalPortrait:
@@ -915,7 +920,6 @@ export const resources = {
       placeBlackStone: '흑돌 놓기',
       placeWhiteStone: '백돌 놓기',
       replaceMove: '수 바꾸기',
-      insertMove: '수 삽입',
       addLabel: '표식 추가',
       addCircle: '원 추가',
       addSquare: '사각형 추가',
@@ -1144,6 +1148,8 @@ export const resources = {
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
       tipReplaceMove:
         'Si vous remarquez un coup mal saisi, selectionnez ce coup et utilisez Remplacer le coup. Ulugo revient automatiquement au coup precedent afin de le corriger sans rejouer tous les coups suivants.',
+      tipReplaceInsert:
+        'En mode Remplacer le coup, un clic gauche remplace le coup suivant et un clic droit insere un coup avant celui-ci. Si le noeud suivant est un coup de mise en place, Ulugo insere automatiquement.',
       tipBoardRecognition:
         'Ulugo peut convertir une photo d un plateau de go en fichier SGF. Selectionnez une image lors de l ouverture d un fichier pour lancer la reconnaissance du plateau.',
       tipMinimalPortrait:
@@ -1181,7 +1187,6 @@ export const resources = {
       placeBlackStone: 'Placer une pierre noire',
       placeWhiteStone: 'Placer une pierre blanche',
       replaceMove: 'Remplacer le coup',
-      insertMove: 'Insérer un coup',
       addLabel: 'Ajouter etiquette',
       addCircle: 'Ajouter cercle',
       addSquare: 'Ajouter carre',
@@ -1413,6 +1418,8 @@ export const resources = {
         'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
       tipReplaceMove:
         'Wenn du einen falsch notierten Zug bemerkst, waehle diesen Zug aus und verwende Zug ersetzen. Ulugo geht automatisch einen Zug zurueck, damit du ihn korrigieren kannst, ohne alle folgenden Zuege neu zu setzen.',
+      tipReplaceInsert:
+        'Im Modus Zug ersetzen ersetzt ein Linksklick den naechsten Zug; ein Rechtsklick fuegt davor einen Zug ein. Ist der naechste Knoten ein Einrichtungszug, wird automatisch eingefuegt.',
       tipBoardRecognition:
         'Ulugo kann ein Foto eines Go-Bretts in eine SGF-Datei umwandeln. Waehle beim Oeffnen einer Datei ein Bild aus, um die Bretterkennung zu starten.',
       tipMinimalPortrait:
@@ -1449,7 +1456,6 @@ export const resources = {
       placeBlackStone: 'Schwarzen Stein setzen',
       placeWhiteStone: 'Weissen Stein setzen',
       replaceMove: 'Zug ersetzen',
-      insertMove: 'Zug einfuegen',
       addLabel: 'Markierung hinzufuegen',
       addCircle: 'Kreis hinzufuegen',
       addSquare: 'Quadrat hinzufuegen',
@@ -1681,6 +1687,8 @@ export const resources = {
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
       tipReplaceMove:
         'Если вы заметили неверно записанный ход, выберите его и используйте «Заменить ход». Ulugo автоматически вернется на ход назад, чтобы вы могли исправить ошибку, не расставляя заново все последующие ходы.',
+      tipReplaceInsert:
+        'В режиме «Заменить ход» щелчок левой кнопкой заменяет следующий ход, а правой — вставляет ход перед ним. Если следующий узел установочный, вставка выполняется автоматически.',
       tipBoardRecognition:
         'Ulugo может преобразовать фотографию доски го в файл SGF. Выберите изображение при открытии файла, чтобы запустить распознавание доски.',
       tipMinimalPortrait:
@@ -1717,7 +1725,6 @@ export const resources = {
       placeBlackStone: 'Поставить черный камень',
       placeWhiteStone: 'Поставить белый камень',
       replaceMove: 'Заменить ход',
-      insertMove: 'Вставить ход',
       addLabel: 'Добавить метку',
       addCircle: 'Добавить круг',
       addSquare: 'Добавить квадрат',

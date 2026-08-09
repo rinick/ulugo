@@ -96,10 +96,8 @@ import {
   hasNonEmptyRootSetup,
   insertEmptyMoveZeroBeforeRootSetup,
   isSetupNode,
-  replaceMoveForcesInsert,
   replaceMoveStateForSelection,
   replaceNextMoveBranch,
-  type ReplaceMoveMode,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
 import {readOpenLastSgfOnStartupPreference, useAppPreferences} from './useAppPreferences';
@@ -495,13 +493,6 @@ export function App() {
       cancelText: t('cancel'),
       okButtonProps: {danger: true},
       onOk: cancel,
-    });
-  }
-
-  function handleReplaceModeChange(mode: ReplaceMoveMode): void {
-    setReplaceMoveState((current) => {
-      if (current == null || (mode === 'replace' && replaceMoveForcesInsert(current))) return current;
-      return {...current, mode, preferredMode: mode};
     });
   }
 
@@ -962,7 +953,8 @@ export function App() {
   async function handleBoardClick(
     point: string,
     options: BoardVertexClickOptions,
-    colorOverride?: SgfColor
+    colorOverride?: SgfColor,
+    insertReplacement = false
   ): Promise<void> {
     if (options.shiftKey) {
       const nextPath = position.stones.has(point)
@@ -992,6 +984,7 @@ export function App() {
         rules: gameInfo.RU,
         branchMemory: branchMemoryRef.current,
         state: replaceMoveState,
+        insert: insertReplacement,
       });
       if (result == null) return;
 
@@ -1043,6 +1036,11 @@ export function App() {
   }
 
   function handleBoardRightClick(point: string, options: BoardVertexClickOptions): void {
+    if (tool === 'replace') {
+      void handleBoardClick(point, {shiftKey: false, clickCount: 1}, undefined, true);
+      return;
+    }
+
     if (isMarkupTool(tool)) {
       if (!showMarkup) return;
       applyMarkupTool(point, true, options.clickCount);
@@ -1459,11 +1457,8 @@ export function App() {
               replaceControls={
                 tool === 'replace' && replaceMoveState?.replacementStartPath != null
                   ? {
-                      mode: replaceMoveState.mode ?? 'replace',
-                      forceInsert: replaceMoveForcesInsert(replaceMoveState),
                       onConfirm: handleConfirmReplace,
                       onCancel: handleCancelReplace,
-                      onModeChange: handleReplaceModeChange,
                     }
                   : undefined
               }

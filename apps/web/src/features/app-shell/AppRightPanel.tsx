@@ -1,7 +1,6 @@
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
 import type {SgfDocument} from '@ulugo/sgf-core';
 import type {ReactNode} from 'react';
-import type {ReplaceMoveMode} from '../../app/replaceMoveUtils';
 import {CommentsPanel, type AnalysisChartSummary} from '../comments/CommentsPanel';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {SgfTreePanel} from '../sgf-tree/SgfTreePanel';
@@ -40,11 +39,8 @@ interface AppRightPanelProps {
   onEstimateScore: (path: number[]) => void;
   estimateScoreEnabled: boolean;
   replaceControls?: {
-    mode: ReplaceMoveMode;
-    forceInsert: boolean;
     onConfirm: () => void;
     onCancel: () => void;
-    onModeChange: (mode: ReplaceMoveMode) => void;
   };
 }
 

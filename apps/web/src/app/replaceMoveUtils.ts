@@ -19,13 +19,9 @@ export interface ReplaceMoveState {
   setupPath?: number[];
   referenceNextPath?: number[];
   setupDepth?: number;
-  mode?: ReplaceMoveMode;
-  preferredMode?: ReplaceMoveMode;
   createdNodeIds?: string[];
   referencesByNodeId?: Record<string, ReplaceMoveReference>;
 }
-
-export type ReplaceMoveMode = 'insert' | 'replace';
 
 interface ReplaceMoveReference {
   originalPath: number[];
@@ -47,8 +43,6 @@ export function createReplaceMoveState(
     replacementPath: path,
     setupPath,
     referenceNextPath: nextPath ?? undefined,
-    mode: setupPath == null ? 'replace' : 'insert',
-    preferredMode: 'replace',
     createdNodeIds: [],
     referencesByNodeId: {},
   };
@@ -61,6 +55,7 @@ export function replaceNextMoveBranch({
   rules,
   branchMemory,
   state,
+  insert = false,
 }: {
   document: SgfDocument;
   path: number[];
@@ -68,6 +63,7 @@ export function replaceNextMoveBranch({
   rules?: string;
   branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
+  insert?: boolean;
 }): {document: SgfDocument; path: number[]; state: ReplaceMoveState | null} | null {
   if (state == null || !samePath(path, state.replacementPath)) return null;
 
@@ -75,9 +71,7 @@ export function replaceNextMoveBranch({
     state.referenceNextPath ?? state.setupPath ?? nextOriginalBranchPath(document, state.originalPath, branchMemory);
   const setupBoundary = originalNextPath != null && isSetupNode(getNodeAtPath(document, originalNextPath));
   const originalMove = originalNextPath == null ? null : nodeMove(getNodeAtPath(document, originalNextPath));
-  const mode = setupBoundary ? 'insert' : (state.mode ?? 'replace');
-  const preferredMode = state.preferredMode ?? (state.setupPath == null ? (state.mode ?? 'replace') : 'replace');
-  const insertsMove = mode === 'insert' || originalNextPath == null;
+  const insertsMove = insert || setupBoundary || originalNextPath == null;
   const color = insertsMove ? deriveBoardPosition(document, path).nextColor : originalMove!.color;
 
   const position = deriveBoardPosition(document, path);
@@ -129,8 +123,6 @@ export function replaceNextMoveBranch({
       referenceNextPath: nextReferencePath ?? undefined,
       setupDepth:
         nextSetupPath != null ? (state.setupDepth ?? nextPath.length - replacementStartPath.length) : undefined,
-      mode: nextSetupPath != null ? 'insert' : preferredMode,
-      preferredMode,
       createdNodeIds: [...(state.createdNodeIds ?? []), child.id],
       referencesByNodeId: {...state.referencesByNodeId, [child.id]: nextReference},
     },
@@ -256,7 +248,6 @@ export function replaceMoveStateForSelection(
       replacementPath: path,
       setupPath: selectedReference.setupPath,
       referenceNextPath: selectedReference.referenceNextPath,
-      mode: selectedReference.setupPath == null ? (state.preferredMode ?? 'replace') : 'insert',
     };
   }
 
@@ -286,12 +277,7 @@ export function replaceMoveStateForSelection(
     replacementPath: path,
     setupPath,
     referenceNextPath,
-    mode: setupPath == null ? (state.preferredMode ?? 'replace') : 'insert',
   };
-}
-
-export function replaceMoveForcesInsert(state: ReplaceMoveState | null): boolean {
-  return state?.setupPath != null;
 }
 
 export function gtpMoveToPoint(move: string, size: number): string | null {

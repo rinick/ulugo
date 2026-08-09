@@ -8,8 +8,6 @@ import {
   LeftOutlined,
   RightOutlined,
   ScissorOutlined,
-  SwapOutlined,
-  VerticalAlignMiddleOutlined,
 } from '@ant-design/icons';
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
@@ -26,7 +24,6 @@ import {
 } from 'react';
 import {useTranslation} from 'react-i18next';
 import {scoringOperationPath} from '../../app/appEditorUtils';
-import type {ReplaceMoveMode} from '../../app/replaceMoveUtils';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
   cornerRadius,
@@ -58,11 +55,8 @@ interface SgfTreePanelProps {
   onNextMove: () => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
   replaceControls?: {
-    mode: ReplaceMoveMode;
-    forceInsert: boolean;
     onConfirm: () => void;
     onCancel: () => void;
-    onModeChange: (mode: ReplaceMoveMode) => void;
   };
 }
 
@@ -344,7 +338,6 @@ export function SgfTreePanel({
               title={withShortcut(t('deleteMove'), shortcutLabels.deleteBranch)}
               disabled={selectedOperationPath.length === 0}
               icon={<DeleteOutlined />}
-              danger
               onClick={() => onDelete()}
             />
             <TreeActionButton
@@ -352,20 +345,6 @@ export function SgfTreePanel({
               disabled={false}
               icon={<CloseOutlined />}
               onClick={replaceControls.onCancel}
-            />
-            <TreeActionButton
-              title={t('insertMove')}
-              disabled={false}
-              type={replaceControls.mode === 'insert' ? 'primary' : 'default'}
-              icon={<VerticalAlignMiddleOutlined />}
-              onClick={() => replaceControls.onModeChange('insert')}
-            />
-            <TreeActionButton
-              title={t('replaceMove')}
-              disabled={replaceControls.forceInsert}
-              type={replaceControls.mode === 'replace' ? 'primary' : 'default'}
-              icon={<SwapOutlined />}
-              onClick={() => replaceControls.onModeChange('replace')}
             />
           </Space.Compact>
         )}
