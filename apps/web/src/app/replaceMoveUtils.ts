@@ -14,6 +14,8 @@ import {pathKey} from './sgfPathUtils';
 export interface ReplaceMoveState {
   originalPath: number[];
   replacementPath: number[];
+  referenceMoves?: ReplaceMoveSequenceItem[];
+  referenceHasSetup?: boolean;
   originalStartPath?: number[];
   replacementStartPath?: number[];
   setupPath?: number[];
@@ -21,6 +23,11 @@ export interface ReplaceMoveState {
   setupDepth?: number;
   createdNodeIds?: string[];
   referencesByNodeId?: Record<string, ReplaceMoveReference>;
+}
+
+interface ReplaceMoveSequenceItem {
+  color: SgfColor;
+  point: string;
 }
 
 interface ReplaceMoveReference {
@@ -38,9 +45,14 @@ export function createReplaceMoveState(
 ): ReplaceMoveState {
   const nextPath = nextOriginalBranchPath(document, path, branchMemory);
   const setupPath = nextPath != null && isSetupNode(getNodeAtPath(document, nextPath)) ? nextPath : undefined;
+  const referenceSequence = collectMoveSequence(document, nextPath, (currentPath) =>
+    nextOriginalBranchPath(document, currentPath, branchMemory)
+  );
   return {
     originalPath: path,
     replacementPath: path,
+    referenceMoves: referenceSequence.moves,
+    referenceHasSetup: referenceSequence.hasSetup,
     setupPath,
     referenceNextPath: nextPath ?? undefined,
     createdNodeIds: [],
@@ -71,6 +83,11 @@ export function replaceNextMoveBranch({
     state.referenceNextPath ?? state.setupPath ?? nextOriginalBranchPath(document, state.originalPath, branchMemory);
   const setupBoundary = originalNextPath != null && isSetupNode(getNodeAtPath(document, originalNextPath));
   const originalMove = originalNextPath == null ? null : nodeMove(getNodeAtPath(document, originalNextPath));
+  const referenceSequence = collectMoveSequence(document, originalNextPath, (currentPath) =>
+    nextOriginalBranchPath(document, currentPath, branchMemory)
+  );
+  const referenceMoves = state.referenceMoves ?? referenceSequence.moves;
+  const referenceHasSetup = state.referenceHasSetup ?? referenceSequence.hasSetup;
   const insertsMove = insert || setupBoundary || originalNextPath == null;
   const color = insertsMove ? deriveBoardPosition(document, path).nextColor : originalMove!.color;
 
@@ -89,9 +106,9 @@ export function replaceNextMoveBranch({
   const nextPath = [...path, insertIndex];
 
   if (insertsMove && originalNextPath != null) {
-    copyOriginalNodeAndContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
+    copyOriginalBranch(next, nextPath, document, originalNextPath, true, rules, branchMemory);
   } else if (originalNextPath != null) {
-    copyOriginalContinuation(next, nextPath, document, originalNextPath, rules, branchMemory);
+    copyOriginalBranch(next, nextPath, document, originalNextPath, false, rules, branchMemory);
   }
 
   const adjustedOriginalNextPath =
@@ -117,6 +134,8 @@ export function replaceNextMoveBranch({
     state: {
       originalPath: nextOriginalStatePath,
       replacementPath: nextPath,
+      referenceMoves,
+      referenceHasSetup,
       originalStartPath: state.originalStartPath ?? nextOriginalStatePath,
       replacementStartPath,
       setupPath: nextSetupPath,
@@ -208,6 +227,7 @@ export function replaceMoveStones(
 ): {
   past: Map<string, SgfColor>;
   future: Map<string, SgfColor>;
+  extraFuture: Map<string, SgfColor>;
   missing: Set<string>;
   extra: Set<string>;
 } {
@@ -223,33 +243,65 @@ export function replaceMoveStones(
 
   const referenceNextPath =
     state?.referenceNextPath ?? state?.setupPath ?? nextOriginalBranchPath(document, referencePath, branchMemory);
-  const referenceContinuation = collectContinuationStones(document, referenceNextPath, (currentPath) =>
+  const referenceContinuationResult = collectContinuationStones(document, referenceNextPath, (currentPath) =>
     nextOriginalBranchPath(document, currentPath, branchMemory)
   );
+  const referenceContinuation = referenceContinuationResult.stones;
 
   for (const [point, color] of referenceContinuation) {
     if (!currentStones.has(point) && !past.has(point)) future.set(point, color);
   }
 
-  const currentContinuation =
+  const currentContinuationResult =
     state?.replacementStartPath == null
-      ? referenceContinuation
+      ? referenceContinuationResult
       : collectContinuationStones(document, nextFirstChildPath(document, path), (currentPath) =>
           nextFirstChildPath(document, currentPath)
         );
-  const referenceBranchStones = mergeStones(referenceStones, referenceContinuation);
-  const currentBranchStones = mergeStones(currentStones, currentContinuation);
+  const currentContinuation = currentContinuationResult.stones;
+  const referenceBranchStones = collectStoneKeys(
+    referenceStones,
+    referenceContinuation,
+    referenceContinuationResult.setupPosition
+  );
+  const currentBranchStones = collectStoneKeys(
+    currentStones,
+    currentContinuation,
+    currentContinuationResult.setupPosition
+  );
+  const extraFuture = new Map<string, SgfColor>();
   const missing = new Set<string>();
   const extra = new Set<string>();
 
+  for (const [point, color] of currentContinuation) {
+    if (!currentStones.has(point) && !referenceBranchStones.has(stoneKey(point, color))) {
+      extraFuture.set(point, color);
+    }
+  }
   for (const [point, color] of [...past, ...future]) {
-    if (currentBranchStones.get(point) !== color) missing.add(point);
+    if (!currentBranchStones.has(stoneKey(point, color))) missing.add(point);
   }
   for (const [point, color] of currentStones) {
-    if (referenceBranchStones.get(point) !== color) extra.add(point);
+    if (!referenceBranchStones.has(stoneKey(point, color))) extra.add(point);
+  }
+  for (const point of extraFuture.keys()) extra.add(point);
+
+  if (state?.replacementStartPath != null && state.referenceMoves != null && state.referenceHasSetup !== true) {
+    const currentMoves = collectMoveSequence(document, state.replacementStartPath, (currentPath) =>
+      nextFirstChildPath(document, currentPath)
+    ).moves;
+    const unchangedCurrentIndexes = longestCommonMoveSubsequence(state.referenceMoves, currentMoves);
+
+    currentMoves.forEach((move, index) => {
+      if (unchangedCurrentIndexes.has(index)) return;
+      extra.add(move.point);
+      if (!currentStones.has(move.point) && currentContinuation.get(move.point) === move.color) {
+        extraFuture.set(move.point, move.color);
+      }
+    });
   }
 
-  return {past, future, missing, extra};
+  return {past, future, extraFuture, missing, extra};
 }
 
 export function replaceMoveStateForSelection(
@@ -311,56 +363,57 @@ export function gtpMoveToPoint(move: string, size: number): string | null {
   return vertexToPoint(x, y);
 }
 
-function copyOriginalContinuation(
+function copyOriginalBranch(
   targetDocument: SgfDocument,
   targetPath: number[],
   sourceDocument: SgfDocument,
   sourcePath: number[],
+  includeSourceNode: boolean,
   rules: string | undefined,
   branchMemory: Map<string, number>
 ): void {
   let currentTargetPath = targetPath;
   let currentSourcePath = sourcePath;
+  let useCurrentSourcePath = includeSourceNode;
+  let previousMoveWasConvertedPass = false;
 
   while (true) {
-    const nextSourcePath = nextOriginalBranchPath(sourceDocument, currentSourcePath, branchMemory);
+    const nextSourcePath = useCurrentSourcePath
+      ? currentSourcePath
+      : nextOriginalBranchPath(sourceDocument, currentSourcePath, branchMemory);
     if (nextSourcePath == null) return;
+    useCurrentSourcePath = false;
 
     const sourceNode = getNodeAtPath(sourceDocument, nextSourcePath);
     const move = nodeMove(sourceNode);
     if (move == null && !isSetupNode(sourceNode)) return;
 
-    if (move != null) {
+    let nodeData = cloneNodeData(sourceNode);
+    let convertedPass = false;
+    if (move?.point) {
       const position = deriveBoardPosition(targetDocument, currentTargetPath);
-      if (!isLegalMove(position, move.color, move.point, rules)) return;
+      if (!isLegalMove(position, move.color, move.point, rules)) {
+        if (!position.stones.has(move.point)) return;
+        nodeData = {...nodeData, [move.color]: ['']};
+        convertedPass = true;
+      }
+    }
+
+    if (convertedPass && previousMoveWasConvertedPass) {
+      const previousPath = currentTargetPath;
+      currentTargetPath = previousPath.slice(0, -1);
+      getNodeAtPath(targetDocument, currentTargetPath).children.splice(previousPath.at(-1)!, 1);
+      previousMoveWasConvertedPass = false;
+      currentSourcePath = nextSourcePath;
+      continue;
     }
 
     const targetParent = getNodeAtPath(targetDocument, currentTargetPath);
-    targetParent.children.push(createNode(cloneNodeData(sourceNode)));
+    targetParent.children.push(createNode(nodeData));
     currentTargetPath = [...currentTargetPath, targetParent.children.length - 1];
     currentSourcePath = nextSourcePath;
+    previousMoveWasConvertedPass = convertedPass;
   }
-}
-
-function copyOriginalNodeAndContinuation(
-  targetDocument: SgfDocument,
-  targetPath: number[],
-  sourceDocument: SgfDocument,
-  sourcePath: number[],
-  rules: string | undefined,
-  branchMemory: Map<string, number>
-): void {
-  const sourceNode = getNodeAtPath(sourceDocument, sourcePath);
-  const targetParent = getNodeAtPath(targetDocument, targetPath);
-  targetParent.children.push(createNode(cloneNodeData(sourceNode)));
-  copyOriginalContinuation(
-    targetDocument,
-    [...targetPath, targetParent.children.length - 1],
-    sourceDocument,
-    sourcePath,
-    rules,
-    branchMemory
-  );
 }
 
 function nextOriginalBranchPath(
@@ -380,20 +433,130 @@ function nextFirstChildPath(document: SgfDocument, path: number[]): number[] | n
   return getNodeAtPath(document, path).children.length === 0 ? null : [...path, 0];
 }
 
+function collectMoveSequence(
+  document: SgfDocument,
+  startPath: number[] | null | undefined,
+  nextPath: (path: number[]) => number[] | null
+): {moves: ReplaceMoveSequenceItem[]; hasSetup: boolean} {
+  const moves: ReplaceMoveSequenceItem[] = [];
+  let path = startPath;
+
+  while (path != null) {
+    const node = getNodeAtPath(document, path);
+    if (isSetupNode(node)) return {moves, hasSetup: true};
+
+    const move = nodeMove(node);
+    if (move?.point) moves.push(move);
+    path = nextPath(path);
+  }
+
+  return {moves, hasSetup: false};
+}
+
+function longestCommonMoveSubsequence(
+  referenceMoves: ReplaceMoveSequenceItem[],
+  currentMoves: ReplaceMoveSequenceItem[]
+): Set<number> {
+  const width = currentMoves.length + 1;
+  const cellCount = (referenceMoves.length + 1) * width;
+  const lengths = new Uint32Array(cellCount);
+  const displacement = new Float64Array(cellCount);
+  const decisions = new Uint8Array(cellCount);
+
+  for (let referenceIndex = referenceMoves.length - 1; referenceIndex >= 0; referenceIndex -= 1) {
+    for (let currentIndex = currentMoves.length - 1; currentIndex >= 0; currentIndex -= 1) {
+      const index = referenceIndex * width + currentIndex;
+      const skipReferenceIndex = index + width;
+      const skipCurrentIndex = index + 1;
+      let bestLength = lengths[skipReferenceIndex];
+      let bestDisplacement = displacement[skipReferenceIndex];
+      let bestDecision = 1;
+
+      if (
+        isBetterMoveAlignment(
+          lengths[skipCurrentIndex],
+          displacement[skipCurrentIndex],
+          2,
+          bestLength,
+          bestDisplacement,
+          bestDecision
+        )
+      ) {
+        bestLength = lengths[skipCurrentIndex];
+        bestDisplacement = displacement[skipCurrentIndex];
+        bestDecision = 2;
+      }
+
+      if (sameMove(referenceMoves[referenceIndex], currentMoves[currentIndex])) {
+        const nextIndex = skipReferenceIndex + 1;
+        const matchLength = lengths[nextIndex] + 1;
+        const matchDisplacement = displacement[nextIndex] + Math.abs(referenceIndex - currentIndex);
+        if (isBetterMoveAlignment(matchLength, matchDisplacement, 3, bestLength, bestDisplacement, bestDecision)) {
+          bestLength = matchLength;
+          bestDisplacement = matchDisplacement;
+          bestDecision = 3;
+        }
+      }
+
+      lengths[index] = bestLength;
+      displacement[index] = bestDisplacement;
+      decisions[index] = bestDecision;
+    }
+  }
+
+  const unchangedCurrentIndexes = new Set<number>();
+  let referenceIndex = 0;
+  let currentIndex = 0;
+  while (referenceIndex < referenceMoves.length && currentIndex < currentMoves.length) {
+    const decision = decisions[referenceIndex * width + currentIndex];
+    if (decision === 3) {
+      unchangedCurrentIndexes.add(currentIndex);
+      referenceIndex += 1;
+      currentIndex += 1;
+    } else if (decision === 2) {
+      currentIndex += 1;
+    } else {
+      referenceIndex += 1;
+    }
+  }
+
+  return unchangedCurrentIndexes;
+}
+
+function isBetterMoveAlignment(
+  length: number,
+  displacement: number,
+  decision: number,
+  bestLength: number,
+  bestDisplacement: number,
+  bestDecision: number
+): boolean {
+  if (length !== bestLength) return length > bestLength;
+  if (displacement !== bestDisplacement) return displacement < bestDisplacement;
+  return decision > bestDecision;
+}
+
+function sameMove(left: ReplaceMoveSequenceItem, right: ReplaceMoveSequenceItem): boolean {
+  return left.color === right.color && left.point === right.point;
+}
+
 function collectContinuationStones(
   document: SgfDocument,
   startPath: number[] | null | undefined,
   nextPath: (path: number[]) => number[] | null
-): Map<string, SgfColor> {
+): {stones: Map<string, SgfColor>; setupPosition: ReadonlyMap<string, SgfColor> | null} {
   const stones = new Map<string, SgfColor>();
   let path = startPath;
 
   while (path != null) {
     const node = getNodeAtPath(document, path);
     if (isSetupNode(node)) {
-      addStones(stones, node.data.AB, 'B');
-      addStones(stones, node.data.AW, 'W');
-      break;
+      const beforeSetup = deriveBoardPosition(document, path.slice(0, -1)).stones;
+      const setupPosition = deriveBoardPosition(document, path).stones;
+      for (const [point, color] of setupPosition) {
+        if (beforeSetup.get(point) !== color && !stones.has(point)) stones.set(point, color);
+      }
+      return {stones, setupPosition};
     }
 
     const move = nodeMove(node);
@@ -401,24 +564,19 @@ function collectContinuationStones(
     path = nextPath(path);
   }
 
-  return stones;
+  return {stones, setupPosition: null};
 }
 
-function mergeStones(
-  position: ReadonlyMap<string, SgfColor>,
-  continuation: ReadonlyMap<string, SgfColor>
-): Map<string, SgfColor> {
-  const stones = new Map(position);
-  for (const [point, color] of continuation) {
-    if (!stones.has(point)) stones.set(point, color);
+function collectStoneKeys(...stoneMaps: Array<ReadonlyMap<string, SgfColor> | null>): Set<string> {
+  const keys = new Set<string>();
+  for (const stones of stoneMaps) {
+    for (const [point, color] of stones ?? []) keys.add(stoneKey(point, color));
   }
-  return stones;
+  return keys;
 }
 
-function addStones(stones: Map<string, SgfColor>, points: string[] | undefined, color: SgfColor): void {
-  for (const point of points ?? []) {
-    if (!stones.has(point)) stones.set(point, color);
-  }
+function stoneKey(point: string, color: SgfColor): string {
+  return `${color}:${point}`;
 }
 
 function pathStartsWith(path: number[], prefix: number[]): boolean {

@@ -58,6 +58,7 @@ interface GoBoardProps {
   missingReferenceStonePoints: Set<string>;
   referencePastStones: Map<string, SgfColor>;
   referenceFutureStones: Map<string, SgfColor>;
+  extraFutureStones: Map<string, SgfColor>;
   boardBackground: BoardBackgroundTheme;
   rules: string | undefined;
   onVertexClick: (point: string, options: BoardVertexClickOptions) => void;
@@ -97,6 +98,7 @@ export function GoBoard({
   missingReferenceStonePoints,
   referencePastStones,
   referenceFutureStones,
+  extraFutureStones,
   boardBackground,
   rules,
   onVertexClick,
@@ -134,10 +136,12 @@ export function GoBoard({
       Array.from({length: position.size}, (_, y) =>
         Array.from({length: position.size}, (_, x) => {
           const point = vertexToPoint(x, y);
-          return position.stones.has(point) ? null : (referenceFutureStones.get(point) ?? null);
+          return position.stones.has(point)
+            ? null
+            : (referenceFutureStones.get(point) ?? extraFutureStones.get(point) ?? null);
         })
       ),
-    [position.size, position.stones, referenceFutureStones]
+    [extraFutureStones, position.size, position.stones, referenceFutureStones]
   );
   const pastStoneMap = useMemo(
     () =>

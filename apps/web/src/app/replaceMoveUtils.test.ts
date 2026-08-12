@@ -112,6 +112,7 @@ describe('replaceNextMoveBranch', () => {
     })!;
 
     expect(state.setupPath).toEqual([0]);
+    expect(state.referenceHasSetup).toBe(true);
     expect(getNodeAtPath(result.document, [0]).data).toEqual({B: ['cc']});
     expect(getNodeAtPath(result.document, [0, 0]).data).toEqual({AB: ['aa']});
   });
@@ -131,6 +132,44 @@ describe('replaceNextMoveBranch', () => {
     expect(serializeSgf(document)).toContain(';B[ff];W[gg];B[hh];W[ii];AB[cc]AW[dd];B[ee]');
     expect(getNodeAtPath(document, [...path, 0]).data).toMatchObject({AB: ['cc'], AW: ['dd']});
     expect(state?.setupPath).toBeDefined();
+  });
+
+  it('turns an occupied continuation move into a pass and keeps later moves', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+
+    const result = replaceNextMoveBranch({
+      document,
+      path: [],
+      point: 'cc',
+      branchMemory,
+      state: createReplaceMoveState(document, [], branchMemory),
+    })!;
+
+    expect(serializeSgf(result.document)).toContain('(;B[cc];W[bb];B[];W[dd])');
+  });
+
+  it('removes two consecutive continuation moves converted into passes', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd];B[ee])');
+    const first = replaceNextMoveBranch({
+      document,
+      path: [],
+      point: 'cc',
+      branchMemory,
+      state: createReplaceMoveState(document, [], branchMemory),
+    })!;
+
+    const second = replaceNextMoveBranch({
+      document: first.document,
+      path: first.path,
+      point: 'dd',
+      branchMemory,
+      state: first.state,
+    })!;
+
+    expect(serializeSgf(second.document)).toContain('(;B[cc];W[dd];B[ee])');
+    expect(serializeSgf(second.document)).not.toContain(';B[];W[]');
   });
 
   it('exits at the setup boundary by deleting the setup node from the replacement branch', () => {
@@ -226,6 +265,7 @@ describe('replaceMoveStones', () => {
       dd: 'B',
       ee: 'W',
     });
+    expect(Object.fromEntries(stones.extraFuture)).toEqual({});
     expect(stones.missing).toEqual(new Set());
     expect(stones.extra).toEqual(new Set());
   });
@@ -263,6 +303,7 @@ describe('replaceMoveStones', () => {
 
     expect(Object.fromEntries(stones.past)).toEqual({bb: 'B'});
     expect(Object.fromEntries(stones.future)).toEqual({cc: 'W'});
+    expect(Object.fromEntries(stones.extraFuture)).toEqual({});
     expect(stones.missing).toEqual(new Set(['bb', 'cc']));
     expect(stones.extra).toEqual(new Set(['aa']));
   });
@@ -301,7 +342,7 @@ describe('replaceMoveStones', () => {
     expect(stones.extra).toEqual(new Set(['dd']));
   });
 
-  it('does not mark a current stone as extra when the reference continuation contains it', () => {
+  it('marks a reference continuation stone moved into the current position', () => {
     const branchMemory = new Map<string, number>();
     const document = parseSgf('(;SZ[9];B[aa];W[bb];B[dd])');
     const replacement = replaceNextMoveBranch({
@@ -315,6 +356,92 @@ describe('replaceMoveStones', () => {
     const stones = replaceMoveStones(replacement.document, replacement.path, branchMemory, replacement.state);
 
     expect(stones.missing).toEqual(new Set(['aa']));
+    expect(stones.extra).toEqual(new Set(['dd']));
+  });
+
+  it('shows current-only future stones and marks them as extra', () => {
+    const document = parseSgf('(;SZ[9](;B[aa];W[cc];B[dd])(;B[aa];W[cc]))');
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(Object.fromEntries(stones.future)).toEqual({cc: 'W'});
+    expect(Object.fromEntries(stones.extraFuture)).toEqual({dd: 'B'});
+    expect(stones.missing).toEqual(new Set());
+    expect(stones.extra).toEqual(new Set(['dd']));
+  });
+
+  it('marks the smallest moved block when shared moves change order', () => {
+    const document = parseSgf('(;SZ[9](;B[ee];W[ff];B[aa];W[bb];B[cc];W[dd])(;B[aa];W[bb];B[cc];W[dd];B[ee];W[ff]))');
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+      referenceNextPath: [1, 0],
+      referenceMoves: [
+        {color: 'B', point: 'aa'},
+        {color: 'W', point: 'bb'},
+        {color: 'B', point: 'cc'},
+        {color: 'W', point: 'dd'},
+        {color: 'B', point: 'ee'},
+        {color: 'W', point: 'ff'},
+      ],
+      referenceHasSetup: false,
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(Object.fromEntries(stones.extraFuture)).toEqual({ff: 'W'});
+    expect(stones.extra).toEqual(new Set(['ee', 'ff']));
+  });
+
+  it('skips move-order comparison when the reference branch reaches setup', () => {
+    const document = parseSgf(
+      '(;SZ[9](;B[ee];W[ff];B[aa];W[bb];B[cc];W[dd])(;B[aa];W[bb];B[cc];W[dd];B[ee];W[ff];AB[gg]))'
+    );
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+      referenceNextPath: [1, 0],
+      referenceMoves: [
+        {color: 'B', point: 'aa'},
+        {color: 'W', point: 'bb'},
+        {color: 'B', point: 'cc'},
+        {color: 'W', point: 'dd'},
+        {color: 'B', point: 'ee'},
+        {color: 'W', point: 'ff'},
+      ],
+      referenceHasSetup: true,
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(Object.fromEntries(stones.extraFuture)).toEqual({});
     expect(stones.extra).toEqual(new Set());
+  });
+
+  it('does not mark a current stone contained in the reference setup position', () => {
+    const document = parseSgf('(;SZ[9](;B[cc])(;B[aa];W[cc];AB[cc]))');
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+      referenceNextPath: [1, 0],
+      referenceHasSetup: true,
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(deriveBoardPosition(document, [1, 0, 0]).stones.get('cc')).toBe('B');
+    expect(stones.extra.has('cc')).toBe(false);
   });
 });

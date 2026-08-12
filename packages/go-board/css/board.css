@@ -122,7 +122,7 @@
   box-shadow: 0 0 0.1em 0.1em rgba(255, 77, 79);
 }
 .ulugo-vertex:not(.ulugo-sign_0) .ulugo-stone.ulugo-extra-stone::before {
-  box-shadow: 0 0 0.1em 0.1em rgb(22, 119, 255, 0.6);
+  box-shadow: 0 0 0.1em 0.1em rgb(0, 100, 255, 0.6);
 }
 .ulugo-vertex .ulugo-inner {
   text-indent: -9999rem;

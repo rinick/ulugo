@@ -20,6 +20,7 @@ interface AppBoardRegionProps {
   missingReferenceStonePoints: Set<string>;
   referencePastStones: Map<string, SgfColor>;
   referenceFutureStones: Map<string, SgfColor>;
+  extraFutureStones: Map<string, SgfColor>;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
   rules: string | undefined;
   katagoEnabled: boolean;
@@ -51,6 +52,7 @@ export function AppBoardRegion({
   missingReferenceStonePoints,
   referencePastStones,
   referenceFutureStones,
+  extraFutureStones,
   boardBackground,
   rules,
   katagoEnabled,
@@ -96,6 +98,7 @@ export function AppBoardRegion({
         missingReferenceStonePoints={missingReferenceStonePoints}
         referencePastStones={referencePastStones}
         referenceFutureStones={referenceFutureStones}
+        extraFutureStones={extraFutureStones}
         boardBackground={boardBackground}
         rules={rules}
         onVertexClick={onBoardClick}

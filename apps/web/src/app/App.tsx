@@ -224,6 +224,7 @@ export function App() {
         : {
             past: new Map<string, SgfColor>(),
             future: new Map<string, SgfColor>(),
+            extraFuture: new Map<string, SgfColor>(),
             missing: new Set<string>(),
             extra: new Set<string>(),
           },
@@ -1394,6 +1395,7 @@ export function App() {
             missingReferenceStonePoints={referenceMoveStones.missing}
             referencePastStones={referenceMoveStones.past}
             referenceFutureStones={referenceMoveStones.future}
+            extraFutureStones={referenceMoveStones.extraFuture}
             boardBackground={boardBackground}
             rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}
