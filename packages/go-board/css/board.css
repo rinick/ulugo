@@ -89,11 +89,18 @@
   width: calc(100% - 0.08em);
   height: calc(100% - 0.08em);
 }
-.ulugo-vertex .ulugo-stone.ulugo-future-stone {
+.ulugo-vertex .ulugo-stone.ulugo-past-stone {
   top: 0.3em;
   left: 0.3em;
   width: calc(100% - 0.6em);
   height: calc(100% - 0.6em);
+  opacity: 0.6;
+}
+.ulugo-vertex .ulugo-stone.ulugo-future-stone {
+  top: 0.25em;
+  left: 0.25em;
+  width: calc(100% - 0.5em);
+  height: calc(100% - 0.5em);
   opacity: 0.6;
 }
 .ulugo-vertex.ulugo-sign_0 .ulugo-stone {
@@ -110,6 +117,9 @@
   border-radius: 50%;
   background: rgba(23, 10, 2, 0.4);
   box-shadow: 0 0.1em 0.2em rgba(23, 10, 2, 0.4);
+}
+.ulugo-vertex:not(.ulugo-sign_0) .ulugo-stone.ulugo-past-stone::before {
+  box-shadow: 0 0 0.1em 0.1em rgba(255, 77, 79);
 }
 .ulugo-vertex .ulugo-inner {
   text-indent: -9999rem;

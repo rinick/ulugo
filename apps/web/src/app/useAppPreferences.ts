@@ -7,6 +7,9 @@ const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 const openLastSgfOnStartupStorageKey = 'ulugo.openLastSgfOnStartup';
 const showTipsOnStartupStorageKey = 'ulugo.showTipsOnStartup';
 const leftPanelOpenStorageKey = 'ulugo.leftPanelOpen';
+const minimalRightPanelOpenStorageKey = 'ulugo.minimalRightPanelOpen';
+const minimalBasicToolsOpenStorageKey = 'ulugo.minimalBasicToolsOpen';
+const minimalShowCoordinatesStorageKey = 'ulugo.minimalShowCoordinates';
 
 export function useAppPreferences() {
   const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
@@ -18,6 +21,15 @@ export function useAppPreferences() {
   );
   const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
     readStoredBoolean(leftPanelOpenStorageKey, defaultLeftPanelOpen())
+  );
+  const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(() =>
+    readStoredBoolean(minimalRightPanelOpenStorageKey, false)
+  );
+  const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(() =>
+    readStoredBoolean(minimalBasicToolsOpenStorageKey, false)
+  );
+  const [minimalShowCoordinates, setMinimalShowCoordinates] = useState(() =>
+    readStoredBoolean(minimalShowCoordinatesStorageKey, false)
   );
 
   useEffect(() => {
@@ -55,6 +67,18 @@ export function useAppPreferences() {
     writeStoredValue(leftPanelOpenStorageKey, leftPanelOpen);
   }, [leftPanelOpen]);
 
+  useEffect(() => {
+    writeStoredValue(minimalRightPanelOpenStorageKey, minimalRightPanelOpen);
+  }, [minimalRightPanelOpen]);
+
+  useEffect(() => {
+    writeStoredValue(minimalBasicToolsOpenStorageKey, minimalBasicToolsOpen);
+  }, [minimalBasicToolsOpen]);
+
+  useEffect(() => {
+    writeStoredValue(minimalShowCoordinatesStorageKey, minimalShowCoordinates);
+  }, [minimalShowCoordinates]);
+
   return {
     uiScale,
     setUiScale,
@@ -68,6 +92,12 @@ export function useAppPreferences() {
     setShowTipsOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
+    minimalRightPanelOpen,
+    setMinimalRightPanelOpen,
+    minimalBasicToolsOpen,
+    setMinimalBasicToolsOpen,
+    minimalShowCoordinates,
+    setMinimalShowCoordinates,
   };
 }
 

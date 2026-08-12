@@ -54,6 +54,7 @@ interface GoBoardProps {
   passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
+  pastMoveStones: Map<string, SgfColor>;
   futureMoveStones: Map<string, SgfColor>;
   boardBackground: BoardBackgroundTheme;
   rules: string | undefined;
@@ -90,6 +91,7 @@ export function GoBoard({
   passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
+  pastMoveStones,
   futureMoveStones,
   boardBackground,
   rules,
@@ -133,19 +135,33 @@ export function GoBoard({
       ),
     [futureMoveStones, position.size, position.stones]
   );
+  const pastStoneMap = useMemo(
+    () =>
+      Array.from({length: position.size}, (_, y) =>
+        Array.from({length: position.size}, (_, x) => {
+          const point = vertexToPoint(x, y);
+          return position.stones.has(point) ? null : (pastMoveStones.get(point) ?? null);
+        })
+      ),
+    [pastMoveStones, position.size, position.stones]
+  );
   const futureStoneBooleanMap = useMemo(
     () => futureStoneMap.map((row) => row.map((stone) => stone != null)),
     [futureStoneMap]
   );
-  const signMapWithFutureMoves = useMemo(
+  const pastStoneBooleanMap = useMemo(
+    () => pastStoneMap.map((row) => row.map((stone) => stone != null)),
+    [pastStoneMap]
+  );
+  const signMapWithReferenceMoves = useMemo(
     () =>
       signMap.map((row, y) =>
         row.map((sign, x): Sign => {
-          const futureStone = futureStoneMap[y][x];
-          return sign || (futureStone === 'B' ? 1 : futureStone === 'W' ? -1 : 0);
+          const referenceStone = pastStoneMap[y][x] ?? futureStoneMap[y][x];
+          return sign || (referenceStone === 'B' ? 1 : referenceStone === 'W' ? -1 : 0);
         })
       ),
-    [futureStoneMap, signMap]
+    [futureStoneMap, pastStoneMap, signMap]
   );
   const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
   const hoverPvCandidateMap = useMemo(
@@ -247,8 +263,8 @@ export function GoBoard({
     [analysis, analysisSettings, passAnalysis, position.nextColor, position.size, scoringNode]
   );
   const displaySignMap = useMemo(
-    () => applyPvSignMap(signMapWithFutureMoves, pvPreviewMap),
-    [pvPreviewMap, signMapWithFutureMoves]
+    () => applyPvSignMap(signMapWithReferenceMoves, pvPreviewMap),
+    [pvPreviewMap, signMapWithReferenceMoves]
   );
   const displayMarkerMap = useMemo(() => applyPvMarkerMap(markerMap, pvPreviewMap), [markerMap, pvPreviewMap]);
   const displayAnalysisOverlayMap = useMemo(
@@ -451,6 +467,7 @@ export function GoBoard({
           vertexSize={vertexSize}
           showCoordinates={showCoordinates}
           signMap={displaySignMap}
+          pastStoneMap={pastStoneBooleanMap}
           futureStoneMap={futureStoneBooleanMap}
           markerMap={displayMarkerMap}
           analysisOverlayMap={displayAnalysisOverlayMap}

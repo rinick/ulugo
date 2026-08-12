@@ -34,6 +34,7 @@ export interface VertexProps extends VertexEventHandlers {
   position: VertexPoint;
   random?: number;
   sign?: Sign;
+  pastStone?: boolean;
   futureStone?: boolean;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
@@ -56,6 +57,7 @@ function Vertex(props: VertexProps) {
     position,
     random,
     sign = 0,
+    pastStone,
     futureStone,
     analysisOverlay,
     moveHint,
@@ -146,7 +148,14 @@ function Vertex(props: VertexProps) {
 
     h(
       'div',
-      {key: 'stone', className: classnames('ulugo-stone', {'ulugo-future-stone': futureStone}), style: absoluteStyle()},
+      {
+        key: 'stone',
+        className: classnames('ulugo-stone', {
+          'ulugo-past-stone': pastStone,
+          'ulugo-future-stone': futureStone,
+        }),
+        style: absoluteStyle(),
+      },
 
       !!sign &&
         h(
@@ -229,6 +238,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     previous.position[1] === next.position[1] &&
     previous.random === next.random &&
     previous.sign === next.sign &&
+    previous.pastStone === next.pastStone &&
     previous.futureStone === next.futureStone &&
     sameAnalysisOverlay(previous.analysisOverlay, next.analysisOverlay) &&
     sameMoveHint(previous.moveHint, next.moveHint) &&

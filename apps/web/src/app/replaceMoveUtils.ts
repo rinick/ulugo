@@ -200,35 +200,40 @@ export function deleteReplaceMove(
   return {document: next, path: parentPath, removedNodeIds: collectNodeIds(node)};
 }
 
-export function futureReplaceMoveStones(
+export function replaceMoveStones(
   document: SgfDocument,
   path: number[],
   branchMemory: Map<string, number>,
   state: ReplaceMoveState | null = null
-): Map<string, SgfColor> {
+): {past: Map<string, SgfColor>; future: Map<string, SgfColor>} {
   const currentStones = deriveBoardPosition(document, path).stones;
-  const result = new Map<string, SgfColor>();
+  const past = new Map<string, SgfColor>();
+  const future = new Map<string, SgfColor>();
+  const referencePath = state?.originalPath ?? path;
+
+  for (const [point, color] of deriveBoardPosition(document, referencePath).stones) {
+    if (!currentStones.has(point)) past.set(point, color);
+  }
+
   let nextPath =
-    state?.referenceNextPath ??
-    state?.setupPath ??
-    nextOriginalBranchPath(document, state?.originalPath ?? path, branchMemory);
+    state?.referenceNextPath ?? state?.setupPath ?? nextOriginalBranchPath(document, referencePath, branchMemory);
 
   while (nextPath != null) {
     const node = getNodeAtPath(document, nextPath);
     if (isSetupNode(node)) {
-      addFutureStones(result, currentStones, node.data.AB, 'B');
-      addFutureStones(result, currentStones, node.data.AW, 'W');
-      return result;
+      addFutureStones(future, currentStones, past, node.data.AB, 'B');
+      addFutureStones(future, currentStones, past, node.data.AW, 'W');
+      return {past, future};
     }
 
     const move = nodeMove(node);
-    if (move?.point && !currentStones.has(move.point) && !result.has(move.point)) {
-      result.set(move.point, move.color);
+    if (move?.point && !currentStones.has(move.point) && !past.has(move.point) && !future.has(move.point)) {
+      future.set(move.point, move.color);
     }
     nextPath = nextOriginalBranchPath(document, nextPath, branchMemory);
   }
 
-  return result;
+  return {past, future};
 }
 
 export function replaceMoveStateForSelection(
@@ -373,11 +378,12 @@ export function isSetupNode(node: SgfNode): boolean {
 function addFutureStones(
   result: Map<string, SgfColor>,
   currentStones: Map<string, SgfColor>,
+  pastStones: Map<string, SgfColor>,
   points: string[] | undefined,
   color: SgfColor
 ): void {
   for (const point of points ?? []) {
-    if (!currentStones.has(point) && !result.has(point)) result.set(point, color);
+    if (!currentStones.has(point) && !pastStones.has(point) && !result.has(point)) result.set(point, color);
   }
 }
 

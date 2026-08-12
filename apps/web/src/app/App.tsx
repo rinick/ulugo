@@ -91,7 +91,7 @@ import {
   confirmReplaceMove,
   createReplaceMoveState,
   deleteReplaceMove,
-  futureReplaceMoveStones,
+  replaceMoveStones,
   gtpMoveToPoint,
   hasNonEmptyRootSetup,
   insertEmptyMoveZeroBeforeRootSetup,
@@ -159,6 +159,12 @@ export function App() {
     setShowTipsOnStartup,
     leftPanelOpen,
     setLeftPanelOpen,
+    minimalRightPanelOpen,
+    setMinimalRightPanelOpen,
+    minimalBasicToolsOpen,
+    setMinimalBasicToolsOpen,
+    minimalShowCoordinates,
+    setMinimalShowCoordinates,
   } = useAppPreferences();
   const [tipsFirstTime] = useState(readTipsFirstTime);
   const [startupTips] = useState(() => createStartupTips(t, tipsFirstTime, capabilities.platform));
@@ -170,9 +176,6 @@ export function App() {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [recognitionSetupMode, setRecognitionSetupMode] = useState(false);
-  const [minimalRightPanelOpen, setMinimalRightPanelOpen] = useState(false);
-  const [minimalBasicToolsOpen, setMinimalBasicToolsOpen] = useState(false);
-  const [minimalShowCoordinates, setMinimalShowCoordinates] = useState(false);
   const [mobileHeaderRightOpen, setMobileHeaderRightOpen] = useState(false);
   const [selectionMoved, setSelectionMoved] = useState(false);
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
@@ -214,11 +217,11 @@ export function App() {
     () => getAnalysisQueuePaths(document, analysisChartPaths),
     [analysisChartPaths, document]
   );
-  const futureMoveStones = useMemo(
+  const referenceMoveStones = useMemo(
     () =>
       tool === 'replace'
-        ? futureReplaceMoveStones(document, operationPath, branchMemoryRef.current, replaceMoveState)
-        : new Map<string, SgfColor>(),
+        ? replaceMoveStones(document, operationPath, branchMemoryRef.current, replaceMoveState)
+        : {past: new Map<string, SgfColor>(), future: new Map<string, SgfColor>()},
     [document, operationPath, replaceMoveState, tool]
   );
   const shortcutLabels = useMemo(
@@ -1382,7 +1385,8 @@ export function App() {
             passAnalysis={selectedScoringNode ? null : currentPassAnalysis}
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
-            futureMoveStones={futureMoveStones}
+            pastMoveStones={referenceMoveStones.past}
+            futureMoveStones={referenceMoveStones.future}
             boardBackground={boardBackground}
             rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}

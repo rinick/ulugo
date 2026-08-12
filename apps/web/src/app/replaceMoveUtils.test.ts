@@ -5,7 +5,7 @@ import {
   confirmReplaceMove,
   createReplaceMoveState,
   deleteReplaceMove,
-  futureReplaceMoveStones,
+  replaceMoveStones,
   hasNonEmptyRootSetup,
   insertEmptyMoveZeroBeforeRootSetup,
   replaceMoveStateForSelection,
@@ -213,11 +213,14 @@ describe('confirmReplaceMove', () => {
   });
 });
 
-describe('futureReplaceMoveStones', () => {
+describe('replaceMoveStones', () => {
   it('shows empty future move and first setup points, then stops', () => {
     const document = parseSgf('(;SZ[9]AB[aa];B[bb];W[cc];AB[dd]AW[ee]AB[aa];B[ff];AW[gg])');
 
-    expect(Object.fromEntries(futureReplaceMoveStones(document, [], new Map()))).toEqual({
+    const stones = replaceMoveStones(document, [], new Map());
+
+    expect(Object.fromEntries(stones.past)).toEqual({});
+    expect(Object.fromEntries(stones.future)).toEqual({
       bb: 'B',
       cc: 'W',
       dd: 'B',
@@ -234,9 +237,27 @@ describe('futureReplaceMoveStones', () => {
       replacementStartPath: [0],
     };
 
-    expect(Object.fromEntries(futureReplaceMoveStones(document, [0], new Map(), state))).toEqual({
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(Object.fromEntries(stones.past)).toEqual({bb: 'B'});
+    expect(Object.fromEntries(stones.future)).toEqual({
       cc: 'W',
       dd: 'B',
     });
+  });
+
+  it('does not show reference stones already present in the replacement position', () => {
+    const document = parseSgf('(;SZ[9]AB[dd](;B[aa])(;B[bb];W[cc]))');
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(Object.fromEntries(stones.past)).toEqual({bb: 'B'});
+    expect(Object.fromEntries(stones.future)).toEqual({cc: 'W'});
   });
 });
