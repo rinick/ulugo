@@ -34,6 +34,8 @@ export interface VertexProps extends VertexEventHandlers {
   position: VertexPoint;
   random?: number;
   sign?: Sign;
+  extraStone?: boolean;
+  missingStone?: boolean;
   pastStone?: boolean;
   futureStone?: boolean;
   analysisOverlay?: AnalysisOverlay | null;
@@ -57,6 +59,8 @@ function Vertex(props: VertexProps) {
     position,
     random,
     sign = 0,
+    extraStone,
+    missingStone,
     pastStone,
     futureStone,
     analysisOverlay,
@@ -151,6 +155,8 @@ function Vertex(props: VertexProps) {
       {
         key: 'stone',
         className: classnames('ulugo-stone', {
+          'ulugo-extra-stone': extraStone,
+          'ulugo-missing-stone': missingStone,
           'ulugo-past-stone': pastStone,
           'ulugo-future-stone': futureStone,
         }),
@@ -238,6 +244,8 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     previous.position[1] === next.position[1] &&
     previous.random === next.random &&
     previous.sign === next.sign &&
+    previous.extraStone === next.extraStone &&
+    previous.missingStone === next.missingStone &&
     previous.pastStone === next.pastStone &&
     previous.futureStone === next.futureStone &&
     sameAnalysisOverlay(previous.analysisOverlay, next.analysisOverlay) &&

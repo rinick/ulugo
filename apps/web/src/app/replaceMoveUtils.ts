@@ -205,35 +205,51 @@ export function replaceMoveStones(
   path: number[],
   branchMemory: Map<string, number>,
   state: ReplaceMoveState | null = null
-): {past: Map<string, SgfColor>; future: Map<string, SgfColor>} {
+): {
+  past: Map<string, SgfColor>;
+  future: Map<string, SgfColor>;
+  missing: Set<string>;
+  extra: Set<string>;
+} {
   const currentStones = deriveBoardPosition(document, path).stones;
+  const referencePath = state?.originalPath ?? path;
+  const referenceStones = deriveBoardPosition(document, referencePath).stones;
   const past = new Map<string, SgfColor>();
   const future = new Map<string, SgfColor>();
-  const referencePath = state?.originalPath ?? path;
 
-  for (const [point, color] of deriveBoardPosition(document, referencePath).stones) {
+  for (const [point, color] of referenceStones) {
     if (!currentStones.has(point)) past.set(point, color);
   }
 
-  let nextPath =
+  const referenceNextPath =
     state?.referenceNextPath ?? state?.setupPath ?? nextOriginalBranchPath(document, referencePath, branchMemory);
+  const referenceContinuation = collectContinuationStones(document, referenceNextPath, (currentPath) =>
+    nextOriginalBranchPath(document, currentPath, branchMemory)
+  );
 
-  while (nextPath != null) {
-    const node = getNodeAtPath(document, nextPath);
-    if (isSetupNode(node)) {
-      addFutureStones(future, currentStones, past, node.data.AB, 'B');
-      addFutureStones(future, currentStones, past, node.data.AW, 'W');
-      return {past, future};
-    }
-
-    const move = nodeMove(node);
-    if (move?.point && !currentStones.has(move.point) && !past.has(move.point) && !future.has(move.point)) {
-      future.set(move.point, move.color);
-    }
-    nextPath = nextOriginalBranchPath(document, nextPath, branchMemory);
+  for (const [point, color] of referenceContinuation) {
+    if (!currentStones.has(point) && !past.has(point)) future.set(point, color);
   }
 
-  return {past, future};
+  const currentContinuation =
+    state?.replacementStartPath == null
+      ? referenceContinuation
+      : collectContinuationStones(document, nextFirstChildPath(document, path), (currentPath) =>
+          nextFirstChildPath(document, currentPath)
+        );
+  const referenceBranchStones = mergeStones(referenceStones, referenceContinuation);
+  const currentBranchStones = mergeStones(currentStones, currentContinuation);
+  const missing = new Set<string>();
+  const extra = new Set<string>();
+
+  for (const [point, color] of [...past, ...future]) {
+    if (currentBranchStones.get(point) !== color) missing.add(point);
+  }
+  for (const [point, color] of currentStones) {
+    if (referenceBranchStones.get(point) !== color) extra.add(point);
+  }
+
+  return {past, future, missing, extra};
 }
 
 export function replaceMoveStateForSelection(
@@ -360,6 +376,51 @@ function nextOriginalBranchPath(
   return [...path, childIndex];
 }
 
+function nextFirstChildPath(document: SgfDocument, path: number[]): number[] | null {
+  return getNodeAtPath(document, path).children.length === 0 ? null : [...path, 0];
+}
+
+function collectContinuationStones(
+  document: SgfDocument,
+  startPath: number[] | null | undefined,
+  nextPath: (path: number[]) => number[] | null
+): Map<string, SgfColor> {
+  const stones = new Map<string, SgfColor>();
+  let path = startPath;
+
+  while (path != null) {
+    const node = getNodeAtPath(document, path);
+    if (isSetupNode(node)) {
+      addStones(stones, node.data.AB, 'B');
+      addStones(stones, node.data.AW, 'W');
+      break;
+    }
+
+    const move = nodeMove(node);
+    if (move?.point && !stones.has(move.point)) stones.set(move.point, move.color);
+    path = nextPath(path);
+  }
+
+  return stones;
+}
+
+function mergeStones(
+  position: ReadonlyMap<string, SgfColor>,
+  continuation: ReadonlyMap<string, SgfColor>
+): Map<string, SgfColor> {
+  const stones = new Map(position);
+  for (const [point, color] of continuation) {
+    if (!stones.has(point)) stones.set(point, color);
+  }
+  return stones;
+}
+
+function addStones(stones: Map<string, SgfColor>, points: string[] | undefined, color: SgfColor): void {
+  for (const point of points ?? []) {
+    if (!stones.has(point)) stones.set(point, color);
+  }
+}
+
 function pathStartsWith(path: number[], prefix: number[]): boolean {
   return prefix.length <= path.length && prefix.every((index, offset) => path[offset] === index);
 }
@@ -373,18 +434,6 @@ export function isSetupNode(node: SgfNode): boolean {
   return (
     node.data.B == null && node.data.W == null && setupPropertyKeys.some((key) => (node.data[key]?.length ?? 0) > 0)
   );
-}
-
-function addFutureStones(
-  result: Map<string, SgfColor>,
-  currentStones: Map<string, SgfColor>,
-  pastStones: Map<string, SgfColor>,
-  points: string[] | undefined,
-  color: SgfColor
-): void {
-  for (const point of points ?? []) {
-    if (!currentStones.has(point) && !pastStones.has(point) && !result.has(point)) result.set(point, color);
-  }
 }
 
 function cloneNodeData(node: SgfNode): Record<string, string[]> {

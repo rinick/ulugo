@@ -221,7 +221,12 @@ export function App() {
     () =>
       tool === 'replace'
         ? replaceMoveStones(document, operationPath, branchMemoryRef.current, replaceMoveState)
-        : {past: new Map<string, SgfColor>(), future: new Map<string, SgfColor>()},
+        : {
+            past: new Map<string, SgfColor>(),
+            future: new Map<string, SgfColor>(),
+            missing: new Set<string>(),
+            extra: new Set<string>(),
+          },
     [document, operationPath, replaceMoveState, tool]
   );
   const shortcutLabels = useMemo(
@@ -1385,8 +1390,10 @@ export function App() {
             passAnalysis={selectedScoringNode ? null : currentPassAnalysis}
             stoneScoreDeltas={stoneScoreDeltas}
             analysisSettings={analysisSettings}
-            pastMoveStones={referenceMoveStones.past}
-            futureMoveStones={referenceMoveStones.future}
+            extraCurrentStonePoints={referenceMoveStones.extra}
+            missingReferenceStonePoints={referenceMoveStones.missing}
+            referencePastStones={referenceMoveStones.past}
+            referenceFutureStones={referenceMoveStones.future}
             boardBackground={boardBackground}
             rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}

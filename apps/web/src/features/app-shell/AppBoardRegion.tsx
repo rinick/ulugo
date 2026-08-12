@@ -16,8 +16,10 @@ interface AppBoardRegionProps {
   passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
-  pastMoveStones: Map<string, SgfColor>;
-  futureMoveStones: Map<string, SgfColor>;
+  extraCurrentStonePoints: Set<string>;
+  missingReferenceStonePoints: Set<string>;
+  referencePastStones: Map<string, SgfColor>;
+  referenceFutureStones: Map<string, SgfColor>;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
   rules: string | undefined;
   katagoEnabled: boolean;
@@ -45,8 +47,10 @@ export function AppBoardRegion({
   passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
-  pastMoveStones,
-  futureMoveStones,
+  extraCurrentStonePoints,
+  missingReferenceStonePoints,
+  referencePastStones,
+  referenceFutureStones,
   boardBackground,
   rules,
   katagoEnabled,
@@ -88,8 +92,10 @@ export function AppBoardRegion({
         passAnalysis={passAnalysis}
         stoneScoreDeltas={stoneScoreDeltas}
         analysisSettings={analysisSettings}
-        pastMoveStones={pastMoveStones}
-        futureMoveStones={futureMoveStones}
+        extraCurrentStonePoints={extraCurrentStonePoints}
+        missingReferenceStonePoints={missingReferenceStonePoints}
+        referencePastStones={referencePastStones}
+        referenceFutureStones={referenceFutureStones}
         boardBackground={boardBackground}
         rules={rules}
         onVertexClick={onBoardClick}

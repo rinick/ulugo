@@ -32,6 +32,8 @@ export interface BoardProps extends PublicVertexEventHandlers {
   vertexSize?: number;
   showCoordinates?: boolean;
   signMap?: Map<Sign>;
+  extraStoneMap?: Map<boolean>;
+  missingStoneMap?: Map<boolean>;
   pastStoneMap?: Map<boolean>;
   futureStoneMap?: Map<boolean>;
   markerMap?: Map<Marker | null>;
@@ -77,6 +79,8 @@ export default class Board extends Component<BoardProps, BoardState> {
     let {
       vertexSize = 24,
       signMap,
+      extraStoneMap,
+      missingStoneMap,
       pastStoneMap,
       futureStoneMap,
       ownershipMap,
@@ -171,6 +175,8 @@ export default class Board extends Component<BoardProps, BoardState> {
 
                     random: randomMap?.[y]?.[x],
                     sign: signMap?.[y]?.[x],
+                    extraStone: extraStoneMap?.[y]?.[x],
+                    missingStone: missingStoneMap?.[y]?.[x],
                     pastStone: pastStoneMap?.[y]?.[x],
                     futureStone: futureStoneMap?.[y]?.[x],
 

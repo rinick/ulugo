@@ -54,8 +54,10 @@ interface GoBoardProps {
   passAnalysis: KataGoAnalysisResult | null;
   stoneScoreDeltas: Map<string, number>;
   analysisSettings: AnalysisSettings;
-  pastMoveStones: Map<string, SgfColor>;
-  futureMoveStones: Map<string, SgfColor>;
+  extraCurrentStonePoints: Set<string>;
+  missingReferenceStonePoints: Set<string>;
+  referencePastStones: Map<string, SgfColor>;
+  referenceFutureStones: Map<string, SgfColor>;
   boardBackground: BoardBackgroundTheme;
   rules: string | undefined;
   onVertexClick: (point: string, options: BoardVertexClickOptions) => void;
@@ -91,8 +93,10 @@ export function GoBoard({
   passAnalysis,
   stoneScoreDeltas,
   analysisSettings,
-  pastMoveStones,
-  futureMoveStones,
+  extraCurrentStonePoints,
+  missingReferenceStonePoints,
+  referencePastStones,
+  referenceFutureStones,
   boardBackground,
   rules,
   onVertexClick,
@@ -130,20 +134,20 @@ export function GoBoard({
       Array.from({length: position.size}, (_, y) =>
         Array.from({length: position.size}, (_, x) => {
           const point = vertexToPoint(x, y);
-          return position.stones.has(point) ? null : (futureMoveStones.get(point) ?? null);
+          return position.stones.has(point) ? null : (referenceFutureStones.get(point) ?? null);
         })
       ),
-    [futureMoveStones, position.size, position.stones]
+    [position.size, position.stones, referenceFutureStones]
   );
   const pastStoneMap = useMemo(
     () =>
       Array.from({length: position.size}, (_, y) =>
         Array.from({length: position.size}, (_, x) => {
           const point = vertexToPoint(x, y);
-          return position.stones.has(point) ? null : (pastMoveStones.get(point) ?? null);
+          return position.stones.has(point) ? null : (referencePastStones.get(point) ?? null);
         })
       ),
-    [pastMoveStones, position.size, position.stones]
+    [position.size, position.stones, referencePastStones]
   );
   const futureStoneBooleanMap = useMemo(
     () => futureStoneMap.map((row) => row.map((stone) => stone != null)),
@@ -152,6 +156,20 @@ export function GoBoard({
   const pastStoneBooleanMap = useMemo(
     () => pastStoneMap.map((row) => row.map((stone) => stone != null)),
     [pastStoneMap]
+  );
+  const extraStoneBooleanMap = useMemo(
+    () =>
+      Array.from({length: position.size}, (_, y) =>
+        Array.from({length: position.size}, (_, x) => extraCurrentStonePoints.has(vertexToPoint(x, y)))
+      ),
+    [extraCurrentStonePoints, position.size]
+  );
+  const missingStoneBooleanMap = useMemo(
+    () =>
+      Array.from({length: position.size}, (_, y) =>
+        Array.from({length: position.size}, (_, x) => missingReferenceStonePoints.has(vertexToPoint(x, y)))
+      ),
+    [missingReferenceStonePoints, position.size]
   );
   const signMapWithReferenceMoves = useMemo(
     () =>
@@ -467,6 +485,8 @@ export function GoBoard({
           vertexSize={vertexSize}
           showCoordinates={showCoordinates}
           signMap={displaySignMap}
+          extraStoneMap={extraStoneBooleanMap}
+          missingStoneMap={missingStoneBooleanMap}
           pastStoneMap={pastStoneBooleanMap}
           futureStoneMap={futureStoneBooleanMap}
           markerMap={displayMarkerMap}

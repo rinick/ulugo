@@ -226,6 +226,8 @@ describe('replaceMoveStones', () => {
       dd: 'B',
       ee: 'W',
     });
+    expect(stones.missing).toEqual(new Set());
+    expect(stones.extra).toEqual(new Set());
   });
 
   it('uses the reference branch even when the replacement branch has no continuation', () => {
@@ -244,6 +246,8 @@ describe('replaceMoveStones', () => {
       cc: 'W',
       dd: 'B',
     });
+    expect(stones.missing).toEqual(new Set(['bb', 'cc', 'dd']));
+    expect(stones.extra).toEqual(new Set(['aa']));
   });
 
   it('does not show reference stones already present in the replacement position', () => {
@@ -259,5 +263,58 @@ describe('replaceMoveStones', () => {
 
     expect(Object.fromEntries(stones.past)).toEqual({bb: 'B'});
     expect(Object.fromEntries(stones.future)).toEqual({cc: 'W'});
+    expect(stones.missing).toEqual(new Set(['bb', 'cc']));
+    expect(stones.extra).toEqual(new Set(['aa']));
+  });
+
+  it('marks a replacement stone when the reference branch has the opposite color', () => {
+    const document = parseSgf('(;SZ[9](;B[aa])(;W[aa]))');
+    const state: ReplaceMoveState = {
+      originalPath: [1],
+      replacementPath: [0],
+      originalStartPath: [1],
+      replacementStartPath: [0],
+    };
+
+    const stones = replaceMoveStones(document, [0], new Map(), state);
+
+    expect(stones.missing).toEqual(new Set());
+    expect(stones.extra).toEqual(new Set(['aa']));
+  });
+
+  it('does not mark copied continuation stones as missing after a replacement', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc])');
+    const replacement = replaceNextMoveBranch({
+      document,
+      path: [],
+      point: 'dd',
+      branchMemory,
+      state: createReplaceMoveState(document, [], branchMemory),
+    })!;
+
+    const stones = replaceMoveStones(replacement.document, replacement.path, branchMemory, replacement.state);
+
+    expect(Object.fromEntries(stones.past)).toEqual({aa: 'B'});
+    expect(Object.fromEntries(stones.future)).toEqual({bb: 'W', cc: 'B'});
+    expect(stones.missing).toEqual(new Set(['aa']));
+    expect(stones.extra).toEqual(new Set(['dd']));
+  });
+
+  it('does not mark a current stone as extra when the reference continuation contains it', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[dd])');
+    const replacement = replaceNextMoveBranch({
+      document,
+      path: [],
+      point: 'dd',
+      branchMemory,
+      state: createReplaceMoveState(document, [], branchMemory),
+    })!;
+
+    const stones = replaceMoveStones(replacement.document, replacement.path, branchMemory, replacement.state);
+
+    expect(stones.missing).toEqual(new Set(['aa']));
+    expect(stones.extra).toEqual(new Set());
   });
 });
