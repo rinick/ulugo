@@ -1396,6 +1396,10 @@ export function App() {
             referencePastStones={referenceMoveStones.past}
             referenceFutureStones={referenceMoveStones.future}
             extraFutureStones={referenceMoveStones.extraFuture}
+            placementPreviewColor={
+              tool === 'auto' ? nextAutoColor : tool === 'black' ? 'B' : tool === 'white' ? 'W' : null
+            }
+            placementPreviewRequiresLegalMove={tool === 'auto'}
             boardBackground={boardBackground}
             rules={gameInfo.RU}
             katagoEnabled={capabilities.katago}

@@ -33,6 +33,7 @@ export interface TreeItem {
 interface TreeBoardState {
   stones: Map<SgfPoint, SgfColor>;
   captures: Record<SgfColor, number>;
+  nextColor: SgfColor;
 }
 
 const letters = 'abcdefghijklmnopqrstuvwxyz';
@@ -774,7 +775,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
     const isRoot = path.length === 0;
     const isSetup = color == null && hasSetupProperties(node);
     const isScoring = !isRoot && isScoringNode(node);
-    const setupColor = setupNodeColor(node);
+    const setupColor = isSetup && (!isRoot || nextState.stones.size > 0) ? oppositeColor(nextState.nextColor) : null;
     const nextMoveNumber = color != null || (isSetup && !isRoot) || isScoring ? moveNumber + 1 : moveNumber;
     const displayMoveNumber = isRoot ? 0 : nextMoveNumber;
     const label =
@@ -807,7 +808,13 @@ export function buildTree(document: SgfDocument): TreeItem[] {
     };
   }
 
-  items.push(walk(document.root, [], 0, {stones: new Map(), captures: getInitialCaptures(document)}));
+  items.push(
+    walk(document.root, [], 0, {
+      stones: new Map(),
+      captures: getInitialCaptures(document),
+      nextColor: 'B',
+    })
+  );
   return items;
 }
 
@@ -841,6 +848,7 @@ function applyTreeBoardNode(
   const next: TreeBoardState = {
     stones: new Map(state.stones),
     captures: {...state.captures},
+    nextColor: state.nextColor,
   };
 
   for (const point of node.data.AE ?? []) next.stones.delete(point);
@@ -852,7 +860,13 @@ function applyTreeBoardNode(
   }
 
   const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-  if (color == null) return next;
+  if (color == null) {
+    const setupColor = node.data.PL?.[0];
+    if (setupColor === 'B' || setupColor === 'W') next.nextColor = setupColor;
+    return next;
+  }
+
+  next.nextColor = oppositeColor(color);
 
   const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
   if (point === '') {
@@ -932,13 +946,6 @@ function countMarkedStones(points: Set<SgfPoint>, stones: Map<SgfPoint, SgfColor
 
 function hasSetupProperties(node: SgfNode): boolean {
   return ['AB', 'AW', 'AE', 'PL'].some((key) => (node.data[key] ?? []).length > 0);
-}
-
-function setupNodeColor(node: SgfNode): SgfColor | null {
-  const hasBlack = (node.data.AB ?? []).length > 0;
-  const hasWhite = (node.data.AW ?? []).length > 0;
-  if (hasBlack === hasWhite) return null;
-  return hasBlack ? 'B' : 'W';
 }
 
 function hasNodeMetadata(node: SgfNode): boolean {

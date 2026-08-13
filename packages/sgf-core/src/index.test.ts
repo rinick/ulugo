@@ -170,6 +170,24 @@ describe('sgf-core', () => {
     expect(tree.children[0].children[0].children[0].moveNumber).toBe(3);
   });
 
+  it('colors setup nodes opposite to the next player instead of their stones', () => {
+    const whiteToPlay = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AW[pq]PL[W])'))[0].children[0].children[0];
+    const blackToPlay = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AB[pq]PL[B])'))[0].children[0].children[0];
+
+    expect(whiteToPlay.setupColor).toBe('B');
+    expect(blackToPlay.setupColor).toBe('W');
+  });
+
+  it('keeps only an empty move-zero setup gray', () => {
+    const emptyRoot = buildTree(parseSgf('(;GM[1]SZ[19]PL[W])'))[0];
+    const occupiedRoot = buildTree(parseSgf('(;GM[1]SZ[19]AB[dd]AW[pp])'))[0];
+    const emptyLaterSetup = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AE[dd])'))[0].children[0].children[0];
+
+    expect(emptyRoot).toMatchObject({isSetup: true, setupColor: null});
+    expect(occupiedRoot).toMatchObject({isSetup: true, setupColor: 'W'});
+    expect(emptyLaterSetup).toMatchObject({isSetup: true, setupColor: 'B'});
+  });
+
   it('gives final scoring nodes their own tree step without global result color', () => {
     const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp])'))[0];
     const scoringNode = tree.children[0].children[0].children[0];
@@ -321,6 +339,8 @@ describe('sgf-core', () => {
 
     expect(serializeSgf(setup.document)).toContain(';B[dd];PL[W]AW[pp])');
     expect(serializeSgf(toggled)).toContain(';B[dd];PL[B]AW[pp])');
+    expect(buildTree(setup.document)[0].children[0].children[0].setupColor).toBe('B');
+    expect(buildTree(toggled)[0].children[0].children[0].setupColor).toBe('W');
   });
 
   it('reorders branches', () => {

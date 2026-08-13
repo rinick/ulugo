@@ -103,6 +103,13 @@
   height: calc(100% - 0.5em);
   opacity: 0.6;
 }
+.ulugo-vertex .ulugo-stone.ulugo-placement-preview-stone {
+  top: 0.04em;
+  left: 0.04em;
+  width: calc(100% - 0.08em);
+  height: calc(100% - 0.08em);
+  opacity: 0.5;
+}
 .ulugo-vertex.ulugo-sign_0 .ulugo-stone {
   pointer-events: none;
 }

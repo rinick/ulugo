@@ -1,8 +1,25 @@
 export const alpha = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
 export type Vertex = [x: number, y: number];
-export type VertexEventName = 'Click' | 'MouseMove' | 'MouseEnter' | 'MouseLeave' | 'PointerDown';
+export type VertexEventName =
+  | 'Click'
+  | 'MouseDown'
+  | 'MouseMove'
+  | 'MouseEnter'
+  | 'MouseLeave'
+  | 'TouchStart'
+  | 'TouchEnd'
+  | 'TouchCancel';
 
-export const vertexEvents: VertexEventName[] = ['Click', 'MouseMove', 'MouseEnter', 'MouseLeave', 'PointerDown'];
+export const vertexEvents: VertexEventName[] = [
+  'Click',
+  'MouseDown',
+  'MouseMove',
+  'MouseEnter',
+  'MouseLeave',
+  'TouchStart',
+  'TouchEnd',
+  'TouchCancel',
+];
 
 export const range = (n: number) =>
   Array(n)

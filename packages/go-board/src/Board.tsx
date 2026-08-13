@@ -2,18 +2,10 @@ import {createElement as h, Component} from 'react';
 import type {CSSProperties} from 'react';
 import classnames from 'classnames';
 
-import {
-  random,
-  vertexEquals,
-  vertexEvents,
-  range,
-  getHoshis,
-  type Vertex as VertexPoint,
-  type VertexEventName,
-} from './helper';
+import {random, vertexEquals, vertexEvents, range, getHoshis, type Vertex as VertexPoint} from './helper';
 import {CoordX, CoordY} from './Coord';
 import Grid from './Grid';
-import Vertex, {type AnalysisOverlay, type HotZone, type MoveHint, type VertexHandler} from './Vertex';
+import Vertex, {type AnalysisOverlay, type HotZone, type MoveHint, type VertexEventHandlers} from './Vertex';
 import type {Marker} from './Marker';
 
 export type Vertex = VertexPoint;
@@ -22,7 +14,11 @@ export type {AnalysisOverlay, HotZone, Marker, MoveHint};
 
 type Sign = 0 | -1 | 1;
 
-type PublicVertexEventHandlers = Partial<Record<`onVertex${VertexEventName}`, VertexHandler>>;
+type PublicVertexEventHandlers = {
+  [Key in keyof VertexEventHandlers as Key extends `on${infer Name}`
+    ? `onVertex${Name}`
+    : never]: VertexEventHandlers[Key];
+};
 
 export interface BoardProps extends PublicVertexEventHandlers {
   id?: string;
@@ -36,6 +32,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   missingStoneMap?: Map<boolean>;
   pastStoneMap?: Map<boolean>;
   futureStoneMap?: Map<boolean>;
+  placementPreviewStoneMap?: Map<boolean>;
   markerMap?: Map<Marker | null>;
   ownershipMap?: Map<number>;
   hotZoneMap?: Map<HotZone | null>;
@@ -83,6 +80,7 @@ export default class Board extends Component<BoardProps, BoardState> {
       missingStoneMap,
       pastStoneMap,
       futureStoneMap,
+      placementPreviewStoneMap,
       ownershipMap,
       hotZoneMap,
       analysisOverlayMap,
@@ -179,6 +177,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     missingStone: missingStoneMap?.[y]?.[x],
                     pastStone: pastStoneMap?.[y]?.[x],
                     futureStone: futureStoneMap?.[y]?.[x],
+                    placementPreviewStone: placementPreviewStoneMap?.[y]?.[x],
 
                     analysisOverlay: analysisOverlayMap?.[y]?.[x],
                     moveHint: moveHintMap?.[y]?.[x],

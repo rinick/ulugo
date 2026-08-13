@@ -21,6 +21,8 @@ interface AppBoardRegionProps {
   referencePastStones: Map<string, SgfColor>;
   referenceFutureStones: Map<string, SgfColor>;
   extraFutureStones: Map<string, SgfColor>;
+  placementPreviewColor: SgfColor | null;
+  placementPreviewRequiresLegalMove: boolean;
   boardBackground: Exclude<AnalysisSettings['boardBackground'], 'auto'>;
   rules: string | undefined;
   katagoEnabled: boolean;
@@ -53,6 +55,8 @@ export function AppBoardRegion({
   referencePastStones,
   referenceFutureStones,
   extraFutureStones,
+  placementPreviewColor,
+  placementPreviewRequiresLegalMove,
   boardBackground,
   rules,
   katagoEnabled,
@@ -99,6 +103,8 @@ export function AppBoardRegion({
         referencePastStones={referencePastStones}
         referenceFutureStones={referenceFutureStones}
         extraFutureStones={extraFutureStones}
+        placementPreviewColor={placementPreviewColor}
+        placementPreviewRequiresLegalMove={placementPreviewRequiresLegalMove}
         boardBackground={boardBackground}
         rules={rules}
         onVertexClick={onBoardClick}

@@ -1,5 +1,5 @@
 import {Board, type Marker, type Vertex} from '@ulugo/go-board';
-import {deriveBoardPosition} from '@ulugo/go-core';
+import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
 import {
   getNodeAtPath,
   isScoringNode,
@@ -17,7 +17,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
-  type PointerEvent,
+  type TouchEvent,
 } from 'react';
 import type {AnalysisSettings, KataGoAnalysisResult} from '@ulugo/analysis-core';
 import {
@@ -59,6 +59,8 @@ interface GoBoardProps {
   referencePastStones: Map<string, SgfColor>;
   referenceFutureStones: Map<string, SgfColor>;
   extraFutureStones: Map<string, SgfColor>;
+  placementPreviewColor: SgfColor | null;
+  placementPreviewRequiresLegalMove: boolean;
   boardBackground: BoardBackgroundTheme;
   rules: string | undefined;
   onVertexClick: (point: string, options: BoardVertexClickOptions) => void;
@@ -99,6 +101,8 @@ export function GoBoard({
   referencePastStones,
   referenceFutureStones,
   extraFutureStones,
+  placementPreviewColor,
+  placementPreviewRequiresLegalMove,
   boardBackground,
   rules,
   onVertexClick,
@@ -108,12 +112,17 @@ export function GoBoard({
   const hoverTimerRef = useRef<number | null>(null);
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
-  const pendingTouchClickRef = useRef<{vertexKey: string; time: number} | null>(null);
+  const pendingTouchClickRef = useRef<{vertexKey: string; endedAt: number | null} | null>(null);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
   const [pvPreview, setPvPreview] = useState<ActivePvPreview | null>(null);
+  const [placementPreview, setPlacementPreview] = useState<{
+    point: string;
+    color: SgfColor;
+    source: 'mouse' | 'touch';
+  } | null>(null);
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
     const extraSlots = showCoordinates ? coordinateTrackEm : boardPaddingWithoutCoordinatesEm;
@@ -184,6 +193,13 @@ export function GoBoard({
         })
       ),
     [futureStoneMap, pastStoneMap, signMap]
+  );
+  const placementPreviewStoneMap = useMemo(
+    () =>
+      Array.from({length: position.size}, (_, y) =>
+        Array.from({length: position.size}, (_, x) => placementPreview?.point === vertexToPoint(x, y))
+      ),
+    [placementPreview?.point, position.size]
   );
   const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
   const hoverPvCandidateMap = useMemo(
@@ -284,10 +300,13 @@ export function GoBoard({
         : buildHotZoneMap(position.size, analysis, passAnalysis, analysisSettings, position.nextColor),
     [analysis, analysisSettings, passAnalysis, position.nextColor, position.size, scoringNode]
   );
-  const displaySignMap = useMemo(
-    () => applyPvSignMap(signMapWithReferenceMoves, pvPreviewMap),
-    [pvPreviewMap, signMapWithReferenceMoves]
-  );
+  const displaySignMap = useMemo(() => {
+    const result = applyPvSignMap(signMapWithReferenceMoves, pvPreviewMap).map((row) => [...row]);
+    if (placementPreview == null) return result;
+    const vertex = pointToVertex(placementPreview.point);
+    if (vertex != null) result[vertex[1]][vertex[0]] = placementPreview.color === 'B' ? 1 : -1;
+    return result;
+  }, [placementPreview, pvPreviewMap, signMapWithReferenceMoves]);
   const displayMarkerMap = useMemo(() => applyPvMarkerMap(markerMap, pvPreviewMap), [markerMap, pvPreviewMap]);
   const displayAnalysisOverlayMap = useMemo(
     () => applyPvNullableMap(analysisOverlayMap, pvPreviewMap, position.size, null),
@@ -372,8 +391,18 @@ export function GoBoard({
     (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMap.get(vertexKey(vertex)) ?? null,
     [allPvCandidateMap]
   );
+  const placementCandidateAtVertex = useCallback(
+    (vertex: Vertex): {point: string; color: SgfColor} | null => {
+      if (placementPreviewColor == null) return null;
+      const point = vertexToPoint(vertex[0], vertex[1]);
+      if (position.stones.has(point)) return null;
+      if (placementPreviewRequiresLegalMove && !isLegalMove(position, placementPreviewColor, point, rules)) return null;
+      return {point, color: placementPreviewColor};
+    },
+    [placementPreviewColor, placementPreviewRequiresLegalMove, position, rules]
+  );
   const handlePrimaryVertexInput = useCallback(
-    (event: VertexEvent, vertex: Vertex) => {
+    (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       if (event.altKey) {
         const candidate = altClickCandidateAtVertex(vertex);
         if (candidate != null) startPvPreview(candidate);
@@ -389,13 +418,15 @@ export function GoBoard({
     },
     [altClickCandidateAtVertex, onVertexClick, startPvPreview]
   );
-  const handleVertexPointerDown = useCallback(
-    (event: VertexEvent, vertex: Vertex) => {
-      if ('pointerType' in event && event.pointerType === 'touch') {
-        pendingTouchClickRef.current = {vertexKey: vertexKey(vertex), time: performance.now()};
+  const handleVertexMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+      const pendingTouchClick = pendingTouchClickRef.current;
+      if (
+        pendingTouchClick?.vertexKey === vertexKey(vertex) &&
+        (pendingTouchClick.endedAt == null || performance.now() - pendingTouchClick.endedAt < 1500)
+      ) {
         return;
       }
-
       pendingTouchClickRef.current = null;
       if (event.button === 2) {
         event.preventDefault();
@@ -407,21 +438,26 @@ export function GoBoard({
       }
 
       if (event.button !== 0) return;
-      if (!('pointerType' in event) || event.pointerType !== 'mouse') return;
       handlePrimaryVertexInput(event, vertex);
     },
     [handlePrimaryVertexInput, onVertexRightClick]
   );
   const handleVertexClick = useCallback(
-    (event: VertexEvent, vertex: Vertex) => {
+    (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       const pendingTouchClick = pendingTouchClickRef.current;
-      pendingTouchClickRef.current = null;
-      const followsTouchPointerDown =
-        pendingTouchClick?.vertexKey === vertexKey(vertex) && performance.now() - pendingTouchClick.time < 1500;
+      const followsTouchStart =
+        pendingTouchClick?.vertexKey === vertexKey(vertex) &&
+        pendingTouchClick.endedAt != null &&
+        performance.now() - pendingTouchClick.endedAt < 1500;
 
-      if (isTouchClick(event) || followsTouchPointerDown) {
+      if (followsTouchStart) {
+        pendingTouchClickRef.current = null;
+        setPlacementPreview(null);
         handlePrimaryVertexInput(event, vertex);
         return;
+      }
+      if (pendingTouchClick?.endedAt != null && performance.now() - pendingTouchClick.endedAt >= 1500) {
+        pendingTouchClickRef.current = null;
       }
 
       if (event.altKey) {
@@ -441,26 +477,64 @@ export function GoBoard({
     [handlePrimaryVertexInput, onVertexClick]
   );
   const handleVertexMouseEnter = useCallback(
-    (_event: VertexEvent, vertex: Vertex) => {
+    (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+      const placementCandidate = placementCandidateAtVertex(vertex);
+      if (placementCandidate != null) {
+        clearPvPreview();
+        setPlacementPreview({...placementCandidate, source: 'mouse'});
+        return;
+      }
       const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [hoverCandidateAtVertex, schedulePvPreview]
+    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview]
   );
   const handleVertexMouseMove = useCallback(
-    (_event: VertexEvent, vertex: Vertex) => {
+    (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+      const placementCandidate = placementCandidateAtVertex(vertex);
+      if (placementCandidate != null) {
+        clearPvPreview();
+        setPlacementPreview({...placementCandidate, source: 'mouse'});
+        return;
+      }
+      setPlacementPreview((current) => (current?.source === 'mouse' ? null : current));
       const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [hoverCandidateAtVertex, schedulePvPreview]
+    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview]
   );
   const handleVertexMouseLeave = useCallback(
-    (_event: VertexEvent, vertex: Vertex) => {
+    (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       const key = vertexKey(vertex);
+      setPlacementPreview((current) =>
+        current?.source === 'mouse' && current.point === vertexToPoint(vertex[0], vertex[1]) ? null : current
+      );
       if (pendingPvRef.current?.triggerKey === key || pvPreview?.triggerKey === key) clearPvPreview();
     },
     [clearPvPreview, pvPreview?.triggerKey]
   );
+  const handleVertexTouchStart = useCallback(
+    (event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {
+      pendingTouchClickRef.current = null;
+      setPlacementPreview(null);
+      if (event.touches.length !== 1) return;
+
+      pendingTouchClickRef.current = {vertexKey: vertexKey(vertex), endedAt: null};
+      const placementCandidate = placementCandidateAtVertex(vertex);
+      if (placementCandidate != null) setPlacementPreview({...placementCandidate, source: 'touch'});
+    },
+    [placementCandidateAtVertex]
+  );
+  const handleVertexTouchEnd = useCallback((_event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {
+    if (pendingTouchClickRef.current?.vertexKey === vertexKey(vertex)) {
+      pendingTouchClickRef.current.endedAt = performance.now();
+    }
+    setPlacementPreview((current) => (current?.source === 'touch' ? null : current));
+  }, []);
+  const handleVertexTouchCancel = useCallback(() => {
+    pendingTouchClickRef.current = null;
+    setPlacementPreview((current) => (current?.source === 'touch' ? null : current));
+  }, []);
 
   useLayoutEffect(() => {
     const element = frameRef.current;
@@ -476,7 +550,11 @@ export function GoBoard({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => clearPvPreview, [clearPvPreview, document, path]);
+  useEffect(() => {
+    clearPvPreview();
+    setPlacementPreview(null);
+    pendingTouchClickRef.current = null;
+  }, [clearPvPreview, document, path, placementPreviewColor, placementPreviewRequiresLegalMove]);
 
   return (
     <div className={`board-frame board-frame-${boardBackground}`} ref={frameRef}>
@@ -493,6 +571,7 @@ export function GoBoard({
           missingStoneMap={missingStoneBooleanMap}
           pastStoneMap={pastStoneBooleanMap}
           futureStoneMap={futureStoneBooleanMap}
+          placementPreviewStoneMap={placementPreviewStoneMap}
           markerMap={displayMarkerMap}
           analysisOverlayMap={displayAnalysisOverlayMap}
           moveHintMap={displayMoveHintMap}
@@ -500,22 +579,15 @@ export function GoBoard({
           hotZoneMap={displayHotZoneMap}
           selectedVertices={selectedVertices}
           onVertexClick={handleVertexClick}
+          onVertexMouseDown={handleVertexMouseDown}
           onVertexMouseEnter={handleVertexMouseEnter}
           onVertexMouseLeave={handleVertexMouseLeave}
           onVertexMouseMove={handleVertexMouseMove}
-          onVertexPointerDown={handleVertexPointerDown}
+          onVertexTouchStart={handleVertexTouchStart}
+          onVertexTouchEnd={handleVertexTouchEnd}
+          onVertexTouchCancel={handleVertexTouchCancel}
         />
       </div>
     </div>
   );
-}
-
-type VertexEvent = MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>;
-
-function isTouchClick(event: VertexEvent): boolean {
-  const nativeEvent = event.nativeEvent as globalThis.MouseEvent & {
-    pointerType?: string;
-    sourceCapabilities?: {firesTouchEvents?: boolean};
-  };
-  return nativeEvent.pointerType === 'touch' || nativeEvent.sourceCapabilities?.firesTouchEvents === true;
 }

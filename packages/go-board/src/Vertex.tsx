@@ -1,13 +1,13 @@
 import {createElement as h, memo, useCallback} from 'react';
-import type {CSSProperties, MouseEvent, PointerEvent} from 'react';
+import type {CSSProperties, MouseEvent, TouchEvent} from 'react';
 import classnames from 'classnames';
 
-import {vertexEvents, type Vertex as VertexPoint, type VertexEventName} from './helper';
+import {vertexEvents, type Vertex as VertexPoint} from './helper';
 import Marker, {type Marker as MarkerData} from './Marker';
 
 type Sign = 0 | -1 | 1;
-type VertexHandlerEvent = MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>;
-export type VertexHandler = (evt: VertexHandlerEvent, vertex: VertexPoint) => void;
+type VertexMouseHandler = (evt: MouseEvent<HTMLDivElement>, vertex: VertexPoint) => void;
+type VertexTouchHandler = (evt: TouchEvent<HTMLDivElement>, vertex: VertexPoint) => void;
 
 export interface AnalysisOverlay {
   strength: number;
@@ -28,7 +28,16 @@ export interface HotZone {
   opacity: number;
 }
 
-export type VertexEventHandlers = Partial<Record<`on${VertexEventName}`, VertexHandler>>;
+export interface VertexEventHandlers {
+  onClick?: VertexMouseHandler;
+  onMouseDown?: VertexMouseHandler;
+  onMouseMove?: VertexMouseHandler;
+  onMouseEnter?: VertexMouseHandler;
+  onMouseLeave?: VertexMouseHandler;
+  onTouchStart?: VertexTouchHandler;
+  onTouchEnd?: VertexTouchHandler;
+  onTouchCancel?: VertexTouchHandler;
+}
 
 export interface VertexProps extends VertexEventHandlers {
   position: VertexPoint;
@@ -38,6 +47,7 @@ export interface VertexProps extends VertexEventHandlers {
   missingStone?: boolean;
   pastStone?: boolean;
   futureStone?: boolean;
+  placementPreviewStone?: boolean;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
   ownership?: number;
@@ -63,6 +73,7 @@ function Vertex(props: VertexProps) {
     missingStone,
     pastStone,
     futureStone,
+    placementPreviewStone,
     analysisOverlay,
     moveHint,
     ownership = 0,
@@ -75,16 +86,38 @@ function Vertex(props: VertexProps) {
     selectedBottom,
   } = props;
 
-  let eventHandlers: Partial<Record<VertexEventName, (evt: VertexHandlerEvent) => void>> = {};
-
-  for (let eventName of vertexEvents) {
-    eventHandlers[eventName] = useCallback(
-      (evt: VertexHandlerEvent) => {
-        props[`on${eventName}`]?.(evt, position);
-      },
-      [...position, props[`on${eventName}`]]
-    );
-  }
+  const handleClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => props.onClick?.(event, position),
+    [...position, props.onClick]
+  );
+  const handleMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => props.onMouseDown?.(event, position),
+    [...position, props.onMouseDown]
+  );
+  const handleMouseMove = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => props.onMouseMove?.(event, position),
+    [...position, props.onMouseMove]
+  );
+  const handleMouseEnter = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => props.onMouseEnter?.(event, position),
+    [...position, props.onMouseEnter]
+  );
+  const handleMouseLeave = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => props.onMouseLeave?.(event, position),
+    [...position, props.onMouseLeave]
+  );
+  const handleTouchStart = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => props.onTouchStart?.(event, position),
+    [...position, props.onTouchStart]
+  );
+  const handleTouchEnd = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => props.onTouchEnd?.(event, position),
+    [...position, props.onTouchEnd]
+  );
+  const handleTouchCancel = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => props.onTouchCancel?.(event, position),
+    [...position, props.onTouchCancel]
+  );
 
   let ownershipOpacity = Math.abs(ownership);
 
@@ -127,9 +160,16 @@ function Vertex(props: VertexProps) {
           [`ulugo-hot-zone_${hotZone?.type}`]: !!hotZone,
         }),
       },
-      ...vertexEvents.map((eventName) => ({
-        [`on${eventName}`]: eventHandlers[eventName],
-      }))
+      {
+        onClick: handleClick,
+        onMouseDown: handleMouseDown,
+        onMouseMove: handleMouseMove,
+        onMouseEnter: handleMouseEnter,
+        onMouseLeave: handleMouseLeave,
+        onTouchStart: handleTouchStart,
+        onTouchEnd: handleTouchEnd,
+        onTouchCancel: handleTouchCancel,
+      }
     ),
     h('div', {
       key: 'analysisOverlay',
@@ -159,6 +199,7 @@ function Vertex(props: VertexProps) {
           'ulugo-missing-stone': missingStone,
           'ulugo-past-stone': pastStone,
           'ulugo-future-stone': futureStone,
+          'ulugo-placement-preview-stone': placementPreviewStone,
         }),
         style: absoluteStyle(),
       },
@@ -248,6 +289,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     previous.missingStone === next.missingStone &&
     previous.pastStone === next.pastStone &&
     previous.futureStone === next.futureStone &&
+    previous.placementPreviewStone === next.placementPreviewStone &&
     sameAnalysisOverlay(previous.analysisOverlay, next.analysisOverlay) &&
     sameMoveHint(previous.moveHint, next.moveHint) &&
     sameMarker(previous.marker, next.marker) &&
