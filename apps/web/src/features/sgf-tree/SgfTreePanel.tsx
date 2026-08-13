@@ -484,7 +484,7 @@ function MoveTreeRow({
             data-tree-node-id={cell.id}
             onClick={() => onSelectPath(cell.path)}
           >
-            <span className="move-tree-node-text">{cell.text}</span>
+            <span className="move-tree-node-text">{cell.isCameraSetup ? <CameraOutlined /> : cell.text}</span>
           </button>
         ))}
       </div>

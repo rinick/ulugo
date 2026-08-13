@@ -22,6 +22,7 @@ export interface TreeItem {
   scoreColor: SgfColor | null;
   point: SgfPoint | null;
   isSetup: boolean;
+  isCameraSetup: boolean;
   isScoring: boolean;
   hasMetadata: boolean;
   hasComment: boolean;
@@ -482,12 +483,14 @@ export function addSetupNode(
   black: SgfPoint[],
   white: SgfPoint[],
   empty: SgfPoint[],
-  nextColor: SgfColor
+  nextColor: SgfColor,
+  source?: 'camera'
 ): {document: SgfDocument; path: number[]} {
   const data: Record<string, string[]> = {PL: [nextColor]};
   if (black.length > 0) data.AB = black;
   if (white.length > 0) data.AW = white;
   if (empty.length > 0) data.AE = empty;
+  if (source === 'camera') data.ZA = ['camera'];
 
   const next = cloneDocument(document);
   const parent = getNodeAtPath(next, path);
@@ -799,6 +802,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
         : null,
       point: color == null ? null : point,
       isSetup,
+      isCameraSetup: isSetup && node.data.ZA?.[0] === 'camera',
       isScoring,
       hasMetadata: hasNodeMetadata(node),
       hasComment: hasNodeComment(node),

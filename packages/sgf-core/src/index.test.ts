@@ -278,6 +278,15 @@ describe('sgf-core', () => {
     expect(serializeSgf(result.document)).toContain(';B[dd](;PL[W]AB[aa]AW[bb]AE[dd])(;W[pp])(;W[qq]))');
   });
 
+  it('marks camera setup nodes with a custom Z property', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd])');
+    const result = addSetupNode(document, [0], ['aa'], ['bb'], [], 'W', 'camera');
+    const setupNode = buildTree(result.document)[0].children[0].children[0];
+
+    expect(serializeSgf(result.document)).toContain(';PL[W]AB[aa]AW[bb]ZA[camera])');
+    expect(setupNode).toMatchObject({isSetup: true, isCameraSetup: true});
+  });
+
   it('adds setup stones as setup nodes after regular moves', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const result = addSetupStone(first.document, first.path, 'W', 'pp');

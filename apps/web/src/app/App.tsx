@@ -357,7 +357,7 @@ export function App() {
     );
 
     const nextColor = recognizedDocument.root.data.PL?.[0] === 'W' ? 'W' : 'B';
-    const result = addSetupNode(document, operationPath, black, white, empty, nextColor);
+    const result = addSetupNode(document, operationPath, black, white, empty, nextColor, 'camera');
     replaceDocument(result.document, result.path);
     setRecognitionImage(null);
     setRecognitionSetupMode(false);

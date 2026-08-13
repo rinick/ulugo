@@ -8,6 +8,7 @@ export interface TreeCell {
   color: SgfColor | null;
   text: string;
   isSetup: boolean;
+  isCameraSetup: boolean;
   isPass: boolean;
   isScoring: boolean;
   hasMetadata: boolean;
@@ -117,6 +118,7 @@ function treeCell(item: TreeItem, column: number, boardSize: number): TreeCell {
               ? ''
               : formatPoint(item.point, boardSize),
     isSetup: item.isSetup,
+    isCameraSetup: item.isCameraSetup,
     isPass: item.path.length > 0 && !item.isSetup && !item.isScoring && item.point === '',
     isScoring: item.isScoring,
     hasMetadata: item.hasMetadata,
