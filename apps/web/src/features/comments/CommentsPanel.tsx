@@ -103,36 +103,40 @@ export function CommentsPanel({
   return (
     <section className="side-panel comments-panel">
       <div className="comments-panel-header">
-        <Space.Compact>
-          {showAnalysisControls ? (
-            <>
-              <Button
-                size="small"
-                type={showScore ? 'primary' : 'default'}
-                onClick={() => toggleChart('showScore', showScore)}
-              >
-                {t('score')}
-              </Button>
-              <Button
-                size="small"
-                type={showPointLoss ? 'primary' : 'default'}
-                onClick={() => toggleChart('showPointLoss', showPointLoss)}
-              >
-                {t('pointLoss')}
-              </Button>
-              <Button
-                size="small"
-                type={showWinrate ? 'primary' : 'default'}
-                onClick={() => toggleChart('showWinrate', showWinrate)}
-              >
-                {t('winRate')}
-              </Button>
-            </>
-          ) : null}
-          <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={showOnlyComments}>
-            {t('comments')}
-          </Button>
-        </Space.Compact>
+        {showAnalysisControls ? (
+          <Space.Compact>
+            <Button
+              size="small"
+              title={t('analysisHeaderScoreTitle')}
+              type={showScore ? 'primary' : 'default'}
+              onClick={() => toggleChart('showScore', showScore)}
+            >
+              {t('analysisHeaderScore')}
+            </Button>
+            <Button
+              size="small"
+              title={t('analysisHeaderPointLossTitle')}
+              type={showPointLoss ? 'primary' : 'default'}
+              onClick={() => toggleChart('showPointLoss', showPointLoss)}
+            >
+              {t('analysisHeaderPointLoss')}
+            </Button>
+            <Button
+              size="small"
+              title={t('analysisHeaderWinRateTitle')}
+              type={showWinrate ? 'primary' : 'default'}
+              onClick={() => toggleChart('showWinrate', showWinrate)}
+            >
+              {t('analysisHeaderWinRate')}
+            </Button>
+            <Button size="small" title={t('analysisHeaderIntensityTitle')}>
+              {t('analysisHeaderIntensity')}
+            </Button>
+          </Space.Compact>
+        ) : null}
+        <Button size="small" type={showComments && !showChart ? 'primary' : 'default'} onClick={showOnlyComments}>
+          {t('analysisHeaderComments')}
+        </Button>
       </div>
       <div className="comments-panel-body">
         {showChart ? (
