@@ -74,6 +74,13 @@ export interface BoardVertexClickOptions {
 
 type BoardBackgroundTheme = Exclude<AnalysisSettings['boardBackground'], 'auto'>;
 
+interface PlacementPreview {
+  point: string;
+  color: SgfColor;
+  source: 'mouse' | 'touch';
+  opacity: number;
+}
+
 const markerTypes: Record<MarkupKind, Marker['type']> = {
   CR: 'circle',
   SQ: 'square',
@@ -113,16 +120,13 @@ export function GoBoard({
   const pvIntervalRef = useRef<number | null>(null);
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
   const pendingTouchClickRef = useRef<{vertexKey: string; endedAt: number | null} | null>(null);
+  const placementPreviewRef = useRef<PlacementPreview | null>(null);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
   const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
   const [pvPreview, setPvPreview] = useState<ActivePvPreview | null>(null);
-  const [placementPreview, setPlacementPreview] = useState<{
-    point: string;
-    color: SgfColor;
-    source: 'mouse' | 'touch';
-  } | null>(null);
+  const [placementPreview, setPlacementPreviewState] = useState<PlacementPreview | null>(null);
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
     const extraSlots = showCoordinates ? coordinateTrackEm : boardPaddingWithoutCoordinatesEm;
@@ -194,12 +198,14 @@ export function GoBoard({
       ),
     [futureStoneMap, pastStoneMap, signMap]
   );
-  const placementPreviewStoneMap = useMemo(
+  const placementPreviewOpacityMap = useMemo(
     () =>
       Array.from({length: position.size}, (_, y) =>
-        Array.from({length: position.size}, (_, x) => placementPreview?.point === vertexToPoint(x, y))
+        Array.from({length: position.size}, (_, x) =>
+          placementPreview?.point === vertexToPoint(x, y) ? placementPreview.opacity : 0
+        )
       ),
-    [placementPreview?.point, position.size]
+    [placementPreview, position.size]
   );
   const childMoves = useMemo(() => childMoveSet(document, path, position.size), [document, path, position.size]);
   const hoverPvCandidateMap = useMemo(
@@ -344,6 +350,10 @@ export function GoBoard({
     pendingPvRef.current = null;
     setPvPreview(null);
   }, [clearPvTimers]);
+  const setPlacementPreview = useCallback((preview: PlacementPreview | null) => {
+    placementPreviewRef.current = preview;
+    setPlacementPreviewState(preview);
+  }, []);
 
   const startPvPreview = useCallback(
     (candidate: PvPreviewCandidate) => {
@@ -400,6 +410,34 @@ export function GoBoard({
       return {point, color: placementPreviewColor};
     },
     [placementPreviewColor, placementPreviewRequiresLegalMove, position, rules]
+  );
+  const mousePlacementOpacity = useCallback((event: MouseEvent<HTMLDivElement>): number => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const radius = (Math.min(bounds.width, bounds.height) * (1 - 0.08)) / 2;
+    if (radius <= 0) return 0;
+
+    const distance = Math.max(
+      Math.abs(event.clientX - (bounds.left + bounds.width / 2)),
+      Math.abs(event.clientY - (bounds.top + bounds.height / 2))
+    );
+    const fadeStart = radius / 3;
+    if (distance <= fadeStart) return 0.5;
+    return Math.max(0, (0.5 * (radius - distance)) / (radius - fadeStart));
+  }, []);
+  const showMousePlacementPreview = useCallback(
+    (event: MouseEvent<HTMLDivElement>, candidate: {point: string; color: SgfColor}): void => {
+      const opacity = mousePlacementOpacity(event);
+      const current = placementPreviewRef.current;
+      if (current?.source === 'mouse' && current.point === candidate.point && current.color === candidate.color) {
+        event.currentTarget
+          .querySelector<HTMLElement>('.ulugo-placement-preview-stone')
+          ?.style.setProperty('--ulugo-placement-preview-opacity', String(opacity));
+        return;
+      }
+
+      setPlacementPreview(opacity > 0 ? {...candidate, source: 'mouse', opacity} : null);
+    },
+    [mousePlacementOpacity, setPlacementPreview]
   );
   const handlePrimaryVertexInput = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
@@ -477,41 +515,42 @@ export function GoBoard({
     [handlePrimaryVertexInput, onVertexClick]
   );
   const handleVertexMouseEnter = useCallback(
-    (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+    (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       const placementCandidate = placementCandidateAtVertex(vertex);
       if (placementCandidate != null) {
         clearPvPreview();
-        setPlacementPreview({...placementCandidate, source: 'mouse'});
+        showMousePlacementPreview(event, placementCandidate);
         return;
       }
       const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview]
+    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview, showMousePlacementPreview]
   );
   const handleVertexMouseMove = useCallback(
-    (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+    (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       const placementCandidate = placementCandidateAtVertex(vertex);
       if (placementCandidate != null) {
         clearPvPreview();
-        setPlacementPreview({...placementCandidate, source: 'mouse'});
+        showMousePlacementPreview(event, placementCandidate);
         return;
       }
-      setPlacementPreview((current) => (current?.source === 'mouse' ? null : current));
+      if (placementPreviewRef.current?.source === 'mouse') setPlacementPreview(null);
       const candidate = hoverCandidateAtVertex(vertex);
       if (candidate != null) schedulePvPreview(candidate);
     },
-    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview]
+    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview, showMousePlacementPreview]
   );
   const handleVertexMouseLeave = useCallback(
     (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
       const key = vertexKey(vertex);
-      setPlacementPreview((current) =>
-        current?.source === 'mouse' && current.point === vertexToPoint(vertex[0], vertex[1]) ? null : current
-      );
+      const current = placementPreviewRef.current;
+      if (current?.source === 'mouse' && current.point === vertexToPoint(vertex[0], vertex[1])) {
+        setPlacementPreview(null);
+      }
       if (pendingPvRef.current?.triggerKey === key || pvPreview?.triggerKey === key) clearPvPreview();
     },
-    [clearPvPreview, pvPreview?.triggerKey]
+    [clearPvPreview, pvPreview?.triggerKey, setPlacementPreview]
   );
   const handleVertexTouchStart = useCallback(
     (event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {
@@ -521,20 +560,23 @@ export function GoBoard({
 
       pendingTouchClickRef.current = {vertexKey: vertexKey(vertex), endedAt: null};
       const placementCandidate = placementCandidateAtVertex(vertex);
-      if (placementCandidate != null) setPlacementPreview({...placementCandidate, source: 'touch'});
+      if (placementCandidate != null) setPlacementPreview({...placementCandidate, source: 'touch', opacity: 0.5});
     },
     [placementCandidateAtVertex]
   );
-  const handleVertexTouchEnd = useCallback((_event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {
-    if (pendingTouchClickRef.current?.vertexKey === vertexKey(vertex)) {
-      pendingTouchClickRef.current.endedAt = performance.now();
-    }
-    setPlacementPreview((current) => (current?.source === 'touch' ? null : current));
-  }, []);
+  const handleVertexTouchEnd = useCallback(
+    (_event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {
+      if (pendingTouchClickRef.current?.vertexKey === vertexKey(vertex)) {
+        pendingTouchClickRef.current.endedAt = performance.now();
+      }
+      if (placementPreviewRef.current?.source === 'touch') setPlacementPreview(null);
+    },
+    [setPlacementPreview]
+  );
   const handleVertexTouchCancel = useCallback(() => {
     pendingTouchClickRef.current = null;
-    setPlacementPreview((current) => (current?.source === 'touch' ? null : current));
-  }, []);
+    if (placementPreviewRef.current?.source === 'touch') setPlacementPreview(null);
+  }, [setPlacementPreview]);
 
   useLayoutEffect(() => {
     const element = frameRef.current;
@@ -571,7 +613,7 @@ export function GoBoard({
           missingStoneMap={missingStoneBooleanMap}
           pastStoneMap={pastStoneBooleanMap}
           futureStoneMap={futureStoneBooleanMap}
-          placementPreviewStoneMap={placementPreviewStoneMap}
+          placementPreviewOpacityMap={placementPreviewOpacityMap}
           markerMap={displayMarkerMap}
           analysisOverlayMap={displayAnalysisOverlayMap}
           moveHintMap={displayMoveHintMap}

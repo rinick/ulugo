@@ -32,7 +32,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   missingStoneMap?: Map<boolean>;
   pastStoneMap?: Map<boolean>;
   futureStoneMap?: Map<boolean>;
-  placementPreviewStoneMap?: Map<boolean>;
+  placementPreviewOpacityMap?: Map<number>;
   markerMap?: Map<Marker | null>;
   ownershipMap?: Map<number>;
   hotZoneMap?: Map<HotZone | null>;
@@ -80,7 +80,7 @@ export default class Board extends Component<BoardProps, BoardState> {
       missingStoneMap,
       pastStoneMap,
       futureStoneMap,
-      placementPreviewStoneMap,
+      placementPreviewOpacityMap,
       ownershipMap,
       hotZoneMap,
       analysisOverlayMap,
@@ -177,7 +177,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     missingStone: missingStoneMap?.[y]?.[x],
                     pastStone: pastStoneMap?.[y]?.[x],
                     futureStone: futureStoneMap?.[y]?.[x],
-                    placementPreviewStone: placementPreviewStoneMap?.[y]?.[x],
+                    placementPreviewOpacity: placementPreviewOpacityMap?.[y]?.[x],
 
                     analysisOverlay: analysisOverlayMap?.[y]?.[x],
                     moveHint: moveHintMap?.[y]?.[x],

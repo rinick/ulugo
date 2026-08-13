@@ -47,7 +47,7 @@ export interface VertexProps extends VertexEventHandlers {
   missingStone?: boolean;
   pastStone?: boolean;
   futureStone?: boolean;
-  placementPreviewStone?: boolean;
+  placementPreviewOpacity?: number;
   analysisOverlay?: AnalysisOverlay | null;
   moveHint?: MoveHint | null;
   ownership?: number;
@@ -73,7 +73,7 @@ function Vertex(props: VertexProps) {
     missingStone,
     pastStone,
     futureStone,
-    placementPreviewStone,
+    placementPreviewOpacity,
     analysisOverlay,
     moveHint,
     ownership = 0,
@@ -199,9 +199,12 @@ function Vertex(props: VertexProps) {
           'ulugo-missing-stone': missingStone,
           'ulugo-past-stone': pastStone,
           'ulugo-future-stone': futureStone,
-          'ulugo-placement-preview-stone': placementPreviewStone,
+          'ulugo-placement-preview-stone': (placementPreviewOpacity ?? 0) > 0,
         }),
-        style: absoluteStyle(),
+        style: {
+          ...absoluteStyle(),
+          '--ulugo-placement-preview-opacity': placementPreviewOpacity,
+        } as CSSProperties,
       },
 
       !!sign &&
@@ -289,7 +292,7 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
     previous.missingStone === next.missingStone &&
     previous.pastStone === next.pastStone &&
     previous.futureStone === next.futureStone &&
-    previous.placementPreviewStone === next.placementPreviewStone &&
+    previous.placementPreviewOpacity === next.placementPreviewOpacity &&
     sameAnalysisOverlay(previous.analysisOverlay, next.analysisOverlay) &&
     sameMoveHint(previous.moveHint, next.moveHint) &&
     sameMarker(previous.marker, next.marker) &&
