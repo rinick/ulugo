@@ -23,6 +23,7 @@ describe('buildAnalysisChartData', () => {
       moveNumber: 0,
       series: 'intensity',
       value: 20,
+      color: 'B',
     });
   });
 
@@ -37,6 +38,7 @@ describe('buildAnalysisChartData', () => {
       moveNumber: 0,
       series: 'intensity',
       value: 20,
+      color: 'B',
     });
   });
 
@@ -51,6 +53,22 @@ describe('buildAnalysisChartData', () => {
       moveNumber: 0,
       series: 'intensity',
       value: 20,
+      color: 'W',
+    });
+  });
+
+  it('removes the one-point area-scoring value offset from intensity', () => {
+    const document = parseSgf('(;SZ[9]RU[Chinese])');
+    const cache = {
+      [nodeKey(document, [])]: cachedScore(12),
+      [hiddenPassAnalysisKey(document, [])]: cachedScore(-8),
+    };
+
+    expect(buildAnalysisChartData(document, [[]], cache)).toContainEqual({
+      moveNumber: 0,
+      series: 'intensity',
+      value: 19,
+      color: 'B',
     });
   });
 });

@@ -1,5 +1,6 @@
 import {Board, type Marker, type Vertex} from '@ulugo/go-board';
 import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
+import {usesAreaValueOffset} from '@ulugo/katago-core';
 import {
   getNodeAtPath,
   isScoringNode,
@@ -34,7 +35,6 @@ import {
   buildTopMovePvCandidateMap,
   childMoveSet,
   shouldShowMoveNumber,
-  usesAreaValueOffset,
   vertexKey,
   type ActivePvPreview,
   type MoveNumberLimit,

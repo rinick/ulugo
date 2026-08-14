@@ -331,11 +331,6 @@ export function buildHotZoneMap(
   return hasHotZone ? result : undefined;
 }
 
-export function usesAreaValueOffset(rules: string | undefined): boolean {
-  const key = rules?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
-  return key === 'chinese' || key === 'aga' || key === 'newzealand' || key === 'tromptaylor' || key === 'stonescoring';
-}
-
 export function childMoveSet(document: SgfDocument, path: number[], size: number): Set<string> {
   const node = getNodeAtPath(document, path);
   return new Set(

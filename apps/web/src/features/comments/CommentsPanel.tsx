@@ -446,7 +446,7 @@ function makePoints(
     }));
 }
 
-function makeIntensityAreaPath(
+export function makeIntensityAreaPath(
   data: AnalysisChartPoint[],
   width: number,
   padding: {top: number; right: number; bottom: number; left: number},
@@ -459,12 +459,22 @@ function makeIntensityAreaPath(
     .map((item) => ({
       x: moveNumberToX(item.moveNumber, maxMove, width, padding),
       value: Math.min(scale, Math.abs(item.value)),
+      color: item.color,
+      symmetric: item.moveNumber === 0 || item.moveNumber === maxMove,
     }));
   if (values.length === 0) return '';
 
-  const top = values.map(({x, value}) => `${x},${valueToCenteredY(value, scale, height, padding)}`);
-  const bottom = [...values].reverse().map(({x, value}) => `${x},${valueToCenteredY(-value, scale, height, padding)}`);
-  return `M${bottom.at(-1)}L${top.join('L')}L${bottom.join('L')}Z`;
+  const centerY = valueToCenteredY(0, scale, height, padding);
+  const upperValues = values.filter(({color, symmetric}) => symmetric || color === 'W');
+  const lowerValues = values.filter(({color, symmetric}) => symmetric || color === 'B');
+  const areaPath = (sideValues: typeof values, sign: 1 | -1) => {
+    if (sideValues.length === 0) return '';
+    const firstX = sideValues[0].x;
+    const lastX = sideValues.at(-1)?.x ?? firstX;
+    const edge = sideValues.map(({x, value}) => `${x},${valueToCenteredY(sign * value, scale, height, padding)}`);
+    return `M${firstX},${centerY}L${edge.join('L')}L${lastX},${centerY}Z`;
+  };
+  return `${areaPath(upperValues, 1)}${areaPath(lowerValues, -1)}`;
 }
 
 function buildPointLossData(data: AnalysisChartPoint[]): PointLoss[] {

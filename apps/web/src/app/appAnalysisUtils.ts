@@ -1,5 +1,6 @@
 import type {AnalysisChartPoint, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
 import {deriveBoardPosition} from '@ulugo/go-core';
+import {usesAreaValueOffset} from '@ulugo/katago-core';
 import {getBoardSize, getNodeAtPath, normalizeMovePoint, type SgfColor, type SgfDocument} from '@ulugo/sgf-core';
 import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 import {getLinePaths, nodeKey} from './sgfPathUtils';
@@ -273,6 +274,7 @@ export function buildAnalysisChartData(
   cache: Record<string, CachedAnalysis>
 ): AnalysisChartPoint[] {
   const data: AnalysisChartPoint[] = [];
+  const valueOffset = usesAreaValueOffset(document.root.data.RU?.[0]) ? 1 : 0;
 
   paths.forEach((path, index) => {
     const rootInfo = cache[nodeKey(document, path)]?.result.rootInfo;
@@ -299,7 +301,8 @@ export function buildAnalysisChartData(
       data.push({
         moveNumber: index,
         series: 'intensity',
-        value: Math.max(0, Math.round(passLoss * 10) / 10),
+        value: Math.max(0, Math.round((passLoss - valueOffset) * 10) / 10),
+        color: nextColor,
       });
     }
   });

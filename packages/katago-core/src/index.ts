@@ -270,3 +270,7 @@ export function normalizeRules(value: unknown): string {
 
   return aliases[key] ?? 'japanese';
 }
+
+export function usesAreaValueOffset(rules: unknown): boolean {
+  return ['chinese', 'aga', 'new-zealand', 'tromp-taylor', 'stone-scoring'].includes(normalizeRules(rules));
+}

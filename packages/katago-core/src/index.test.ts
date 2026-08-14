@@ -1,6 +1,6 @@
 import {addMove, createNewGame, parseSgf, updateGameInfo} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
-import {buildKataGoQuery, normalizeKomi, normalizeRules} from '.';
+import {buildKataGoQuery, normalizeKomi, normalizeRules, usesAreaValueOffset} from '.';
 
 describe('katago-core', () => {
   it('uses Japanese rules and 6.5 komi when game info is missing', () => {
@@ -23,6 +23,12 @@ describe('katago-core', () => {
     expect(normalizeRules('Japanese')).toBe('japanese');
     expect(normalizeRules('New Zealand')).toBe('new-zealand');
     expect(normalizeRules('')).toBe('japanese');
+  });
+
+  it('identifies rules whose move values include a one-point area-scoring offset', () => {
+    expect(usesAreaValueOffset('Chinese')).toBe(true);
+    expect(usesAreaValueOffset('New Zealand')).toBe(true);
+    expect(usesAreaValueOffset('Japanese')).toBe(false);
   });
 
   it('targets the current turn by default', () => {
