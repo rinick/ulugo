@@ -10,12 +10,15 @@ interface CommentsPanelProps {
   onChange: (value: string) => void;
   showAnalysisControls?: boolean;
   chartData?: AnalysisChartPoint[];
+  chartMaxMoveNumber: number;
   commentReadOnly?: boolean;
   commentRows?: number;
   moveDisplay?: AnalysisSettings['moveDisplay'];
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
+  showIntensity: boolean;
+  intensityDisplayLimit: number;
   showComments: boolean;
   selectedMoveNumber?: number | null;
   chartSummary?: AnalysisChartSummary | null;
@@ -57,12 +60,15 @@ export function CommentsPanel({
   onChange,
   showAnalysisControls = false,
   chartData = [],
+  chartMaxMoveNumber,
   commentReadOnly = false,
   commentRows,
   moveDisplay = ['scoreChange'],
   showScore,
   showPointLoss,
   showWinrate,
+  showIntensity,
+  intensityDisplayLimit,
   showComments,
   selectedMoveNumber = null,
   chartSummary = null,
@@ -74,22 +80,30 @@ export function CommentsPanel({
   const {t} = useTranslation();
   const commentInputRef = useRef<TextAreaRef>(null);
   const pendingCommentFocusRef = useRef(false);
-  const showChart = showAnalysisControls && (showScore || showWinrate || showPointLoss);
+  const showChart = showAnalysisControls && (showScore || showWinrate || showPointLoss || showIntensity);
   const scoreData = useMemo(() => chartData.filter((item) => item.series === 'score'), [chartData]);
   const winrateData = useMemo(() => chartData.filter((item) => item.series === 'winrate'), [chartData]);
+  const intensityData = useMemo(() => chartData.filter((item) => item.series === 'intensity'), [chartData]);
   const pointLossData = useMemo(() => buildPointLossData(scoreData), [scoreData]);
   const hasVisibleData =
     (showScore && scoreData.length > 0) ||
     (showWinrate && winrateData.length > 0) ||
-    (showPointLoss && pointLossData.length > 0);
+    (showPointLoss && pointLossData.length > 0) ||
+    (showIntensity && intensityData.length > 0);
 
   function showOnlyComments(): void {
     pendingCommentFocusRef.current = true;
     if (showComments && !showChart) commentInputRef.current?.focus();
-    onDisplayChange({showScore: false, showPointLoss: false, showWinrate: false, showComments: true});
+    onDisplayChange({
+      showScore: false,
+      showPointLoss: false,
+      showWinrate: false,
+      showIntensity: false,
+      showComments: true,
+    });
   }
 
-  function toggleChart(key: 'showScore' | 'showPointLoss' | 'showWinrate', value: boolean): void {
+  function toggleChart(key: 'showScore' | 'showPointLoss' | 'showWinrate' | 'showIntensity', value: boolean): void {
     onDisplayChange({showComments: false, [key]: !value});
   }
 
@@ -129,7 +143,12 @@ export function CommentsPanel({
             >
               {t('analysisHeaderWinRate')}
             </Button>
-            <Button size="small" title={t('analysisHeaderIntensityTitle')}>
+            <Button
+              size="small"
+              title={t('analysisHeaderIntensityTitle')}
+              type={showIntensity ? 'primary' : 'default'}
+              onClick={() => toggleChart('showIntensity', showIntensity)}
+            >
               {t('analysisHeaderIntensity')}
             </Button>
           </Space.Compact>
@@ -145,6 +164,9 @@ export function CommentsPanel({
               scoreData={showScore ? scoreData : []}
               pointLossData={showPointLoss ? pointLossData : []}
               winrateData={showWinrate ? winrateData : []}
+              intensityData={showIntensity ? intensityData : []}
+              intensityDisplayLimit={intensityDisplayLimit}
+              maxMoveNumber={chartMaxMoveNumber}
               allData={chartData}
               moveDisplay={moveDisplay}
               selectedMoveNumber={selectedMoveNumber}
@@ -178,6 +200,9 @@ function AnalysisChart({
   scoreData,
   pointLossData,
   winrateData,
+  intensityData,
+  intensityDisplayLimit,
+  maxMoveNumber,
   allData,
   moveDisplay,
   selectedMoveNumber,
@@ -189,6 +214,9 @@ function AnalysisChart({
   scoreData: AnalysisChartPoint[];
   pointLossData: PointLoss[];
   winrateData: AnalysisChartPoint[];
+  intensityData: AnalysisChartPoint[];
+  intensityDisplayLimit: number;
+  maxMoveNumber: number;
   allData: AnalysisChartPoint[];
   moveDisplay: AnalysisSettings['moveDisplay'];
   selectedMoveNumber: number | null;
@@ -202,21 +230,27 @@ function AnalysisChart({
   const width = 360;
   const height = 190;
   const padding = {top: 16, right: 8, bottom: 18, left: 28};
-  const maxMove = Math.max(0, ...allData.map((item) => item.moveNumber));
-  const scoreScale = scoreScaleFor(scoreData, pointLossData);
+  const maxMove = Math.max(0, maxMoveNumber);
+  const pointScale = scoreScaleFor(scoreData, pointLossData);
+  const chartScale = intensityChartScale(pointScale, intensityData, intensityDisplayLimit);
   const scorePoints = makePoints(scoreData, width, padding, maxMove, (value) =>
-    valueToCenteredY(value, scoreScale, height, padding)
+    valueToCenteredY(value, chartScale, height, padding)
   );
-  const pointLossPoints = makePointLossPoints(pointLossData, width, padding, maxMove, scoreScale, height);
+  const pointLossPoints = makePointLossPoints(pointLossData, width, padding, maxMove, chartScale, height);
+  const intensityAreaPath = makeIntensityAreaPath(intensityData, width, padding, maxMove, chartScale, height);
   const scoreAxisLabel =
-    scorePoints.length === 0 && pointLossPoints.length > 0 ? {top: 'W-', bottom: 'B-'} : {top: 'B+', bottom: 'W+'};
+    scorePoints.length > 0
+      ? {top: 'B+', bottom: 'W+'}
+      : pointLossPoints.length > 0
+        ? {top: 'W-', bottom: 'B-'}
+        : {top: '', bottom: '−'};
   const winratePoints = makePoints(winrateData, width, padding, maxMove, (value) =>
     valueToWinrateY(value, height, padding)
   );
   const centerY = (padding.top + height - padding.bottom) / 2;
-  const halfScoreScale = Math.round(scoreScale / 2);
-  const halfScoreY = valueToCenteredY(halfScoreScale, scoreScale, height, padding);
-  const negativeHalfScoreY = valueToCenteredY(-halfScoreScale, scoreScale, height, padding);
+  const halfChartScale = Math.round(chartScale / 2);
+  const halfScoreY = valueToCenteredY(halfChartScale, chartScale, height, padding);
+  const negativeHalfScoreY = valueToCenteredY(-halfChartScale, chartScale, height, padding);
   const selectedX =
     selectedMoveNumber == null
       ? null
@@ -267,6 +301,7 @@ function AnalysisChart({
         }}
         onWheel={handleWheel}
       >
+        {intensityAreaPath === '' ? null : <path className="analysis-chart-intensity" d={intensityAreaPath} />}
         <line
           className="analysis-chart-grid"
           x1={padding.left}
@@ -337,27 +372,30 @@ function AnalysisChart({
 
         {pointLossPoints.length > 0 ? <PointLossLines points={pointLossPoints} /> : null}
 
-        {scorePoints.length > 0 || pointLossPoints.length > 0 ? (
+        {scorePoints.length > 0 || pointLossPoints.length > 0 || intensityAreaPath !== '' ? (
           <>
             <text className="analysis-chart-label score" x="2" y={padding.top + 4}>
-              {`${scoreAxisLabel.top}${scoreScale}`}
+              {`${scoreAxisLabel.top}${chartScale}`}
             </text>
             <text className="analysis-chart-label score" x="2" y={halfScoreY + 4}>
-              {`${scoreAxisLabel.top}${halfScoreScale}`}
+              {`${scoreAxisLabel.top}${halfChartScale}`}
             </text>
             <text className="analysis-chart-label score" x="2" y={centerY + 4}>
               0
             </text>
             <text className="analysis-chart-label score" x="2" y={negativeHalfScoreY + 4}>
-              {`${scoreAxisLabel.bottom}${halfScoreScale}`}
+              {`${scoreAxisLabel.bottom}${halfChartScale}`}
             </text>
             <text className="analysis-chart-label score" x="2" y={height - padding.bottom + 4}>
-              {`${scoreAxisLabel.bottom}${scoreScale}`}
+              {`${scoreAxisLabel.bottom}${chartScale}`}
             </text>
           </>
         ) : null}
 
-        {winratePoints.length > 0 && scorePoints.length === 0 && pointLossPoints.length === 0 ? (
+        {winratePoints.length > 0 &&
+        scorePoints.length === 0 &&
+        pointLossPoints.length === 0 &&
+        intensityAreaPath === '' ? (
           <>
             <text className="analysis-chart-label winrate" x="2" y={padding.top + 4}>
               100%
@@ -406,6 +444,27 @@ function makePoints(
       value: item.value,
       moveNumber: item.moveNumber,
     }));
+}
+
+function makeIntensityAreaPath(
+  data: AnalysisChartPoint[],
+  width: number,
+  padding: {top: number; right: number; bottom: number; left: number},
+  maxMove: number,
+  scale: number,
+  height: number
+): string {
+  const values = data
+    .filter((item) => Number.isFinite(item.value))
+    .map((item) => ({
+      x: moveNumberToX(item.moveNumber, maxMove, width, padding),
+      value: Math.min(scale, Math.abs(item.value)),
+    }));
+  if (values.length === 0) return '';
+
+  const top = values.map(({x, value}) => `${x},${valueToCenteredY(value, scale, height, padding)}`);
+  const bottom = [...values].reverse().map(({x, value}) => `${x},${valueToCenteredY(-value, scale, height, padding)}`);
+  return `M${bottom.at(-1)}L${top.join('L')}L${bottom.join('L')}Z`;
 }
 
 function buildPointLossData(data: AnalysisChartPoint[]): PointLoss[] {
@@ -618,6 +677,18 @@ function scoreScaleFor(data: AnalysisChartPoint[], pointLossData: PointLoss[]): 
     ...pointLossData.map((item) => Math.abs(item.value))
   );
   return Math.ceil(maxAbs / 5) * 5;
+}
+
+export function intensityChartScale(
+  pointScale: number,
+  intensityData: AnalysisChartPoint[],
+  displayLimit: number
+): number {
+  const actualIntensity = Math.max(
+    0,
+    ...intensityData.filter((item) => Number.isFinite(item.value)).map((item) => Math.abs(item.value))
+  );
+  return Math.max(pointScale, Math.min(Math.ceil(actualIntensity), Math.max(pointScale, displayLimit)));
 }
 
 function formatSignedScore(value: number): string {

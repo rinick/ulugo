@@ -50,7 +50,9 @@ export interface AnalysisSettings {
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
+  showIntensity: boolean;
   showComments: boolean;
+  intensityDisplayLimit: number;
   boardBackground: BoardBackground;
   autoAnalyze: boolean;
   autoIncrementMarkupText: boolean;
@@ -68,6 +70,7 @@ export interface AnalysisModeSettings {
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
+  showIntensity: boolean;
   showComments: boolean;
 }
 
@@ -81,6 +84,7 @@ export const defaultReviewModeSettings: AnalysisModeSettings = {
   showScore: true,
   showPointLoss: false,
   showWinrate: true,
+  showIntensity: false,
   showComments: false,
 };
 
@@ -94,6 +98,7 @@ export const defaultEditModeSettings: AnalysisModeSettings = {
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
+  showIntensity: false,
   showComments: true,
 };
 
@@ -107,6 +112,7 @@ export const defaultMinimalModeSettings: AnalysisModeSettings = {
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
+  showIntensity: false,
   showComments: false,
 };
 
@@ -124,7 +130,9 @@ export const defaultAnalysisSettings: AnalysisSettings = {
   showScore: defaultEditModeSettings.showScore,
   showPointLoss: defaultEditModeSettings.showPointLoss,
   showWinrate: defaultEditModeSettings.showWinrate,
+  showIntensity: defaultEditModeSettings.showIntensity,
   showComments: defaultEditModeSettings.showComments,
+  intensityDisplayLimit: 25,
   boardBackground: 'auto',
   autoAnalyze: true,
   autoIncrementMarkupText: true,
@@ -138,7 +146,7 @@ export const defaultAnalysisSettings: AnalysisSettings = {
 
 export interface AnalysisChartPoint {
   moveNumber: number;
-  series: 'score' | 'winrate';
+  series: 'score' | 'winrate' | 'intensity';
   value: number;
   color?: 'B' | 'W';
 }

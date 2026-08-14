@@ -287,6 +287,21 @@ export function buildAnalysisChartData(
       });
     if (rootInfo?.winrate != null)
       data.push({moveNumber: index, series: 'winrate', value: normalizeWinratePercent(rootInfo.winrate)});
+
+    const rootScore = rootInfo?.scoreLead ?? rootInfo?.scoreMean;
+    const passPath = findPassChildPath(document, path);
+    const passNodeId = passPath == null ? hiddenPassAnalysisKey(document, path) : nodeKey(document, passPath);
+    const passRootInfo = cache[passNodeId]?.result.rootInfo;
+    const passScore = passRootInfo?.scoreLead ?? passRootInfo?.scoreMean;
+    if (rootScore != null && passScore != null) {
+      const nextColor = deriveBoardPosition(document, path).nextColor;
+      const passLoss = (rootScore - passScore) * (nextColor === 'B' ? 1 : -1);
+      data.push({
+        moveNumber: index,
+        series: 'intensity',
+        value: Math.max(0, Math.round(passLoss * 10) / 10),
+      });
+    }
   });
 
   return data;

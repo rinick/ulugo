@@ -1109,6 +1109,11 @@ body.minimal .app-content > .right-region .capture-summary {
   stroke-width: 1;
 }
 
+.analysis-chart-intensity {
+  fill: #e08a49;
+  stroke: none;
+}
+
 .analysis-chart-selected {
   stroke: #2f1b0d;
   stroke-width: 1;

@@ -124,7 +124,8 @@ export function useKataGoAnalysis({
     return analysisCache[nodeId]?.result ?? null;
   }, [analysisCache, currentPathSupportsAnalysis, document, enabled, path]);
   const analysisTargetVisits = Math.max(1, kataGoSettings.fastVisits || defaultKataGoSettings.fastVisits);
-  const needsPassAnalysis = analysisSettings.moveDisplay.includes('value') || analysisSettings.showHotZone;
+  const needsPassAnalysis =
+    analysisSettings.moveDisplay.includes('value') || analysisSettings.showHotZone || analysisSettings.showIntensity;
   const analysisPendingCounts = useMemo(() => {
     if (!enabled) return {normal: 0, hiddenPass: 0};
 

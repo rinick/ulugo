@@ -24,6 +24,7 @@ const modeSettingKeys = [
   'showScore',
   'showPointLoss',
   'showWinrate',
+  'showIntensity',
   'showComments',
 ] as const;
 
@@ -58,9 +59,11 @@ export function normalizeAnalysisSettings(
     moveDisplay?: unknown;
     stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
     topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    maxIntensity?: unknown;
   },
   enabled: boolean
 ): AnalysisSettings {
+  const {maxIntensity: legacyMaxIntensity, ...storedSettings} = settings;
   const storedModeValue = settings.mode as string | undefined;
   let storedMode: AnalysisMode = 'review';
   if (storedModeValue === 'edit' || storedModeValue === 'minimal') storedMode = storedModeValue;
@@ -85,6 +88,7 @@ export function normalizeAnalysisSettings(
       showScore: activeSource.showScore,
       showPointLoss: activeSource.showPointLoss,
       showWinrate: activeSource.showWinrate,
+      showIntensity: activeSource.showIntensity,
       showComments: activeSource.showComments,
     },
     modeDefaults
@@ -101,8 +105,9 @@ export function normalizeAnalysisSettings(
   };
   const normalized = {
     ...defaultAnalysisSettings,
-    ...settings,
+    ...storedSettings,
     moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
+    intensityDisplayLimit: normalizeIntensityDisplayLimit(settings.intensityDisplayLimit ?? legacyMaxIntensity),
     pvPreviewDelay: normalizePvPreviewDelay(settings.pvPreviewDelay),
     mode,
     ...activeModeSettings,
@@ -178,6 +183,12 @@ function normalizePvPreviewDelay(value: unknown): number {
   return Math.max(0, Math.min(2, numberValue));
 }
 
+function normalizeIntensityDisplayLimit(value: unknown): number {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return defaultAnalysisSettings.intensityDisplayLimit;
+  return Math.max(1, Math.round(numberValue));
+}
+
 function normalizeModeSettings(
   settings: Partial<AnalysisModeSettings> | undefined,
   defaults: AnalysisModeSettings
@@ -186,6 +197,7 @@ function normalizeModeSettings(
   return {
     ...defaults,
     ...settings,
+    showIntensity: settings?.showIntensity ?? defaults.showIntensity,
     stoneOverlay:
       stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
         ? stoneOverlay

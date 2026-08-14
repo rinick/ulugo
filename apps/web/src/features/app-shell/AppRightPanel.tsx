@@ -21,6 +21,7 @@ interface AppRightPanelProps {
   commentRows?: number;
   basicTools?: ReactNode;
   chartData: AnalysisChartPoint[];
+  chartMaxMoveNumber: number;
   selectedMoveNumber: number | null;
   chartSummary: AnalysisChartSummary | null;
   shortcutLabels: Partial<Record<ShortcutActionId, string>>;
@@ -60,6 +61,7 @@ export function AppRightPanel({
   commentRows,
   basicTools,
   chartData,
+  chartMaxMoveNumber,
   selectedMoveNumber,
   chartSummary,
   shortcutLabels,
@@ -100,12 +102,15 @@ export function AppRightPanel({
           onChange={onCommentChange}
           showAnalysisControls={showAnalysisControls && !forceComments}
           chartData={chartData}
+          chartMaxMoveNumber={chartMaxMoveNumber}
           commentReadOnly={commentReadOnly}
           commentRows={commentRows}
           moveDisplay={analysisSettings.moveDisplay}
           showScore={forceComments ? false : analysisSettings.showScore}
           showPointLoss={forceComments ? false : analysisSettings.showPointLoss}
           showWinrate={forceComments ? false : analysisSettings.showWinrate}
+          showIntensity={forceComments ? false : analysisSettings.showIntensity}
+          intensityDisplayLimit={analysisSettings.intensityDisplayLimit}
           showComments={forceComments ? true : analysisSettings.showComments}
           selectedMoveNumber={selectedMoveNumber}
           chartSummary={chartSummary}

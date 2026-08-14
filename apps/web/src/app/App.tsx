@@ -883,6 +883,7 @@ export function App() {
             showScore: false,
             showPointLoss: false,
             showWinrate: false,
+            showIntensity: false,
             showComments: true,
           });
           break;
@@ -924,6 +925,7 @@ export function App() {
     analysisSettings.showScore,
     analysisSettings.showTopMoves,
     analysisSettings.showWinrate,
+    analysisSettings.showIntensity,
     analysisSettings.stoneOverlay,
     boardSize,
     canReplaceMove,
@@ -1448,6 +1450,7 @@ export function App() {
                 ) : null
               }
               chartData={analysisChartData}
+              chartMaxMoveNumber={Math.max(0, analysisChartPaths.length - 1)}
               selectedMoveNumber={capabilities.katago ? selectedChartMoveNumber : path.length}
               chartSummary={analysisChartSummary}
               shortcutLabels={shortcutLabels}

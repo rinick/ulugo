@@ -48,7 +48,9 @@ interface AnalysisSettings {
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
+  showIntensity: boolean;
   showComments: boolean;
+  intensityDisplayLimit: number;
   boardBackground: 'auto' | 'golden' | 'natural' | 'flat';
   autoAnalyze: boolean;
   autoIncrementMarkupText: boolean;
@@ -69,6 +71,7 @@ interface AnalysisModeSettings {
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
+  showIntensity: boolean;
   showComments: boolean;
 }
 
@@ -96,7 +99,9 @@ const defaultAnalysisSettings: AnalysisSettings = {
   showScore: false,
   showPointLoss: false,
   showWinrate: false,
+  showIntensity: false,
   showComments: true,
+  intensityDisplayLimit: 25,
   boardBackground: 'auto',
   autoAnalyze: true,
   autoIncrementMarkupText: true,
@@ -111,6 +116,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showScore: true,
       showPointLoss: false,
       showWinrate: true,
+      showIntensity: false,
       showComments: false,
     },
     edit: {
@@ -123,6 +129,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showScore: false,
       showPointLoss: false,
       showWinrate: false,
+      showIntensity: false,
       showComments: true,
     },
     minimal: {
@@ -135,6 +142,7 @@ const defaultAnalysisSettings: AnalysisSettings = {
       showScore: false,
       showPointLoss: false,
       showWinrate: false,
+      showIntensity: false,
       showComments: false,
     },
   },
@@ -740,9 +748,10 @@ function normalizeAnalysisSettings(
     moveDisplay?: unknown;
     stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
     topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+    maxIntensity?: unknown;
   }
 ): AnalysisSettings {
-  const {topMoveDisplay, ...storedSettings} = settings;
+  const {topMoveDisplay, maxIntensity: legacyMaxIntensity, ...storedSettings} = settings;
   const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
   const legacyMinimalMode = ['z', 'e', 'n'].join('');
   const storedMode = settings.mode as string | undefined;
@@ -760,6 +769,7 @@ function normalizeAnalysisSettings(
       showScore: settings.showScore,
       showPointLoss: settings.showPointLoss,
       showWinrate: settings.showWinrate,
+      showIntensity: settings.showIntensity,
       showComments: settings.showComments,
     },
     defaultAnalysisSettings.modeSettings[mode]
@@ -778,6 +788,9 @@ function normalizeAnalysisSettings(
     ...defaultAnalysisSettings,
     ...storedSettings,
     moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
+    intensityDisplayLimit: normalizeIntensityDisplayLimit(
+      settings.intensityDisplayLimit ?? legacyMaxIntensity
+    ),
     mode,
     ...activeModeSettings,
     modeSettings,
@@ -797,6 +810,12 @@ function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
   return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
 }
 
+function normalizeIntensityDisplayLimit(value: unknown): number {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return defaultAnalysisSettings.intensityDisplayLimit;
+  return Math.max(1, Math.round(numberValue));
+}
+
 function normalizeAnalysisModeSettings(
   settings: Partial<AnalysisModeSettings> | undefined,
   defaults: AnalysisModeSettings
@@ -805,6 +824,7 @@ function normalizeAnalysisModeSettings(
   return {
     ...defaults,
     ...settings,
+    showIntensity: settings?.showIntensity ?? defaults.showIntensity,
     stoneOverlay:
       stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
         ? stoneOverlay

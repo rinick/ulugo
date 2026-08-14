@@ -248,6 +248,22 @@ export function SettingsModal({
                 onPressEnter={commitMinVisits}
               />
             </Form.Item>
+            <Form.Item label={t('intensityDisplayLimit')}>
+              <InputNumber
+                size="small"
+                min={1}
+                precision={0}
+                value={settings.intensityDisplayLimit}
+                onChange={(value) => {
+                  const numberValue = Number(value);
+                  updateSettings({
+                    intensityDisplayLimit: Number.isFinite(numberValue)
+                      ? Math.max(1, Math.round(numberValue))
+                      : defaultAnalysisSettings.intensityDisplayLimit,
+                  });
+                }}
+              />
+            </Form.Item>
             <Form.Item label={t('pvPreviewDelay')}>
               <div className="app-settings-inline-help-row">
                 <InputNumber
