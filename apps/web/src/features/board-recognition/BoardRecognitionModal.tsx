@@ -42,8 +42,8 @@ export default function BoardRecognitionModal({
   const [rules, setRules] = useState<(typeof ruleOptions)[number]>('Chinese');
   const [handicap, setHandicap] = useState(0);
   const [nextPlayer, setNextPlayer] = useState<'B' | 'W'>('B');
-  const sourceUrl = useBlobUrl(sourceImage);
-  const recognizedUrl = useBlobUrl(recognizedImage);
+  const sourceUrl = useBlobUrl(phase === 'select' || phase === 'crop' ? sourceImage : null);
+  const recognizedUrl = useBlobUrl(phase === 'result' ? recognizedImage : null);
 
   useEffect(() => {
     let canceled = false;
@@ -58,7 +58,6 @@ export default function BoardRecognitionModal({
       .then((preparedImage) => {
         if (canceled) return;
         setSourceImage(preparedImage);
-        setRecognizedImage(preparedImage);
         setPhase('select');
       })
       .catch(() => {
@@ -74,7 +73,6 @@ export default function BoardRecognitionModal({
     setPhase('recognizing');
 
     try {
-      setRecognizedImage(blob);
       const {recognizeBoard} = await import('uluscan');
       const result = await new Promise<{d: number[][]} | {s: true} | {e: true}>((resolve) => {
         recognizeBoard(blob, resolve, {lineCount: boardSize, sCheck: !isMobileBrowser});
@@ -85,6 +83,7 @@ export default function BoardRecognitionModal({
       } else if ('e' in result) {
         setPhase('error');
       } else {
+        setRecognizedImage(blob);
         setBoard(result.d);
         setNextPlayer(defaultNextPlayer(result.d));
         setPhase('result');
@@ -246,6 +245,7 @@ export default function BoardRecognitionModal({
             <Button
               onClick={() => {
                 setCrop(fullCrop);
+                setRecognizedImage(null);
                 setPhase('crop');
               }}
             >
@@ -471,7 +471,7 @@ function useBlobUrl(blob: Blob | null): string {
 }
 
 async function cropImageForScan(image: Blob, crop: CropRect): Promise<Blob> {
-  const bitmap = await createImageBitmap(image, {imageOrientation: 'from-image'});
+  let bitmap: ImageBitmap | null = await createImageBitmap(image, {imageOrientation: 'from-image'});
   const canvas = document.createElement('canvas');
   try {
     const geometry = scanCropGeometry(bitmap.width, bitmap.height, crop, maxScanImageDimension);
@@ -490,16 +490,18 @@ async function cropImageForScan(image: Blob, crop: CropRect): Promise<Blob> {
       geometry.outputWidth,
       geometry.outputHeight
     );
+    bitmap.close();
+    bitmap = null;
     return await canvasToBlob(canvas, image, 'Failed to crop image.');
   } finally {
-    bitmap.close();
+    bitmap?.close();
     canvas.width = 1;
     canvas.height = 1;
   }
 }
 
 async function resizeImageForScan(image: Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(image, {imageOrientation: 'from-image'});
+  let bitmap: ImageBitmap | null = await createImageBitmap(image, {imageOrientation: 'from-image'});
   if (bitmap.width <= maxScanImageDimension && bitmap.height <= maxScanImageDimension) {
     bitmap.close();
     return image;
@@ -513,9 +515,11 @@ async function resizeImageForScan(image: Blob): Promise<Blob> {
     const context = canvas.getContext('2d');
     if (context == null) throw new Error('Canvas is unavailable.');
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    bitmap = null;
     return await canvasToBlob(canvas, image, 'Failed to resize image.');
   } finally {
-    bitmap.close();
+    bitmap?.close();
     canvas.width = 1;
     canvas.height = 1;
   }

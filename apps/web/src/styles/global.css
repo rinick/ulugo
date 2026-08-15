@@ -315,6 +315,14 @@ textarea,
   overflow-y: auto;
 }
 
+body.mobile-browser .ant-modal-root .ant-modal,
+body.mobile-browser .ant-modal-root .ant-modal-mask {
+  animation-delay: 0s !important;
+  animation-duration: 0s !important;
+  transition-delay: 0s !important;
+  transition-duration: 0s !important;
+}
+
 .keyboard-shortcuts-list {
   display: grid;
   gap: 6px;

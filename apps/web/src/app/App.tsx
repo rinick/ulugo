@@ -71,7 +71,7 @@ import {
   shouldAutoEstimateRecognizedGame,
   shouldDeleteScoringNodeOnExit,
 } from './appEditorUtils';
-import {capabilities, isElectron, supportsCameraCapture} from './capabilities';
+import {capabilities, isElectron, isMobileBrowser, supportsCameraCapture} from './capabilities';
 import {findChildMovePath, oppositeColor} from './sgfEditUtils';
 import {
   findCurrentStoneMovePath,
@@ -401,10 +401,17 @@ export function App() {
   useEffect(() => {
     window.document.body.classList.toggle('platform-web', capabilities.platform === 'web');
     window.document.body.classList.toggle('platform-electron', capabilities.platform === 'electron');
+    window.document.body.classList.toggle('mobile-browser', isMobileBrowser);
     window.document.body.classList.toggle('minimal', minimalMode);
     window.document.body.classList.toggle('print-preview-open', printPreviewOpen);
     return () => {
-      window.document.body.classList.remove('platform-web', 'platform-electron', 'minimal', 'print-preview-open');
+      window.document.body.classList.remove(
+        'platform-web',
+        'platform-electron',
+        'mobile-browser',
+        'minimal',
+        'print-preview-open'
+      );
     };
   }, [minimalMode, printPreviewOpen]);
 
