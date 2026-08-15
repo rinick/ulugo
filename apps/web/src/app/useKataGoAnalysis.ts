@@ -53,6 +53,7 @@ interface UseKataGoAnalysisOptions {
   path: number[];
   analysisPaths: number[][];
   analysisChartPaths: number[][];
+  deferAnalysisTargetChange: boolean;
   skipEmptyInitialBoardLiveAnalysis: boolean;
   startFailedMessage: string;
 }
@@ -84,6 +85,7 @@ export function useKataGoAnalysis({
   path,
   analysisPaths,
   analysisChartPaths,
+  deferAnalysisTargetChange,
   skipEmptyInitialBoardLiveAnalysis,
   startFailedMessage,
 }: UseKataGoAnalysisOptions) {
@@ -417,6 +419,7 @@ export function useKataGoAnalysis({
       if (!hasPendingAnalysisQuery(analysisQueryContextRef.current, 'fast')) void ulugo.katago.stopAnalysis();
       return;
     }
+    if (deferAnalysisTargetChange) return;
     if (!currentPathNeedsLiveAnalysis) {
       if (hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live')) {
         const liveQueryIds = getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'live');
@@ -495,6 +498,7 @@ export function useKataGoAnalysis({
     clearPendingAnalysisQueries,
     currentNodeId,
     currentPathNeedsLiveAnalysis,
+    deferAnalysisTargetChange,
     document,
     enabled,
     kataGoSettings.maxVisits,
@@ -583,9 +587,9 @@ export function useKataGoAnalysis({
   ]);
 
   useEffect(() => {
-    if (!analysisMode || analysisPaths.length === 0) return;
+    if (!analysisMode || deferAnalysisTargetChange || analysisPaths.length === 0) return;
     void handleFastAnalysis();
-  }, [analysisPaths.length, analysisMode, analysisQueueRevision, handleFastAnalysis]);
+  }, [analysisPaths.length, analysisMode, analysisQueueRevision, deferAnalysisTargetChange, handleFastAnalysis]);
 
   return {
     analysisSettings,

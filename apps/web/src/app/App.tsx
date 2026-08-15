@@ -181,6 +181,7 @@ export function App() {
   const [kataGoAutotuningOpen, setKataGoAutotuningOpen] = useState(false);
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
+  const [keyboardNavigationActive, setKeyboardNavigationActive] = useState(false);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const recordCameraInputRef = useRef<HTMLInputElement>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
@@ -303,6 +304,7 @@ export function App() {
     path: operationPath,
     analysisPaths,
     analysisChartPaths,
+    deferAnalysisTargetChange: keyboardNavigationActive,
     skipEmptyInitialBoardLiveAnalysis: !selectionMoved,
     startFailedMessage: t('analysisStartFailed'),
   });
@@ -770,6 +772,7 @@ export function App() {
 
       const steps = event.ctrlKey || event.metaKey ? Infinity : event.shiftKey ? 10 : 1;
       event.preventDefault();
+      if (action?.navigation === true) setKeyboardNavigationActive(true);
 
       switch (shortcutAction) {
         case 'open':
@@ -909,10 +912,18 @@ export function App() {
       void gameRecordFiles.openFromClipboard(event.clipboardData);
     }
 
+    function finishKeyboardNavigation(): void {
+      setKeyboardNavigationActive(false);
+    }
+
     window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', finishKeyboardNavigation, true);
+    window.addEventListener('blur', finishKeyboardNavigation);
     window.addEventListener('paste', handlePaste, true);
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', finishKeyboardNavigation, true);
+      window.removeEventListener('blur', finishKeyboardNavigation);
       window.removeEventListener('paste', handlePaste, true);
     };
   }, [
