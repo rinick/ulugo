@@ -304,13 +304,13 @@ textarea,
 .ant-modal .ant-modal-container {
   display: flex;
   flex-direction: column;
-  max-height: calc(100dvh - 24px);
+  max-height: calc(var(--ulugo-viewport-height, 100dvh) - 24px);
   overflow: hidden;
 }
 
 .ant-modal .ant-modal-body {
   flex: 1;
-  max-height: calc(100dvh - 112px);
+  max-height: calc(var(--ulugo-viewport-height, 100dvh) - 112px);
   min-height: 0;
   overflow-y: auto;
 }
@@ -1553,7 +1553,7 @@ body.minimal .app-content > .right-region .capture-summary {
 
 .board-recognition-modal .ant-modal-body {
   display: flex;
-  min-height: min(660px, calc(100dvh - 112px));
+  min-height: min(660px, calc(var(--ulugo-viewport-height, 100dvh) - 112px));
 }
 
 .board-recognition-step {
@@ -1642,7 +1642,7 @@ body.minimal .app-content > .right-region .capture-summary {
 .board-recognition-crop-image img {
   display: block;
   max-width: 100%;
-  max-height: min(570px, calc(100dvh - 210px));
+  max-height: min(570px, calc(var(--ulugo-viewport-height, 100dvh) - 210px));
   object-fit: contain;
 }
 
@@ -1730,9 +1730,9 @@ body.minimal .app-content > .right-region .capture-summary {
     top: 0;
     width: 100% !important;
     max-width: none;
-    height: 100dvh;
-    min-height: 100dvh;
-    max-height: 100dvh;
+    height: var(--ulugo-viewport-height, 100dvh);
+    min-height: var(--ulugo-viewport-height, 100dvh);
+    max-height: var(--ulugo-viewport-height, 100dvh);
     margin: 0;
     padding: 0;
   }
@@ -1776,7 +1776,7 @@ body.minimal .app-content > .right-region .capture-summary {
   }
 
   .board-recognition-crop-image img {
-    max-height: calc(100dvh - 190px);
+    max-height: calc(var(--ulugo-viewport-height, 100dvh) - 190px);
   }
 }
 
@@ -1847,6 +1847,7 @@ button.ant-btn.left-panel-toggle {
 
 @media (orientation: portrait) {
   body.platform-web.minimal {
+    --ulugo-viewport-height: 100dvw;
     position: absolute;
     inset: 0 auto auto 0;
     width: 100dvh;
