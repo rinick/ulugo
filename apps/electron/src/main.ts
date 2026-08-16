@@ -5,11 +5,13 @@ import {
   clipboard,
   dialog,
   ipcMain,
+  safeStorage,
   shell,
   type MessageBoxOptions,
   type WebContents,
 } from 'electron';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
+import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {cancelGoogleDriveBridge, openGoogleDriveSgf, saveGoogleDriveSgf} from './googleDriveBridge';
@@ -187,6 +189,56 @@ interface ImageOpenResult {
   mimeType: string;
 }
 
+interface FoxGameSummary {
+  chessId: string;
+  blackUid: number;
+  blackName: string;
+  blackRankLabel: string;
+  whiteUid: number;
+  whiteName: string;
+  whiteRankLabel: string;
+  boardSize: number;
+  startTime: Date;
+  result: string;
+  winnerColor: 'black' | 'white' | 'draw' | 'unknown';
+}
+
+interface FoxClient {
+  readonly user: {uid: number; username: string};
+  listGames(options?: {fetchCount?: number; lastCode?: string}): Promise<{games: FoxGameSummary[]; lastCode: string}>;
+  downloadGame(chessId: string): Promise<string>;
+}
+
+interface TygemGameSummary {
+  gameId: string;
+  blackUserId: string;
+  blackName: string;
+  blackRankLabel: string;
+  whiteUserId: string;
+  whiteName: string;
+  whiteRankLabel: string;
+  startTime: Date;
+  result: string;
+  winnerColor: 'black' | 'white' | 'draw' | 'unknown';
+}
+
+interface TygemClient {
+  readonly username: string;
+  listGames(queryUsername?: string): Promise<{games: TygemGameSummary[]}>;
+  downloadGame(gameId: string): Promise<string>;
+  close(): void;
+}
+
+interface TygemCredentials {
+  username: string;
+  password: string;
+}
+
+interface PrivateGoProtocol {
+  FoxClient?: {forUsername(username: string): Promise<FoxClient>};
+  TygemClient?: {login(username: string, password: string): Promise<TygemClient>};
+}
+
 let katagoProcess: ChildProcessWithoutNullStreams | null = null;
 let katagoStart: {generation: number; promise: Promise<void>} | null = null;
 let katagoEngineGeneration = 0;
@@ -201,6 +253,10 @@ let autoSaveBeforeQuitComplete = false;
 let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
+const tygemCredentialsFileName = 'tygem-login.json';
+const privateGoProtocol = loadPrivateGoProtocol();
+const foxProtocol = privateGoProtocol?.FoxClient == null ? null : {FoxClient: privateGoProtocol.FoxClient};
+let tygemClient: TygemClient | null = null;
 
 app.setPath('userData', path.join(app.getPath('home'), '.ulugo'));
 
@@ -397,6 +453,155 @@ function registerIpc(): void {
   );
   ipcMain.handle('ulugo:google-drive:cancel', () => cancelGoogleDriveBridge());
 
+  ipcMain.handle('ulugo:fox:is-available', () => foxProtocol != null);
+  ipcMain.handle('ulugo:fox:list-games', async (_event, request: unknown) => {
+    if (foxProtocol == null) throw new Error('Fox protocol support is not installed.');
+    if (typeof request !== 'object' || request == null) throw new Error('Invalid Fox game list request.');
+    const {query, cursor, limit} = request as {query?: unknown; cursor?: unknown; limit?: unknown};
+    if (typeof query !== 'string' || query.trim() === '') throw new Error('Fox username cannot be empty.');
+    if (cursor != null && typeof cursor !== 'string') throw new Error('Invalid Fox game list cursor.');
+    if (limit != null && (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1)) {
+      throw new Error('Invalid Fox game list limit.');
+    }
+
+    const client = await foxProtocol.FoxClient.forUsername(query.trim());
+    const result = await client.listGames({fetchCount: limit ?? undefined, lastCode: cursor ?? undefined});
+    return {
+      query: client.user.username,
+      items: result.games.map((game) => {
+        const queryPlayer =
+          game.blackUid === client.user.uid ? 'black' : game.whiteUid === client.user.uid ? 'white' : null;
+        return {
+          id: game.chessId,
+          blackName: game.blackName,
+          blackRank: game.blackRankLabel,
+          whiteName: game.whiteName,
+          whiteRank: game.whiteRankLabel,
+          boardSize: game.boardSize,
+          startTime: game.startTime.toISOString(),
+          result: game.result,
+          queryPlayer,
+          queryOutcome:
+            game.winnerColor === 'draw'
+              ? 'draw'
+              : game.winnerColor === 'unknown' || queryPlayer == null
+                ? 'unknown'
+                : game.winnerColor === queryPlayer
+                  ? 'win'
+                  : 'loss',
+        };
+      }),
+      nextCursor: result.lastCode || null,
+    };
+  });
+  ipcMain.handle('ulugo:fox:download-game', async (_event, request: unknown) => {
+    if (foxProtocol == null) throw new Error('Fox protocol support is not installed.');
+    if (typeof request !== 'object' || request == null) throw new Error('Invalid Fox game request.');
+    const {query, itemId} = request as {query?: unknown; itemId?: unknown};
+    if (typeof query !== 'string' || query.trim() === '') throw new Error('Fox username cannot be empty.');
+    if (typeof itemId !== 'string' || itemId.trim() === '') throw new Error('Fox game ID cannot be empty.');
+
+    const client = await foxProtocol.FoxClient.forUsername(query.trim());
+    const content = await client.downloadGame(itemId.trim());
+    return {
+      content,
+      fileName: `fox-${itemId.replace(/[^a-zA-Z0-9_-]/g, '_')}.sgf`,
+    };
+  });
+
+  ipcMain.handle('ulugo:tygem:is-available', () => privateGoProtocol?.TygemClient != null);
+  ipcMain.handle('ulugo:tygem:get-saved-login', async () => {
+    if (privateGoProtocol?.TygemClient == null) return null;
+    const credentials = await readTygemCredentials();
+    return credentials == null ? null : {username: credentials.username, hasPassword: true};
+  });
+  ipcMain.handle('ulugo:tygem:login', async (_event, request: unknown) => {
+    if (privateGoProtocol?.TygemClient == null) throw new Error('Tygem protocol support is not installed.');
+    if (typeof request !== 'object' || request == null) throw new Error('Invalid Tygem login request.');
+    const {username, password, useSavedPassword} = request as {
+      username?: unknown;
+      password?: unknown;
+      useSavedPassword?: unknown;
+    };
+    if (typeof username !== 'string' || username.trim() === '') throw new Error('Tygem username cannot be empty.');
+    const normalizedUsername = username.trim();
+    let loginPassword: string;
+    let saveCredentials = false;
+    if (typeof password === 'string' && password !== '') {
+      loginPassword = password;
+      saveCredentials = true;
+    } else if (useSavedPassword === true) {
+      const saved = await readTygemCredentials();
+      if (saved == null || saved.username.toLowerCase() !== normalizedUsername.toLowerCase()) {
+        throw new Error('No saved Tygem password is available for this account.');
+      }
+      loginPassword = saved.password;
+    } else {
+      throw new Error('Tygem password cannot be empty.');
+    }
+
+    const client = await privateGoProtocol.TygemClient.login(normalizedUsername, loginPassword);
+    const credentialsSaved = saveCredentials
+      ? await writeTygemCredentials({username: client.username, password: loginPassword})
+      : true;
+    tygemClient?.close();
+    tygemClient = client;
+    return {query: client.username, credentialsSaved};
+  });
+  ipcMain.handle('ulugo:tygem:list-games', async (_event, request: unknown) => {
+    const client = tygemClient;
+    if (client == null) throw new Error('Log in to Tygem first.');
+    if (typeof request !== 'object' || request == null) throw new Error('Invalid Tygem game list request.');
+    const {query} = request as {query?: unknown};
+    if (typeof query !== 'string' || query.trim() === '') throw new Error('Tygem username cannot be empty.');
+    const queryUsername = query.trim();
+
+    const result = await client.listGames(queryUsername);
+    return {
+      query: queryUsername,
+      items: result.games.map((game) => {
+        const queryPlayer =
+          game.blackUserId.toLowerCase() === queryUsername.toLowerCase()
+            ? 'black'
+            : game.whiteUserId.toLowerCase() === queryUsername.toLowerCase()
+              ? 'white'
+              : null;
+        return {
+          id: game.gameId,
+          blackName: game.blackName,
+          blackRank: game.blackRankLabel,
+          whiteName: game.whiteName,
+          whiteRank: game.whiteRankLabel,
+          boardSize: 19,
+          startTime: game.startTime.toISOString(),
+          result: game.result,
+          queryPlayer,
+          queryOutcome:
+            game.winnerColor === 'draw'
+              ? 'draw'
+              : game.winnerColor === 'unknown' || queryPlayer == null
+                ? 'unknown'
+                : game.winnerColor === queryPlayer
+                  ? 'win'
+                  : 'loss',
+        };
+      }),
+      nextCursor: null,
+    };
+  });
+  ipcMain.handle('ulugo:tygem:download-game', async (_event, request: unknown) => {
+    if (tygemClient == null) throw new Error('Log in to Tygem first.');
+    if (typeof request !== 'object' || request == null) throw new Error('Invalid Tygem game request.');
+    const {query, itemId} = request as {query?: unknown; itemId?: unknown};
+    if (typeof query !== 'string' || query.trim() === '') throw new Error('Tygem username cannot be empty.');
+    if (typeof itemId !== 'string' || !/^[a-f\d]{16}$/i.test(itemId)) throw new Error('Invalid Tygem game ID.');
+
+    return {
+      content: await tygemClient.downloadGame(itemId),
+      fileName: `tygem-${itemId.toLowerCase()}.gib`,
+    };
+  });
+
   ipcMain.handle('ulugo:katago:get-settings', () => readKataGoSettings());
   ipcMain.handle('ulugo:katago:save-settings', async (_event, settings: KataGoSettings) => {
     const previous = await readKataGoSettings();
@@ -469,6 +674,21 @@ function registerIpc(): void {
   ipcMain.handle('ulugo:analysis:save-settings', async (_event, settings: AnalysisSettings) =>
     writeJson('analysis-settings.json', normalizeAnalysisSettings(settings))
   );
+}
+
+function loadPrivateGoProtocol(): PrivateGoProtocol | null {
+  const modulePath = path.join(__dirname, 'private/go-protocol/index.js');
+  if (!existsSync(modulePath)) return null;
+
+  try {
+    const protocol = require(modulePath) as PrivateGoProtocol;
+    return typeof protocol.FoxClient?.forUsername === 'function' || typeof protocol.TygemClient?.login === 'function'
+      ? protocol
+      : null;
+  } catch (error) {
+    console.error('Failed to load private Go protocol support.', error);
+    return null;
+  }
 }
 
 function bringSenderWindowToFront(sender: WebContents): void {
@@ -854,6 +1074,47 @@ async function writeJson<T>(name: string, value: T): Promise<T> {
 
 function settingsPath(name: string): string {
   return path.join(app.getPath('userData'), name);
+}
+
+function canPersistTygemCredentials(): boolean {
+  return (
+    safeStorage.isEncryptionAvailable() &&
+    (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
+  );
+}
+
+async function readTygemCredentials(): Promise<TygemCredentials | null> {
+  if (!canPersistTygemCredentials()) return null;
+  try {
+    const stored = JSON.parse(await fs.readFile(settingsPath(tygemCredentialsFileName), 'utf8')) as {
+      version?: unknown;
+      encrypted?: unknown;
+    };
+    if (stored.version !== 1 || typeof stored.encrypted !== 'string') return null;
+    const credentials = JSON.parse(safeStorage.decryptString(Buffer.from(stored.encrypted, 'base64'))) as {
+      username?: unknown;
+      password?: unknown;
+    };
+    if (typeof credentials.username !== 'string' || typeof credentials.password !== 'string') return null;
+    if (credentials.username === '' || credentials.password === '') return null;
+    return {username: credentials.username, password: credentials.password};
+  } catch {
+    return null;
+  }
+}
+
+async function writeTygemCredentials(credentials: TygemCredentials): Promise<boolean> {
+  if (!canPersistTygemCredentials()) return false;
+  try {
+    const encrypted = safeStorage.encryptString(JSON.stringify(credentials)).toString('base64');
+    await fs.mkdir(app.getPath('userData'), {recursive: true});
+    const filePath = settingsPath(tygemCredentialsFileName);
+    await fs.writeFile(filePath, JSON.stringify({version: 1, encrypted}, null, 2), {encoding: 'utf8', mode: 0o600});
+    if (process.platform !== 'win32') await fs.chmod(filePath, 0o600);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function readKataGoSettings(): Promise<KataGoSettings> {

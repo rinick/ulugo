@@ -1,4 +1,5 @@
 import type {KataGoAnalysisResult, AnalysisSettings} from '@ulugo/analysis-core';
+import type {RemoteSgfSourceApi} from './remoteSgf';
 import type {
   KataGoAnalysisQuery,
   KataGoAssetInventory,
@@ -90,6 +91,8 @@ export interface UlugoElectronApi {
     saveSgf: (request: ElectronGoogleDriveSaveRequest) => Promise<ElectronGoogleDriveSaveResult | null>;
     cancel: () => Promise<void>;
   };
+  fox: RemoteSgfSourceApi;
+  tygem: RemoteSgfSourceApi;
   katago: {
     getSettings: () => Promise<KataGoSettings>;
     saveSettings: (settings: KataGoSettings) => Promise<KataGoSettings>;

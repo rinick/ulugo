@@ -9,6 +9,7 @@ build
 /release
 /app/**/*.d.ts
 /packages/**/*.d.ts
+/packages/go-protocol
 /tool/**/*.d.ts
 /apps/web/dist
 /apps/electron/dist

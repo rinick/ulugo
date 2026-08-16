@@ -7,7 +7,8 @@
   "type": "commonjs",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc -p tsconfig.json && electron dist/main.js",
+    "dev": "node scripts/prepare-build.cjs && tsc -p tsconfig.json && electron dist/main.js",
+    "prebuild": "node scripts/prepare-build.cjs",
     "build": "tsc -p tsconfig.json",
     "package:win-x64": "electron-builder --win portable --x64",
     "package:msix-x64": "electron-builder --config electron-builder.store.cjs --win appx --x64 && node scripts/rename-store-package.cjs",

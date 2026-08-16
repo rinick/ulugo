@@ -18,12 +18,14 @@ interface AppMenuBarProps {
   showAiConfig: boolean;
   showCameraOpen: boolean;
   showRecentFiles: boolean;
+  remoteSgfSources: Array<{id: string; label: string}>;
   recentFiles: Array<{filePath: string; fileName: string}>;
   language: AppLanguage;
   onNew: (size: BoardSize) => void;
   onOpen: () => void;
   onOpenRecent: (filePath: string) => void;
   onOpenFromCamera: () => void;
+  onOpenRemoteSgf: (sourceId: string) => void;
   onOpenFromSgfText: () => void;
   onOpenFromGoogleDrive: () => void;
   onSave: () => void;
@@ -41,12 +43,14 @@ export function AppMenuBar({
   showAiConfig,
   showCameraOpen,
   showRecentFiles,
+  remoteSgfSources,
   recentFiles,
   language,
   onNew,
   onOpen,
   onOpenRecent,
   onOpenFromCamera,
+  onOpenRemoteSgf,
   onOpenFromSgfText,
   onOpenFromGoogleDrive,
   onSave,
@@ -85,6 +89,8 @@ export function AppMenuBar({
       : []),
     ...(showCameraOpen ? [{key: 'open:camera', icon: <CameraOutlined />, label: t('openFromCamera')}] : []),
     {key: 'open:sgfText', label: t('openFromSgfText')},
+    {type: 'divider'},
+    ...remoteSgfSources.map((source) => ({key: `open:remote:${source.id}`, label: source.label})),
     {key: 'open:googleDrive', label: t('openFromGoogleDrive')},
   ];
 
@@ -106,6 +112,8 @@ export function AppMenuBar({
       onOpenFromSgfText();
     } else if (info.key === 'open:camera') {
       onOpenFromCamera();
+    } else if (info.key.startsWith('open:remote:')) {
+      onOpenRemoteSgf(info.key.slice('open:remote:'.length));
     } else if (info.key === 'open:googleDrive') {
       onOpenFromGoogleDrive();
     } else if (info.key === 'save:as') {

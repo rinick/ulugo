@@ -35,6 +35,7 @@ interface GameRecordFiles {
   openFromCamera: () => void;
   openFromSgfText: () => Promise<void>;
   openFromGoogleDrive: () => Promise<void>;
+  importSgf: (content: string, fileName: string) => Promise<boolean>;
   importFile: (file: File | undefined) => Promise<void>;
   handleDragOver: (event: DragEvent<HTMLElement>) => void;
   handleDrop: (event: DragEvent<HTMLElement>) => void;
@@ -365,9 +366,9 @@ export function useGameRecordFiles({
     void importFile(file);
   }
 
-  async function importText(text: string, fileName: string, metadata: CurrentFileMetadata): Promise<void> {
+  async function importText(text: string, fileName: string, metadata: CurrentFileMetadata): Promise<boolean> {
     const importedDocument = withImportedGameName(parseGameRecord(text, fileName), fileName);
-    if (!(await archiveUnsavedGame())) return;
+    if (!(await archiveUnsavedGame())) return false;
     if (metadata.electronFilePath != null && window.ulugo != null) {
       await window.ulugo.addRecentFile(metadata.electronFilePath);
       await refreshRecentFiles();
@@ -375,6 +376,7 @@ export function useGameRecordFiles({
     setCurrentFile(metadata);
     setStartedFromEmpty(false);
     onImportRef.current(importedDocument);
+    return true;
   }
 
   function showImportError(error: unknown): void {
@@ -401,6 +403,14 @@ export function useGameRecordFiles({
     openFromCamera: () => cameraInputRef.current?.click(),
     openFromSgfText,
     openFromGoogleDrive,
+    importSgf: async (content, fileName) => {
+      try {
+        return await importText(content, fileName, {name: fileName});
+      } catch (error) {
+        showImportError(error);
+        return false;
+      }
+    },
     importFile,
     handleDragOver,
     handleDrop,

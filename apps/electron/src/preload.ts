@@ -27,6 +27,21 @@ contextBridge.exposeInMainWorld('ulugo', {
       ipcRenderer.invoke('ulugo:google-drive:save-sgf', request),
     cancel: () => ipcRenderer.invoke('ulugo:google-drive:cancel'),
   },
+  fox: {
+    isAvailable: () => ipcRenderer.invoke('ulugo:fox:is-available'),
+    list: (request: {query: string; cursor?: string; limit?: number}) =>
+      ipcRenderer.invoke('ulugo:fox:list-games', request),
+    read: (request: {query: string; itemId: string}) => ipcRenderer.invoke('ulugo:fox:download-game', request),
+  },
+  tygem: {
+    isAvailable: () => ipcRenderer.invoke('ulugo:tygem:is-available'),
+    getSavedLogin: () => ipcRenderer.invoke('ulugo:tygem:get-saved-login'),
+    login: (request: {username: string; password?: string; useSavedPassword?: boolean}) =>
+      ipcRenderer.invoke('ulugo:tygem:login', request),
+    list: (request: {query: string; cursor?: string; limit?: number}) =>
+      ipcRenderer.invoke('ulugo:tygem:list-games', request),
+    read: (request: {query: string; itemId: string}) => ipcRenderer.invoke('ulugo:tygem:download-game', request),
+  },
   katago: {
     getSettings: () => ipcRenderer.invoke('ulugo:katago:get-settings'),
     saveSettings: (settings: unknown) => ipcRenderer.invoke('ulugo:katago:save-settings', settings),

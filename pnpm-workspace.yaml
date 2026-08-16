@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "!packages/go-protocol"
 allowBuilds:
   electron: true
   electron-winstaller: true

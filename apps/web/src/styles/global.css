@@ -315,6 +315,119 @@ textarea,
   overflow-y: auto;
 }
 
+.remote-sgf-modal .ant-modal-container {
+  height: min(600px, calc(var(--ulugo-viewport-height, 100dvh) - 24px));
+}
+
+.remote-sgf-modal .ant-modal-body {
+  display: flex;
+  overflow: hidden;
+}
+
+.remote-sgf-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.remote-sgf-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.remote-sgf-login {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.remote-sgf-login label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.remote-sgf-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.remote-sgf-table,
+.remote-sgf-table > .ant-spin,
+.remote-sgf-table .ant-spin-nested-loading,
+.remote-sgf-table .ant-spin-container,
+.remote-sgf-table .ant-table,
+.remote-sgf-table .ant-table-container {
+  height: 100%;
+  min-height: 0;
+}
+
+.remote-sgf-table,
+.remote-sgf-table > .ant-spin,
+.remote-sgf-table .ant-spin-container,
+.remote-sgf-table .ant-table,
+.remote-sgf-table .ant-table-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.remote-sgf-table .ant-table-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: scroll !important;
+  scrollbar-color: #9a9a9a #f0f0f0;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.remote-sgf-table .ant-table-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.remote-sgf-table .ant-table-body::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.remote-sgf-table .ant-table-body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #9a9a9a;
+  background-clip: padding-box;
+}
+
+.remote-sgf-table .ant-table-row {
+  cursor: pointer;
+}
+
+.remote-sgf-player {
+  white-space: nowrap;
+}
+
+.remote-sgf-player-name {
+  font-weight: 700;
+}
+
+.remote-sgf-player-win {
+  color: #237804;
+}
+
+.remote-sgf-player-loss {
+  color: #a8071a;
+}
+
+.remote-sgf-player-rank {
+  margin-left: 6px;
+  color: #595959;
+  font-style: italic;
+}
+
 body.mobile-browser .ant-modal-root .ant-modal,
 body.mobile-browser .ant-modal-root .ant-modal-mask {
   animation-delay: 0s !important;

@@ -42,6 +42,7 @@ import {AppStatusModals} from '../features/app-shell/AppStatusModals';
 import {AppToolbars} from '../features/app-shell/AppToolbars';
 import type {BoardVertexClickOptions} from '../features/board/GoBoard';
 import {GameInfoModal} from '../features/game-info/GameInfoModal';
+import {RemoteSgfModal} from '../features/files/RemoteSgfModal';
 import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
 import {layoutTree} from '../features/sgf-tree/layout';
@@ -88,6 +89,8 @@ import {blurNonTextControlFocus, isModalOpen, isPopupOpen, isTextInputActive} fr
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
 import {getAppFontFamily} from './fonts';
 import {appTheme} from './appTheme';
+import {ogsRemoteSgfSource} from './ogsRemoteSgf';
+import type {RemoteSgfSourceConfig} from './remoteSgf';
 import {
   confirmReplaceMove,
   createReplaceMoveState,
@@ -194,6 +197,9 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [remoteSgfSourceId, setRemoteSgfSourceId] = useState<string | null>(null);
+  const [foxAvailable, setFoxAvailable] = useState(false);
+  const [tygemAvailable, setTygemAvailable] = useState(false);
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [recognitionSetupMode, setRecognitionSetupMode] = useState(false);
   const [mobileHeaderRightOpen, setMobileHeaderRightOpen] = useState(false);
@@ -399,6 +405,81 @@ export function App() {
       setRecognitionImage(image);
     },
   });
+
+  useEffect(() => {
+    let active = true;
+    if (!isElectron || window.ulugo == null) return;
+    void window.ulugo.fox
+      .isAvailable()
+      .then((available) => {
+        if (active) setFoxAvailable(available);
+      })
+      .catch(() => {
+        if (active) setFoxAvailable(false);
+      });
+    void window.ulugo.tygem
+      .isAvailable()
+      .then((available) => {
+        if (active) setTygemAvailable(available);
+      })
+      .catch(() => {
+        if (active) setTygemAvailable(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const remoteSgfSources: RemoteSgfSourceConfig[] = [
+    ...(foxAvailable && window.ulugo != null
+      ? [
+          {
+            id: 'fox',
+            title: t('openFromFox'),
+            queryLabel: t('foxUsername'),
+            queryPlaceholder: t('foxUsernamePlaceholder'),
+            loadErrorMessage: t('foxLoadFailed'),
+            openErrorMessage: t('foxOpenFailed'),
+            storageKey: 'ulugo.fox.username',
+            source: window.ulugo.fox,
+          },
+        ]
+      : []),
+    ...(tygemAvailable && window.ulugo != null
+      ? [
+          {
+            id: 'tygem',
+            title: t('openFromTygem'),
+            queryLabel: t('tygemUsername'),
+            queryPlaceholder: t('tygemUsernamePlaceholder'),
+            loadErrorMessage: t('tygemLoadFailed'),
+            openErrorMessage: t('tygemOpenFailed'),
+            storageKey: 'ulugo.tygem.username',
+            source: window.ulugo.tygem,
+            auth: {
+              passwordLabel: t('tygemPassword'),
+              savedPasswordPlaceholder: t('tygemSavedPassword'),
+              loginLabel: t('tygemLogin'),
+              loginErrorMessage: t('tygemLoginFailed'),
+              credentialsNotSavedMessage: t('tygemCredentialsNotSaved'),
+              queryEditableAfterLogin: true,
+            },
+          },
+        ]
+      : []),
+    {
+      id: 'ogs',
+      title: t('openFromOgs'),
+      queryLabel: t('ogsUsername'),
+      queryPlaceholder: t('ogsUsernamePlaceholder'),
+      loadErrorMessage: t('ogsLoadFailed'),
+      openErrorMessage: t('ogsOpenFailed'),
+      storageKey: 'ulugo.ogs.username',
+      source: ogsRemoteSgfSource,
+    },
+  ];
+  const selectedRemoteSgfSource = remoteSgfSources.find((source) => source.id === remoteSgfSourceId) ?? null;
+
   const showMarkup = analysisSettings.showMarkup;
   const showBoardMarkup = showMarkup && !selectedScoringNode;
   const stoneOverlayDisplay =
@@ -1375,12 +1456,14 @@ export function App() {
                 showAiConfig={capabilities.katago}
                 showCameraOpen={supportsCameraCapture}
                 showRecentFiles={isElectron}
+                remoteSgfSources={remoteSgfSources.map((source) => ({id: source.id, label: source.title}))}
                 recentFiles={gameRecordFiles.recentFiles}
                 language={currentLanguage}
                 onNew={handleNew}
                 onOpen={() => void gameRecordFiles.open()}
                 onOpenRecent={(filePath) => void gameRecordFiles.openRecentFile(filePath)}
                 onOpenFromCamera={gameRecordFiles.openFromCamera}
+                onOpenRemoteSgf={setRemoteSgfSourceId}
                 onOpenFromSgfText={() => void gameRecordFiles.openFromSgfText()}
                 onOpenFromGoogleDrive={() => void gameRecordFiles.openFromGoogleDrive()}
                 onSave={() => void gameRecordFiles.save()}
@@ -1583,6 +1666,22 @@ export function App() {
             }}
           />
         </Suspense>
+      ) : null}
+      {selectedRemoteSgfSource != null ? (
+        <RemoteSgfModal
+          key={selectedRemoteSgfSource.id}
+          open
+          title={selectedRemoteSgfSource.title}
+          queryLabel={selectedRemoteSgfSource.queryLabel}
+          queryPlaceholder={selectedRemoteSgfSource.queryPlaceholder}
+          loadErrorMessage={selectedRemoteSgfSource.loadErrorMessage}
+          openErrorMessage={selectedRemoteSgfSource.openErrorMessage}
+          storageKey={selectedRemoteSgfSource.storageKey}
+          source={selectedRemoteSgfSource.source}
+          auth={selectedRemoteSgfSource.auth}
+          onCancel={() => setRemoteSgfSourceId(null)}
+          onOpenSgf={gameRecordFiles.importSgf}
+        />
       ) : null}
       {capabilities.katago ? (
         <KataGoSettingsModal
