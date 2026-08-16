@@ -1,6 +1,6 @@
 import {message} from 'antd';
 import {serializeSgf, type SgfDocument, type SgfNode} from '@ulugo/sgf-core';
-import {useCallback, useEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
 import {promptSgfText} from '../features/files/promptSgfText';
@@ -55,6 +55,10 @@ export function useGameRecordFiles({
   const [googleDrivePending, setGoogleDrivePending] = useState<'open' | 'save' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const onImportRef = useRef(onImport);
+  useLayoutEffect(() => {
+    onImportRef.current = onImport;
+  }, [onImport]);
 
   useEffect(() => {
     if (!isElectron || window.ulugo == null) return;
@@ -66,12 +70,9 @@ export function useGameRecordFiles({
         electronFilePath: result.filePath,
       }).catch(showImportError);
     };
-    void window.ulugo
-      .consumeOpenGameRecord()
-      .then(importOpenedGameRecord)
-      .catch(showImportError);
+    void window.ulugo.consumeOpenGameRecord().then(importOpenedGameRecord).catch(showImportError);
     return window.ulugo.onOpenGameRecord(importOpenedGameRecord);
-  }, [onImport, t]);
+  }, [t]);
 
   const refreshRecentFiles = useCallback(async (): Promise<void> => {
     if (!isElectron || window.ulugo == null) return;
@@ -373,7 +374,7 @@ export function useGameRecordFiles({
     }
     setCurrentFile(metadata);
     setStartedFromEmpty(false);
-    onImport(importedDocument);
+    onImportRef.current(importedDocument);
   }
 
   function showImportError(error: unknown): void {

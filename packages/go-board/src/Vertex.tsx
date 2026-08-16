@@ -41,7 +41,6 @@ export interface VertexEventHandlers {
 
 export interface VertexProps extends VertexEventHandlers {
   position: VertexPoint;
-  random?: number;
   sign?: Sign;
   extraStone?: boolean;
   missingStone?: boolean;
@@ -67,7 +66,6 @@ const absoluteStyle = (): CSSProperties => ({
 function Vertex(props: VertexProps) {
   let {
     position,
-    random,
     sign = 0,
     extraStone,
     missingStone,
@@ -140,7 +138,7 @@ function Vertex(props: VertexProps) {
         'style': {
           position: 'relative',
         } satisfies CSSProperties,
-        'className': classnames('ulugo-vertex', `ulugo-random_${random}`, `ulugo-sign_${sign}`, {
+        'className': classnames('ulugo-vertex', `ulugo-sign_${sign}`, {
           [`ulugo-analysis-strength_${analysisOverlay?.strength}`]: (analysisOverlay?.strength ?? 0) > 0,
           'ulugo-bestmove': !!moveHint?.best,
           [`ulugo-nextmove_${moveHint?.branch}`]: !!moveHint?.branch,
@@ -212,7 +210,7 @@ function Vertex(props: VertexProps) {
           'div',
           {
             key: 'inner',
-            className: classnames('ulugo-inner', 'ulugo-stone-image', `ulugo-random_${random}`, `ulugo-sign_${sign}`),
+            className: classnames('ulugo-inner', 'ulugo-stone-image', `ulugo-sign_${sign}`),
             style: absoluteStyle(),
           },
           sign
@@ -286,7 +284,6 @@ function sameVertexProps(previous: VertexProps, next: VertexProps): boolean {
   return (
     previous.position[0] === next.position[0] &&
     previous.position[1] === next.position[1] &&
-    previous.random === next.random &&
     previous.sign === next.sign &&
     previous.extraStone === next.extraStone &&
     previous.missingStone === next.missingStone &&

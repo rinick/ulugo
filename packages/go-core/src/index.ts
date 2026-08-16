@@ -2,6 +2,7 @@ import {
   getBoardSize,
   getInitialCaptures,
   getLine,
+  isPointOnBoard,
   normalizeMovePoint,
   pointToVertex,
   type MarkupKind,
@@ -44,11 +45,11 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
   let moveNumber = 0;
   let lastMove: SgfPoint | null = null;
   let nextColor: Stone = 'B';
-  const allowSuicide = isNewZealandRules(document.root.data.RU?.[0]);
+  const allowSuicide = allowsSuicideRules(document.root.data.RU?.[0]);
   const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
 
   for (const node of line) {
-    applySetup(node, stones, moveNumbers);
+    applySetup(node, stones, moveNumbers, size);
 
     const color: Stone | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     if (color == null) {
@@ -59,12 +60,17 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
     const point = normalizeMovePoint(node.data[color]?.[0] ?? '', size);
     moveNumber += 1;
     nextColor = color === 'B' ? 'W' : 'B';
-    lastMove = point === '' ? null : point;
 
     if (point === '') {
+      lastMove = null;
       if (useAgaPassStones) captures[nextColor] += 1;
       continue;
     }
+    if (!isPointOnBoard(point, size)) {
+      lastMove = null;
+      continue;
+    }
+    lastMove = point;
     stones.set(point, color);
     moveNumbers.set(point, moveNumber);
 
@@ -112,7 +118,7 @@ export function isLegalMove(position: BoardPosition, color: Stone, point: SgfPoi
   const stones = new Map(position.stones);
   const moveNumbers = new Map<SgfPoint, number>();
   const captures: Record<Stone, number> = {B: 0, W: 0};
-  const allowSuicide = isNewZealandRules(rules);
+  const allowSuicide = allowsSuicideRules(rules);
   stones.set(point, color);
   applyCaptures(point, color, stones, moveNumbers, captures, position.size, allowSuicide);
   return allowSuicide || collectGroup(point, stones, position.size).liberties > 0;
@@ -128,19 +134,23 @@ function applyCaptures(
   allowSuicide: boolean
 ): void {
   const opponent = color === 'B' ? 'W' : 'B';
+  const checkedOpponentPoints = new Set<SgfPoint>();
   for (const neighbor of neighbors(point, size)) {
-    if (stones.get(neighbor) !== opponent) continue;
+    if (stones.get(neighbor) !== opponent || checkedOpponentPoints.has(neighbor)) continue;
     const group = collectGroup(neighbor, stones, size);
+    for (const groupPoint of group.points) checkedOpponentPoints.add(groupPoint);
     if (group.liberties === 0) {
       captures[color] += group.points.length;
       removeGroup(group.points, stones, moveNumbers);
     }
   }
 
-  const ownGroup = collectGroup(point, stones, size);
-  if (allowSuicide && ownGroup.liberties === 0) {
-    captures[opponent] += ownGroup.points.length;
-    removeGroup(ownGroup.points, stones, moveNumbers);
+  if (allowSuicide) {
+    const ownGroup = collectGroup(point, stones, size);
+    if (ownGroup.liberties === 0) {
+      captures[opponent] += ownGroup.points.length;
+      removeGroup(ownGroup.points, stones, moveNumbers);
+    }
   }
 }
 
@@ -151,13 +161,12 @@ function removeGroup(points: SgfPoint[], stones: Map<SgfPoint, Stone>, moveNumbe
   }
 }
 
-function isNewZealandRules(value: string | undefined): boolean {
-  return (
-    value
-      ?.trim()
-      .toLowerCase()
-      .replace(/[_\s]+/g, '-') === 'new-zealand'
-  );
+function allowsSuicideRules(value: string | undefined): boolean {
+  const key = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+  return key === 'new-zealand' || key === 'tromp-taylor';
 }
 
 function isAgaRules(value: string | undefined): boolean {
@@ -169,18 +178,25 @@ function setupNextColor(node: SgfNode): Stone | null {
   return value === 'B' || value === 'W' ? value : null;
 }
 
-function applySetup(node: SgfNode, stones: Map<SgfPoint, Stone>, moveNumbers: Map<SgfPoint, number>): void {
+function applySetup(
+  node: SgfNode,
+  stones: Map<SgfPoint, Stone>,
+  moveNumbers: Map<SgfPoint, number>,
+  size: number
+): void {
   for (const point of node.data.AE ?? []) {
     stones.delete(point);
     moveNumbers.delete(point);
   }
 
   for (const point of node.data.AB ?? []) {
+    if (!isPointOnBoard(point, size)) continue;
     stones.set(point, 'B');
     moveNumbers.delete(point);
   }
 
   for (const point of node.data.AW ?? []) {
+    if (!isPointOnBoard(point, size)) continue;
     stones.set(point, 'W');
     moveNumbers.delete(point);
   }
@@ -214,20 +230,18 @@ function collectGroup(
   const color = stones.get(start);
   if (color == null) return {points: [], liberties: 0};
 
-  const seen = new Set<SgfPoint>();
+  const seen = new Set<SgfPoint>([start]);
   const liberties = new Set<SgfPoint>();
   const queue = [start];
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point)) continue;
-    seen.add(point);
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     for (const neighbor of neighbors(point, size)) {
       const stone = stones.get(neighbor);
       if (stone == null) {
         liberties.add(neighbor);
       } else if (stone === color && !seen.has(neighbor)) {
+        seen.add(neighbor);
         queue.push(neighbor);
       }
     }

@@ -24,6 +24,28 @@ describe('go-core', () => {
     expect(position.stones.get('dd')).toBe('W');
   });
 
+  it('ignores malformed move points without adding invisible stones', () => {
+    const document = parseSgf('(;GM[1]SZ[5];B[x];W[aa])');
+    const malformedPosition = deriveBoardPosition(document, [0]);
+    const position = deriveBoardPosition(document, [0, 0]);
+
+    expect(malformedPosition).toMatchObject({moveNumber: 1, nextColor: 'W', lastMove: null});
+    expect(malformedPosition.stones.size).toBe(0);
+    expect(position.stones).toEqual(new Map([['aa', 'W']]));
+  });
+
+  it('ignores malformed and out-of-board setup points', () => {
+    const document = parseSgf('(;GM[1]SZ[5]AB[aa][ff][x][aa:bb]AW[ee][zz][abc])');
+    const position = deriveBoardPosition(document, []);
+
+    expect(position.stones).toEqual(
+      new Map([
+        ['aa', 'B'],
+        ['ee', 'W'],
+      ])
+    );
+  });
+
   it('credits AGA pass stones to the opponent', () => {
     const document = parseSgf('(;GM[1]SZ[19]RU[AGA];B[];W[])');
     const position = deriveBoardPosition(document, [0, 0]);
@@ -76,6 +98,27 @@ describe('go-core', () => {
     expect(position.captures.B).toBe(1);
   });
 
+  it('captures connected groups with shared neighbors', () => {
+    const document = parseSgf('(;SZ[5];W[aa];W[ab];W[ba];W[bb];B[ac];B[bc];B[ca];B[cb])');
+    const position = deriveBoardPosition(document, Array<number>(8).fill(0));
+
+    expect(position.captures.B).toBe(4);
+    expect(['aa', 'ab', 'ba', 'bb'].every((point) => !position.stones.has(point))).toBe(true);
+  });
+
+  it('keeps a group with liberties when the move touches it from two sides', () => {
+    const document = parseSgf('(;SZ[5];W[aa];W[ab];W[ba];B[bb])');
+    const position = deriveBoardPosition(document, Array<number>(4).fill(0));
+
+    expect(position.captures.B).toBe(0);
+    expect([...position.stones.entries()]).toEqual([
+      ['aa', 'W'],
+      ['ab', 'W'],
+      ['ba', 'W'],
+      ['bb', 'B'],
+    ]);
+  });
+
   it('rejects suicide moves outside New Zealand rules', () => {
     let result = addMove(createNewGame(5), [], 'W', 'ab');
     result = addMove(result.document, result.path, 'W', 'ba');
@@ -87,15 +130,15 @@ describe('go-core', () => {
     expect(isLegalMove(position, 'B', 'bb', 'Japanese')).toBe(false);
   });
 
-  it('allows New Zealand suicide and credits the opponent capture', () => {
+  it.each(['New Zealand', 'Tromp-Taylor'])('allows suicide under %s and credits the opponent capture', (rules) => {
     let document = createNewGame(5);
-    document.root.data.RU = ['New Zealand'];
+    document.root.data.RU = [rules];
     let result = addMove(document, [], 'W', 'ab');
     result = addMove(result.document, result.path, 'W', 'ba');
     result = addMove(result.document, result.path, 'W', 'cb');
     result = addMove(result.document, result.path, 'W', 'bc');
 
-    expect(isLegalMove(deriveBoardPosition(result.document, result.path), 'B', 'bb', 'New Zealand')).toBe(true);
+    expect(isLegalMove(deriveBoardPosition(result.document, result.path), 'B', 'bb', rules)).toBe(true);
 
     result = addMove(result.document, result.path, 'B', 'bb');
     const position = deriveBoardPosition(result.document, result.path);
@@ -104,9 +147,9 @@ describe('go-core', () => {
     expect(position.captures.W).toBe(1);
   });
 
-  it('removes the connected group on New Zealand suicide', () => {
+  it.each(['New Zealand', 'Tromp-Taylor'])('removes the connected group on %s suicide', (rules) => {
     let document = createNewGame(5);
-    document.root.data.RU = ['New Zealand'];
+    document.root.data.RU = [rules];
     let result = addMove(document, [], 'B', 'cb');
     result = addMove(result.document, result.path, 'B', 'bc');
     result = addMove(result.document, result.path, 'W', 'ca');

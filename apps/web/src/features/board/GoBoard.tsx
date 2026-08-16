@@ -1,5 +1,5 @@
 import {Board, type Marker, type Vertex} from '@ulugo/go-board';
-import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
+import {isLegalMove, type BoardPosition} from '@ulugo/go-core';
 import {usesAreaValueOffset} from '@ulugo/katago-core';
 import {
   getNodeAtPath,
@@ -47,6 +47,7 @@ export type {MoveNumberLimit} from './boardAnalysisMaps';
 interface GoBoardProps {
   document: SgfDocument;
   path: number[];
+  position: BoardPosition;
   showCoordinates: boolean;
   showMarkup: boolean;
   moveNumberLimit: MoveNumberLimit;
@@ -96,6 +97,7 @@ const boardPaddingWithoutCoordinatesEm = 0.5;
 export function GoBoard({
   document,
   path,
+  position,
   showCoordinates,
   showMarkup,
   moveNumberLimit,
@@ -121,11 +123,17 @@ export function GoBoard({
   const pendingPvRef = useRef<PvPreviewCandidate | null>(null);
   const pendingTouchClickRef = useRef<{vertexKey: string; endedAt: number | null} | null>(null);
   const placementPreviewRef = useRef<PlacementPreview | null>(null);
+  const onVertexClickRef = useRef(onVertexClick);
+  const onVertexRightClickRef = useRef(onVertexRightClick);
+  useLayoutEffect(() => {
+    onVertexClickRef.current = onVertexClick;
+    onVertexRightClickRef.current = onVertexRightClick;
+  }, [onVertexClick, onVertexRightClick]);
   const currentNode = useMemo(() => getNodeAtPath(document, path), [document, path]);
   const scoringNode = path.length > 0 && isScoringNode(currentNode);
-  const position = useMemo(() => deriveBoardPosition(document, path), [document, path]);
   const valueOffset = useMemo(() => usesAreaValueOffset(rules), [rules]);
   const [pvPreview, setPvPreview] = useState<ActivePvPreview | null>(null);
+  const pvPreviewRef = useRef<ActivePvPreview | null>(null);
   const [placementPreview, setPlacementPreviewState] = useState<PlacementPreview | null>(null);
   const [availableSize, setAvailableSize] = useState({width: 620, height: 620});
   const vertexSize = useMemo(() => {
@@ -222,6 +230,12 @@ export function GoBoard({
         : buildAllPvCandidateMap(position.size, analysis, position.nextColor),
     [analysis, position.nextColor, position.size, scoringNode]
   );
+  const hoverPvCandidateMapRef = useRef(hoverPvCandidateMap);
+  const allPvCandidateMapRef = useRef(allPvCandidateMap);
+  useLayoutEffect(() => {
+    hoverPvCandidateMapRef.current = hoverPvCandidateMap;
+    allPvCandidateMapRef.current = allPvCandidateMap;
+  }, [allPvCandidateMap, hoverPvCandidateMap]);
   const pvPreviewMap = useMemo(() => buildPvPreviewMap(position.size, pvPreview), [position.size, pvPreview]);
 
   const markerMap = useMemo(() => {
@@ -337,6 +351,20 @@ export function GoBoard({
     if (vertex == null || pvPreviewMap?.[vertex[1]]?.[vertex[0]] != null) return [];
     return [vertex];
   }, [position.lastMove, pvPreviewMap, scoringNode]);
+  const placementCandidateSource = useMemo(
+    () => ({
+      color: placementPreviewColor,
+      position,
+      requiresLegalMove: placementPreviewRequiresLegalMove,
+      rules,
+      cache: new Map<string, {point: string; color: SgfColor} | null>(),
+    }),
+    [placementPreviewColor, placementPreviewRequiresLegalMove, position, rules]
+  );
+  const placementCandidateSourceRef = useRef(placementCandidateSource);
+  useLayoutEffect(() => {
+    placementCandidateSourceRef.current = placementCandidateSource;
+  }, [placementCandidateSource]);
 
   const clearPvTimers = useCallback(() => {
     if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current);
@@ -348,6 +376,7 @@ export function GoBoard({
   const clearPvPreview = useCallback(() => {
     clearPvTimers();
     pendingPvRef.current = null;
+    pvPreviewRef.current = null;
     setPvPreview(null);
   }, [clearPvTimers]);
   const setPlacementPreview = useCallback((preview: PlacementPreview | null) => {
@@ -360,7 +389,9 @@ export function GoBoard({
       clearPvTimers();
       pendingPvRef.current = null;
       setPlacementPreview(null);
-      setPvPreview({...candidate, pv: [...candidate.pv], visibleCount: 1});
+      const preview = {...candidate, pv: [...candidate.pv], visibleCount: 1};
+      pvPreviewRef.current = preview;
+      setPvPreview(preview);
 
       if (candidate.pv.length <= 1) return;
       pvIntervalRef.current = window.setInterval(() => {
@@ -385,33 +416,44 @@ export function GoBoard({
         pendingPvRef.current = null;
         return;
       }
-      if (pvPreview?.triggerKey === candidate.triggerKey) return;
+      if (pvPreviewRef.current?.triggerKey === candidate.triggerKey) return;
+      if (pendingPvRef.current?.triggerKey === candidate.triggerKey) {
+        pendingPvRef.current = {...candidate, pv: [...candidate.pv]};
+        return;
+      }
       clearPvTimers();
       const snapshot = {...candidate, pv: [...candidate.pv]};
       pendingPvRef.current = snapshot;
-      hoverTimerRef.current = window.setTimeout(() => startPvPreview(snapshot), analysisSettings.pvPreviewDelay * 1000);
+      hoverTimerRef.current = window.setTimeout(() => {
+        const pending = pendingPvRef.current;
+        if (pending?.triggerKey === snapshot.triggerKey) startPvPreview(pending);
+      }, analysisSettings.pvPreviewDelay * 1000);
     },
-    [analysisSettings.pvPreviewDelay, clearPvTimers, pvPreview?.triggerKey, startPvPreview]
+    [analysisSettings.pvPreviewDelay, clearPvTimers, startPvPreview]
   );
 
   const hoverCandidateAtVertex = useCallback(
-    (vertex: Vertex): PvPreviewCandidate | null => hoverPvCandidateMap.get(vertexKey(vertex)) ?? null,
-    [hoverPvCandidateMap]
+    (vertex: Vertex): PvPreviewCandidate | null => hoverPvCandidateMapRef.current.get(vertexKey(vertex)) ?? null,
+    []
   );
   const altClickCandidateAtVertex = useCallback(
-    (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMap.get(vertexKey(vertex)) ?? null,
-    [allPvCandidateMap]
+    (vertex: Vertex): PvPreviewCandidate | null => allPvCandidateMapRef.current.get(vertexKey(vertex)) ?? null,
+    []
   );
-  const placementCandidateAtVertex = useCallback(
-    (vertex: Vertex): {point: string; color: SgfColor} | null => {
-      if (placementPreviewColor == null) return null;
-      const point = vertexToPoint(vertex[0], vertex[1]);
-      if (position.stones.has(point)) return null;
-      if (placementPreviewRequiresLegalMove && !isLegalMove(position, placementPreviewColor, point, rules)) return null;
-      return {point, color: placementPreviewColor};
-    },
-    [placementPreviewColor, placementPreviewRequiresLegalMove, position, rules]
-  );
+  const placementCandidateAtVertex = useCallback((vertex: Vertex): {point: string; color: SgfColor} | null => {
+    const source = placementCandidateSourceRef.current;
+    if (source.color == null) return null;
+    const point = vertexToPoint(vertex[0], vertex[1]);
+    if (source.cache.has(point)) return source.cache.get(point) ?? null;
+
+    const candidate =
+      source.position.stones.has(point) ||
+      (source.requiresLegalMove && !isLegalMove(source.position, source.color, point, source.rules))
+        ? null
+        : {point, color: source.color};
+    source.cache.set(point, candidate);
+    return candidate;
+  }, []);
   const mousePlacementOpacity = useCallback((event: MouseEvent<HTMLDivElement>): number => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const radius = (Math.min(bounds.width, bounds.height) * (1 - 0.08)) / 2;
@@ -450,12 +492,12 @@ export function GoBoard({
       }
 
       event.preventDefault();
-      onVertexClick(vertexToPoint(vertex[0], vertex[1]), {
+      onVertexClickRef.current(vertexToPoint(vertex[0], vertex[1]), {
         shiftKey: event.shiftKey,
         clickCount: 'detail' in event ? event.detail : 1,
       });
     },
-    [altClickCandidateAtVertex, onVertexClick, startPvPreview]
+    [altClickCandidateAtVertex, startPvPreview]
   );
   const handleVertexMouseDown = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
@@ -469,7 +511,7 @@ export function GoBoard({
       pendingTouchClickRef.current = null;
       if (event.button === 2) {
         event.preventDefault();
-        onVertexRightClick(vertexToPoint(vertex[0], vertex[1]), {
+        onVertexRightClickRef.current(vertexToPoint(vertex[0], vertex[1]), {
           shiftKey: event.shiftKey,
           clickCount: 'detail' in event ? event.detail : 1,
         });
@@ -479,7 +521,7 @@ export function GoBoard({
       if (event.button !== 0) return;
       handlePrimaryVertexInput(event, vertex);
     },
-    [handlePrimaryVertexInput, onVertexRightClick]
+    [handlePrimaryVertexInput]
   );
   const handleVertexClick = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
@@ -508,12 +550,12 @@ export function GoBoard({
       if (clickCount <= 1) return;
 
       event.preventDefault();
-      onVertexClick(vertexToPoint(vertex[0], vertex[1]), {
+      onVertexClickRef.current(vertexToPoint(vertex[0], vertex[1]), {
         shiftKey: event.shiftKey,
         clickCount,
       });
     },
-    [handlePrimaryVertexInput, onVertexClick]
+    [handlePrimaryVertexInput]
   );
   const handleVertexMouseEnter = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
@@ -521,7 +563,7 @@ export function GoBoard({
       if (hoverCandidate != null && analysisSettings.pvPreviewDelay > 0) {
         schedulePvPreview(hoverCandidate);
         const placementCandidate = placementCandidateAtVertex(vertex);
-        if (pvPreview?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
+        if (pvPreviewRef.current?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
           showMousePlacementPreview(event, placementCandidate);
         }
         return;
@@ -538,7 +580,6 @@ export function GoBoard({
       clearPvPreview,
       hoverCandidateAtVertex,
       placementCandidateAtVertex,
-      pvPreview?.triggerKey,
       schedulePvPreview,
       showMousePlacementPreview,
     ]
@@ -549,7 +590,7 @@ export function GoBoard({
       if (hoverCandidate != null && analysisSettings.pvPreviewDelay > 0) {
         schedulePvPreview(hoverCandidate);
         const placementCandidate = placementCandidateAtVertex(vertex);
-        if (pvPreview?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
+        if (pvPreviewRef.current?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
           showMousePlacementPreview(event, placementCandidate);
         }
         return;
@@ -567,7 +608,6 @@ export function GoBoard({
       clearPvPreview,
       hoverCandidateAtVertex,
       placementCandidateAtVertex,
-      pvPreview?.triggerKey,
       schedulePvPreview,
       showMousePlacementPreview,
     ]
@@ -579,9 +619,9 @@ export function GoBoard({
       if (current?.source === 'mouse' && current.point === vertexToPoint(vertex[0], vertex[1])) {
         setPlacementPreview(null);
       }
-      if (pendingPvRef.current?.triggerKey === key || pvPreview?.triggerKey === key) clearPvPreview();
+      if (pendingPvRef.current?.triggerKey === key || pvPreviewRef.current?.triggerKey === key) clearPvPreview();
     },
-    [clearPvPreview, pvPreview?.triggerKey, setPlacementPreview]
+    [clearPvPreview, setPlacementPreview]
   );
   const handleVertexTouchStart = useCallback(
     (event: TouchEvent<HTMLDivElement>, vertex: Vertex) => {

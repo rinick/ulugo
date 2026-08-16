@@ -1,7 +1,7 @@
 import {CloudDownloadOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {KataGoConsoleMessage} from '@ulugo/katago-core';
-import {useEffect, useState, type RefObject} from 'react';
+import {memo, useEffect, useState, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import '../../../../../policies/privacy-policy.md?url';
 import '../../../../../policies/terms-of-service.md?url';
@@ -21,7 +21,7 @@ interface AppLeftPanelProps {
   onClearConsole: () => void;
 }
 
-export function AppLeftPanel({
+export const AppLeftPanel = memo(function AppLeftPanel({
   katagoEnabled,
   platform,
   open,
@@ -91,4 +91,4 @@ export function AppLeftPanel({
       </div>
     </aside>
   );
-}
+});

@@ -1,116 +1,180 @@
-import {samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {getBoardSize, getLine, type SgfDocument} from '@ulugo/sgf-core';
 import {
+  analysisReady,
+  findPassChildIndex,
   findPassChildPath,
   hasPendingAnalysisQuery,
   hiddenPassAnalysisKey,
+  hiddenPassAnalysisNodeId,
   shouldCountHiddenPassAnalysis,
-  shouldRequestHiddenPassAnalysis,
   type AnalysisQueryContext,
   type CachedAnalysis,
 } from './appAnalysisUtils';
-import {nodeKey, pathKey} from './sgfPathUtils';
+import {nodeKey} from './sgfPathUtils';
 
 const nextFastAnalysisCount = 5;
 
 export type PassAnalysisKind = 'regular' | 'hidden';
-export type FastAnalysisJob = {path: number[]; passAnalysis?: PassAnalysisKind};
+export type FastAnalysisJob = {
+  path: number[];
+  passAnalysis?: PassAnalysisKind;
+  includeOwnership?: boolean;
+};
 export type PassAnalysisRequest = {path: number[]; passAnalysis: PassAnalysisKind; targetVisits: number};
+export type AnalysisPathEntry = {
+  path: number[];
+  nodeId: string;
+  passPath: number[];
+  passNodeId: string;
+  passAnalysis: PassAnalysisKind;
+};
+
+export function buildAnalysisPathEntries(document: SgfDocument, analysisPaths: number[][]): AnalysisPathEntry[] {
+  const lastPath = analysisPaths.at(-1);
+  if (lastPath == null) return [];
+
+  const nodes = getLine(document, lastPath);
+  const boardSize = getBoardSize(document);
+  return analysisPaths.map((path) => {
+    const node = nodes[path.length];
+    if (node == null) throw new Error(`Analysis path is outside the current branch: ${path.join('.')}`);
+
+    const passIndex = findPassChildIndex(node, boardSize);
+    const passNode = node.children[passIndex];
+    return passNode == null
+      ? {
+          path,
+          nodeId: node.id,
+          passPath: path,
+          passNodeId: hiddenPassAnalysisNodeId(node.id),
+          passAnalysis: 'hidden',
+        }
+      : {
+          path,
+          nodeId: node.id,
+          passPath: [...path, passIndex],
+          passNodeId: passNode.id,
+          passAnalysis: 'regular',
+        };
+  });
+}
+
+export function shouldCountPassAnalysis(
+  entry: AnalysisPathEntry,
+  cache: Record<string, CachedAnalysis>,
+  targetVisits: number,
+  requireOwnership = false
+): boolean {
+  const passAnalysis = cache[entry.passNodeId];
+  if (analysisReady(passAnalysis, targetVisits, requireOwnership)) return false;
+  if (entry.passAnalysis === 'regular' || requireOwnership) return true;
+
+  const analysis = cache[entry.nodeId]?.result;
+  const passMove = analysis?.moveInfos?.find((move) => move.move.toLowerCase() === 'pass');
+  return (passMove?.visits ?? 0) < targetVisits;
+}
+
+export async function dispatchFastAnalysisJobs(
+  jobs: FastAnalysisJob[],
+  availableSlots: number,
+  dispatch: (job: FastAnalysisJob) => Promise<void>
+): Promise<void> {
+  await Promise.all(jobs.slice(0, Math.max(0, availableSlots)).map(dispatch));
+}
 
 export function buildFastAnalysisJobs({
-  analysisPaths,
-  currentPath,
+  analysisEntries,
+  currentNodeId,
   passAnalysisMode,
-  document,
+  currentAnalysisNeedsOwnership = false,
+  passAnalysisNeedsOwnership = false,
   analysisCache,
   targetVisits,
   pendingQueries,
 }: {
-  analysisPaths: number[][];
-  currentPath: number[];
+  analysisEntries: AnalysisPathEntry[];
+  currentNodeId: string;
   passAnalysisMode: boolean;
-  document: SgfDocument;
+  currentAnalysisNeedsOwnership?: boolean;
+  passAnalysisNeedsOwnership?: boolean;
   analysisCache: Record<string, CachedAnalysis>;
   targetVisits: number;
   pendingQueries: Map<string, AnalysisQueryContext>;
 }): FastAnalysisJob[] {
-  const currentIndex = analysisPaths.findIndex((movePath) => samePath(movePath, currentPath));
+  const currentIndex = analysisEntries.findIndex((entry) => entry.nodeId === currentNodeId);
   const firstNextIndex = currentIndex < 0 ? 0 : currentIndex + 1;
-  const nextPaths = analysisPaths.slice(firstNextIndex, firstNextIndex + nextFastAnalysisCount);
-  const currentPaths = currentIndex < 0 ? [] : [analysisPaths[currentIndex]];
-  const nextKeys = new Set(nextPaths.map(pathKey));
-  const currentKeys = new Set(currentPaths.map(pathKey));
-  const otherPaths = analysisPaths.filter((movePath) => {
-    const key = pathKey(movePath);
-    return !currentKeys.has(key) && !nextKeys.has(key);
-  });
+  const nextEndIndex = firstNextIndex + nextFastAnalysisCount;
+  const nextEntries = analysisEntries.slice(firstNextIndex, nextEndIndex);
+  const currentEntry = currentIndex < 0 ? null : analysisEntries[currentIndex];
+  const otherEntries = analysisEntries.filter(
+    (_, index) => index !== currentIndex && (index < firstNextIndex || index >= nextEndIndex)
+  );
   const jobs: FastAnalysisJob[] = [];
-  const queued = new Set<string>();
 
-  function addNormalJobs(paths: number[][]): void {
-    for (const movePath of paths) {
-      const nodeId = nodeKey(document, movePath);
-      const cached = analysisCache[nodeId];
-      if (cached != null && cached.visits >= targetVisits) continue;
-      if (hasPendingAnalysisQuery(pendingQueries, 'fast', nodeId, null)) continue;
-      addJob({path: movePath});
+  function addNormalJobs(entries: AnalysisPathEntry[], includeOwnership = false): void {
+    for (const entry of entries) {
+      const cached = analysisCache[entry.nodeId];
+      if (analysisReady(cached, targetVisits, includeOwnership)) continue;
+      if (hasPendingAnalysisQuery(pendingQueries, 'fast', entry.nodeId, null, includeOwnership)) continue;
+      jobs.push({path: entry.path, includeOwnership});
     }
   }
 
-  function addPassJob(movePath: number[]): void {
-    const job = passAnalysisJobForPath(document, movePath, analysisCache, targetVisits, pendingQueries);
-    if (job != null) addJob(job);
+  if (currentEntry != null) addNormalJobs([currentEntry], currentAnalysisNeedsOwnership);
+  if (passAnalysisMode && currentEntry != null) {
+    const job = passAnalysisJobForEntry(
+      currentEntry,
+      analysisCache,
+      targetVisits,
+      pendingQueries,
+      passAnalysisNeedsOwnership
+    );
+    if (job != null) jobs.push(job);
   }
-
-  function addJob(job: FastAnalysisJob): void {
-    const key = `${pathKey(job.path)}:${job.passAnalysis ?? 'normal'}`;
-    if (queued.has(key)) return;
-    queued.add(key);
-    jobs.push(job);
-  }
-
-  addNormalJobs(currentPaths);
-  if (passAnalysisMode && currentPaths[0] != null) addPassJob(currentPaths[0]);
-  addNormalJobs(nextPaths);
-  addNormalJobs(otherPaths);
+  addNormalJobs(nextEntries);
+  addNormalJobs(otherEntries);
 
   return jobs;
 }
 
 export function buildBackgroundPassAnalysisJobs({
-  analysisPaths,
-  document,
+  analysisEntries,
   analysisCache,
   targetVisits,
   pendingQueries,
+  requireOwnership = false,
+  limit = Number.POSITIVE_INFINITY,
 }: {
-  analysisPaths: number[][];
-  document: SgfDocument;
+  analysisEntries: AnalysisPathEntry[];
   analysisCache: Record<string, CachedAnalysis>;
   targetVisits: number;
   pendingQueries: Map<string, AnalysisQueryContext>;
+  requireOwnership?: boolean;
+  limit?: number;
 }): FastAnalysisJob[] {
   const jobs: FastAnalysisJob[] = [];
+  if (limit <= 0) return jobs;
 
-  for (const movePath of analysisPaths) {
-    const job = passAnalysisJobForPath(document, movePath, analysisCache, targetVisits, pendingQueries);
+  for (const entry of analysisEntries) {
+    const job = passAnalysisJobForEntry(entry, analysisCache, targetVisits, pendingQueries, requireOwnership);
     if (job != null) jobs.push(job);
+    if (jobs.length >= limit) break;
   }
 
   return jobs;
 }
 
-export function getFastQueryIdsOutsidePaths(
+export function getFastQueryIdsOutsideEntries(
   pendingQueries: Map<string, AnalysisQueryContext>,
-  analysisPaths: number[][],
-  document: SgfDocument
+  analysisEntries: AnalysisPathEntry[]
 ): string[] {
-  const pathKeys = new Set(analysisPaths.map(pathKey));
-  for (const analysisPath of analysisPaths) {
-    const passChildPath = findPassChildPath(document, analysisPath);
-    if (passChildPath != null) pathKeys.add(pathKey(passChildPath));
+  const nodeIds = new Set<string>();
+  for (const entry of analysisEntries) {
+    nodeIds.add(entry.nodeId);
+    nodeIds.add(entry.passNodeId);
   }
   return [...pendingQueries.entries()]
-    .filter(([, context]) => context.mode === 'fast' && !pathKeys.has(pathKey(context.path)))
+    .filter(([, context]) => context.mode === 'fast' && !nodeIds.has(context.nodeId))
     .map(([queryId]) => queryId);
 }
 
@@ -118,9 +182,10 @@ export function livePassAnalysisRequest(
   document: SgfDocument,
   path: number[],
   analysisCache: Record<string, CachedAnalysis>,
-  targetVisits: number
+  targetVisits: number,
+  requireOwnership = false
 ): PassAnalysisRequest | null {
-  if (!shouldCountHiddenPassAnalysis(document, path, analysisCache, targetVisits)) return null;
+  if (!shouldCountHiddenPassAnalysis(document, path, analysisCache, targetVisits, requireOwnership)) return null;
 
   const passChildPath = findPassChildPath(document, path);
   if (passChildPath != null) return {path: passChildPath, passAnalysis: 'regular', targetVisits};
@@ -138,36 +203,47 @@ export function getStaleLiveQueryIds(
   pendingQueries: Map<string, AnalysisQueryContext>,
   mainNodeId: string | null,
   passNodeId: string | null,
-  passHidden: boolean
+  passHidden: boolean,
+  mainRequiresOwnership = false,
+  passRequiresOwnership = false
 ): string[] {
   return [...pendingQueries.entries()]
     .filter(([, context]) => {
       if (context.mode !== 'live') return false;
-      if (mainNodeId != null && context.nodeId === mainNodeId && context.mergeMove == null) return false;
-      if (passNodeId != null && context.nodeId === passNodeId && (context.mergeMove === 'pass') === passHidden)
+      if (
+        mainNodeId != null &&
+        context.nodeId === mainNodeId &&
+        context.mergeMove == null &&
+        (!mainRequiresOwnership || context.includeOwnership)
+      )
+        return false;
+      if (
+        passNodeId != null &&
+        context.nodeId === passNodeId &&
+        (context.mergeMove === 'pass') === passHidden &&
+        (!passRequiresOwnership || context.includeOwnership)
+      )
         return false;
       return true;
     })
     .map(([queryId]) => queryId);
 }
 
-function passAnalysisJobForPath(
-  document: SgfDocument,
-  movePath: number[],
+function passAnalysisJobForEntry(
+  entry: AnalysisPathEntry,
   analysisCache: Record<string, CachedAnalysis>,
   targetVisits: number,
-  pendingQueries: Map<string, AnalysisQueryContext>
+  pendingQueries: Map<string, AnalysisQueryContext>,
+  requireOwnership: boolean
 ): FastAnalysisJob | null {
-  const passChildPath = findPassChildPath(document, movePath);
-  if (passChildPath != null) {
-    const passNodeId = nodeKey(document, passChildPath);
-    const cached = analysisCache[passNodeId];
-    if ((cached?.visits ?? cached?.result.rootInfo?.visits ?? 0) >= targetVisits) return null;
-    if (hasPendingAnalysisQuery(pendingQueries, 'fast', passNodeId, null)) return null;
-    return {path: passChildPath, passAnalysis: 'regular'};
+  if (!shouldCountPassAnalysis(entry, analysisCache, targetVisits, requireOwnership)) return null;
+
+  if (entry.passAnalysis === 'regular') {
+    if (hasPendingAnalysisQuery(pendingQueries, 'fast', entry.passNodeId, null, requireOwnership)) return null;
+    return {path: entry.passPath, passAnalysis: 'regular'};
   }
 
-  if (!shouldRequestHiddenPassAnalysis(document, movePath, analysisCache, targetVisits)) return null;
-  if (hasPendingAnalysisQuery(pendingQueries, 'fast', hiddenPassAnalysisKey(document, movePath), 'pass')) return null;
-  return {path: movePath, passAnalysis: 'hidden'};
+  if (analysisCache[entry.nodeId]?.result.rootInfo == null) return null;
+  if (hasPendingAnalysisQuery(pendingQueries, 'fast', entry.passNodeId, 'pass', requireOwnership)) return null;
+  return {path: entry.path, passAnalysis: 'hidden'};
 }

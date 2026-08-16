@@ -11,10 +11,12 @@ import {
 } from '@ant-design/icons';
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
-import {buildTree, getBoardSize, samePath, type SgfDocument} from '@ulugo/sgf-core';
+import {samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
+  memo,
   useMemo,
   useRef,
   useState,
@@ -28,7 +30,6 @@ import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {
   cornerRadius,
   gutterWidth,
-  layoutTree,
   treeColumnStep,
   treeRowStep,
   type TreeCell,
@@ -38,9 +39,11 @@ import {
 
 const moveTreePaddingTop = 4;
 const moveTreeNodeSize = 26;
+const emptyTreeCells: TreeCell[] = [];
 
 interface SgfTreePanelProps {
   document: SgfDocument;
+  layout: TreeLayout;
   selectedPath: number[];
   onSelectPath: (path: number[]) => void;
   onMoveToMain: (path?: number[]) => void;
@@ -62,6 +65,7 @@ interface SgfTreePanelProps {
 
 export function SgfTreePanel({
   document,
+  layout,
   selectedPath,
   onSelectPath,
   onMoveToMain,
@@ -86,9 +90,18 @@ export function SgfTreePanel({
   const contextPathRef = useRef<number[] | null>(null);
   const [contextPath, setContextPath] = useState<number[] | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const tree = useMemo(() => buildTree(document), [document]);
-  const boardSize = useMemo(() => getBoardSize(document), [document]);
-  const layout = useMemo(() => layoutTree(tree[0], boardSize), [boardSize, tree]);
+  const cellById = useMemo(() => new Map(layout.cells.map((cell) => [cell.id, cell])), [layout]);
+  const cellsByRow = useMemo(() => groupCells(layout.cells, (cell) => cell.row), [layout]);
+  const cellsByColumn = useMemo(() => groupCells(layout.cells, (cell) => cell.column), [layout]);
+  const selectedCell = useMemo(
+    () => layout.cells.find((cell) => samePath(cell.path, selectedPath)) ?? null,
+    [layout, selectedPath]
+  );
+  const onSelectPathRef = useRef(onSelectPath);
+  useLayoutEffect(() => {
+    onSelectPathRef.current = onSelectPath;
+  }, [onSelectPath]);
+  const handleSelectPath = useCallback((path: number[]) => onSelectPathRef.current(path), []);
   const validContextPath = useMemo(
     () => (contextPath != null && layout.cells.some((cell) => samePath(cell.path, contextPath)) ? contextPath : null),
     [contextPath, layout]
@@ -101,7 +114,6 @@ export function SgfTreePanel({
     }
 
     const panel = scrollRef.current;
-    const selectedCell = layout.cells.find((cell) => samePath(cell.path, selectedPath));
     if (panel == null || selectedCell == null) return;
 
     const node = panel.querySelector<HTMLElement>(`[data-tree-node-id="${selectedCell.id}"]`);
@@ -111,18 +123,17 @@ export function SgfTreePanel({
       suppressScrollSelectRef.current = true;
       scrollTreeStoneIntoView(panel, selectedCell.row);
       lastScrollTopRef.current = panel.scrollTop;
+      if (releaseSuppressScrollSelectRef.current != null) {
+        window.clearTimeout(releaseSuppressScrollSelectRef.current);
+      }
+      releaseSuppressScrollSelectRef.current = window.setTimeout(() => {
+        suppressScrollSelectRef.current = false;
+        releaseSuppressScrollSelectRef.current = null;
+      }, 120);
     }
 
     scrollTreeNodeHorizontallyIntoView(panel, node);
-
-    if (releaseSuppressScrollSelectRef.current != null) {
-      window.clearTimeout(releaseSuppressScrollSelectRef.current);
-    }
-    releaseSuppressScrollSelectRef.current = window.setTimeout(() => {
-      suppressScrollSelectRef.current = false;
-      releaseSuppressScrollSelectRef.current = null;
-    }, 120);
-  }, [layout, selectedPath]);
+  }, [selectedCell]);
 
   useEffect(() => {
     return () => {
@@ -141,21 +152,18 @@ export function SgfTreePanel({
     lastScrollTopRef.current = scrollTop;
     if (suppressScrollSelectRef.current) return;
 
-    const currentCell = layout.cells.find((cell) => samePath(cell.path, selectedPath));
-    if (currentCell == null) return;
+    if (selectedCell == null) return;
 
-    const branchCells = layout.cells
-      .filter((cell) => cell.column === currentCell.column)
-      .sort((left, right) => left.row - right.row);
-    if (isTreeStoneVisible(panel, currentCell.row)) return;
+    const branchCells = cellsByColumn.get(selectedCell.column) ?? emptyTreeCells;
+    if (isTreeStoneVisible(panel, selectedCell.row)) return;
 
-    const nextCell = closestVisibleCell(panel, branchCells, currentCell.row);
+    const nextCell = closestVisibleCell(panel, branchCells, selectedCell.row);
 
-    if (nextCell != null && !samePath(nextCell.path, selectedPath)) {
+    if (nextCell != null && nextCell.id !== selectedCell.id) {
       selectedFromScrollRef.current = true;
       onSelectPath(nextCell.path);
     }
-  }, [layout, onSelectPath, selectedPath]);
+  }, [cellsByColumn, onSelectPath, selectedCell]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
@@ -238,12 +246,12 @@ export function SgfTreePanel({
   const handleContextMenu = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       const node = (event.target as Element).closest<HTMLElement>('[data-tree-node-id]');
-      const cell = layout.cells.find((candidate) => candidate.id === node?.dataset.treeNodeId);
+      const cell = node?.dataset.treeNodeId == null ? null : cellById.get(node.dataset.treeNodeId);
       const nextPath = cell?.path ?? null;
       contextPathRef.current = nextPath;
       setContextPath(nextPath);
     },
-    [layout]
+    [cellById]
   );
 
   const handleContextMenuClick: MenuProps['onClick'] = ({key}) => {
@@ -367,9 +375,9 @@ export function SgfTreePanel({
                 key={row}
                 row={row}
                 columns={layout.columns}
-                cells={layout.cells.filter((cell) => cell.row === row)}
-                selectedPath={selectedPath}
-                onSelectPath={onSelectPath}
+                cells={cellsByRow.get(row) ?? emptyTreeCells}
+                selectedCellId={selectedCell?.row === row ? selectedCell.id : null}
+                onSelectPath={handleSelectPath}
               />
             ))}
           </div>
@@ -458,17 +466,17 @@ function TreeActionButton({
   );
 }
 
-function MoveTreeRow({
+const MoveTreeRow = memo(function MoveTreeRow({
   row,
   columns,
   cells,
-  selectedPath,
+  selectedCellId,
   onSelectPath,
 }: {
   row: number;
   columns: number;
   cells: TreeCell[];
-  selectedPath: number[];
+  selectedCellId: string | null;
   onSelectPath: (path: number[]) => void;
 }) {
   return (
@@ -478,7 +486,7 @@ function MoveTreeRow({
         {cells.map((cell) => (
           <button
             key={cell.id}
-            className={`move-tree-node ${cell.color === 'B' ? 'black' : cell.color === 'W' ? 'white' : 'root'} ${cell.isSetup ? 'setup' : ''} ${cell.isPass ? 'pass' : ''} ${cell.isScoring ? 'score' : ''} ${cell.hasComment ? 'has-comment' : ''} ${cell.hasDrawing ? 'has-drawing' : ''} ${samePath(cell.path, selectedPath) ? 'selected' : ''}`}
+            className={`move-tree-node ${cell.color === 'B' ? 'black' : cell.color === 'W' ? 'white' : 'root'} ${cell.isSetup ? 'setup' : ''} ${cell.isPass ? 'pass' : ''} ${cell.isScoring ? 'score' : ''} ${cell.hasComment ? 'has-comment' : ''} ${cell.hasDrawing ? 'has-drawing' : ''} ${cell.id === selectedCellId ? 'selected' : ''}`}
             style={{gridColumn: cell.column + 1}}
             type="button"
             data-tree-node-id={cell.id}
@@ -490,9 +498,9 @@ function MoveTreeRow({
       </div>
     </>
   );
-}
+});
 
-function ConnectorLayer({layout}: {layout: TreeLayout}) {
+const ConnectorLayer = memo(function ConnectorLayer({layout}: {layout: TreeLayout}) {
   const width = gutterWidth + layout.columns * treeColumnStep;
   const height = layout.rows.length * treeRowStep;
 
@@ -503,6 +511,17 @@ function ConnectorLayer({layout}: {layout: TreeLayout}) {
       ))}
     </svg>
   );
+});
+
+function groupCells(cells: TreeCell[], keyFor: (cell: TreeCell) => number): Map<number, TreeCell[]> {
+  const groups = new Map<number, TreeCell[]>();
+  for (const cell of cells) {
+    const key = keyFor(cell);
+    const group = groups.get(key);
+    if (group == null) groups.set(key, [cell]);
+    else group.push(cell);
+  }
+  return groups;
 }
 
 function connectorPath(connector: TreeConnector): string {
@@ -524,8 +543,4 @@ function connectorPath(connector: TreeConnector): string {
     `Q ${x2} ${midY} ${x2} ${midY + cornerRadius}`,
     `L ${x2} ${y2}`,
   ].join(' ');
-}
-
-export function isSelectedPath(left: number[], right: number[]): boolean {
-  return samePath(left, right);
 }

@@ -389,7 +389,7 @@ export function serializeSgf(document: SgfDocument): string {
 
 export function getBoardSize(document: SgfDocument): number {
   const size = Number(document.root.data.SZ?.[0] ?? 19);
-  return Number.isFinite(size) && size > 0 ? size : 19;
+  return Number.isInteger(size) && size > 0 && size <= coordinateLetters.length ? size : 19;
 }
 
 export function pointToVertex(point: SgfPoint): [number, number] | null {
@@ -673,25 +673,16 @@ export function addSetupStone(
 }
 
 function stoneColorBeforePath(document: SgfDocument, path: number[], point: SgfPoint): SgfColor | null {
-  let color: SgfColor | null = null;
-  let node = document.root;
   if (path.length === 0) return null;
-  applyNodeStone();
 
-  for (const childIndex of path.slice(0, -1)) {
-    const child = node.children[childIndex];
-    if (child == null) break;
-    node = child;
-    applyNodeStone();
+  const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
+  const allowSuicide = allowsSuicideRules(document.root.data.RU?.[0]);
+  const boardSize = getBoardSize(document);
+  let state: TreeBoardState = {stones: new Map(), captures: getInitialCaptures(document), nextColor: 'B'};
+  for (const node of getLine(document, path.slice(0, -1))) {
+    state = applyTreeBoardNode(state, node, boardSize, useAgaPassStones, allowSuicide);
   }
-
-  return color;
-
-  function applyNodeStone(): void {
-    if ((node.data.AE ?? []).includes(point)) color = null;
-    if ((node.data.AB ?? []).includes(point) || node.data.B?.[0] === point) color = 'B';
-    if ((node.data.AW ?? []).includes(point) || node.data.W?.[0] === point) color = 'W';
-  }
+  return state.stones.get(point) ?? null;
 }
 
 function oppositeColor(color: SgfColor): SgfColor {
@@ -700,6 +691,14 @@ function oppositeColor(color: SgfColor): SgfColor {
 
 function isAgaRules(value: string | undefined): boolean {
   return value?.trim().toLowerCase() === 'aga';
+}
+
+function allowsSuicideRules(value: string | undefined): boolean {
+  const key = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+  return key === 'new-zealand' || key === 'tromp-taylor';
 }
 
 export function updateSetupNextColor(document: SgfDocument, path: number[], color: SgfColor): SgfDocument {
@@ -770,9 +769,10 @@ export function buildTree(document: SgfDocument): TreeItem[] {
   const boardSize = getBoardSize(document);
   const komi = Number(document.root.data.KM?.[0]?.trim().replace(',', '.') ?? 0);
   const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
+  const allowSuicide = allowsSuicideRules(document.root.data.RU?.[0]);
 
   function walk(node: SgfNode, path: number[], moveNumber: number, state: TreeBoardState): TreeItem {
-    const nextState = applyTreeBoardNode(state, node, boardSize, useAgaPassStones);
+    const nextState = applyTreeBoardNode(state, node, boardSize, useAgaPassStones, allowSuicide);
     const color: SgfColor | null = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     const point = color == null ? null : normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     const isRoot = path.length === 0;
@@ -847,7 +847,8 @@ function applyTreeBoardNode(
   state: TreeBoardState,
   node: SgfNode,
   boardSize: number,
-  useAgaPassStones: boolean
+  useAgaPassStones: boolean,
+  allowSuicide: boolean
 ): TreeBoardState {
   const next: TreeBoardState = {
     stones: new Map(state.stones),
@@ -881,12 +882,22 @@ function applyTreeBoardNode(
 
   next.stones.set(point, color);
   const opponent = oppositeColor(color);
+  const checkedOpponentPoints = new Set<SgfPoint>();
   for (const neighbor of orthogonalNeighbors(point, boardSize)) {
-    if (next.stones.get(neighbor) !== opponent) continue;
+    if (next.stones.get(neighbor) !== opponent || checkedOpponentPoints.has(neighbor)) continue;
     const group = collectBoardGroup(neighbor, next.stones, boardSize);
+    for (const groupPoint of group.points) checkedOpponentPoints.add(groupPoint);
     if (group.liberties === 0) {
       next.captures[color] += group.points.length;
       for (const groupPoint of group.points) next.stones.delete(groupPoint);
+    }
+  }
+
+  if (allowSuicide) {
+    const ownGroup = collectBoardGroup(point, next.stones, boardSize);
+    if (ownGroup.liberties === 0) {
+      next.captures[opponent] += ownGroup.points.length;
+      for (const groupPoint of ownGroup.points) next.stones.delete(groupPoint);
     }
   }
 
@@ -901,20 +912,18 @@ function collectBoardGroup(
   const color = stones.get(start);
   if (color == null) return {points: [], liberties: 0};
 
-  const points = new Set<SgfPoint>();
+  const points = new Set<SgfPoint>([start]);
   const liberties = new Set<SgfPoint>();
   const queue = [start];
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || points.has(point)) continue;
-    points.add(point);
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     for (const neighbor of orthogonalNeighbors(point, boardSize)) {
       const neighborColor = stones.get(neighbor);
       if (neighborColor == null) {
         liberties.add(neighbor);
       } else if (neighborColor === color && !points.has(neighbor)) {
+        points.add(neighbor);
         queue.push(neighbor);
       }
     }

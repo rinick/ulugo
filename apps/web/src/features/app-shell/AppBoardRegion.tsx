@@ -1,6 +1,7 @@
 import {LeftSquareOutlined, RightSquareOutlined, ThunderboltOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {AnalysisSettings, KataGoAnalysisResult} from '@ulugo/analysis-core';
+import type {BoardPosition} from '@ulugo/go-core';
 import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
 import type {MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -9,6 +10,7 @@ import {GoBoard, type BoardVertexClickOptions, type MoveNumberLimit} from '../bo
 interface AppBoardRegionProps {
   document: SgfDocument;
   path: number[];
+  position: BoardPosition;
   showCoordinates: boolean;
   showMarkup: boolean;
   moveNumberLimit: MoveNumberLimit;
@@ -43,6 +45,7 @@ interface AppBoardRegionProps {
 export function AppBoardRegion({
   document,
   path,
+  position,
   showCoordinates,
   showMarkup,
   moveNumberLimit,
@@ -91,6 +94,7 @@ export function AppBoardRegion({
       <GoBoard
         document={document}
         path={path}
+        position={position}
         showCoordinates={showCoordinates}
         showMarkup={showMarkup}
         moveNumberLimit={moveNumberLimit}

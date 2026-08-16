@@ -26,8 +26,6 @@ export const range = (n: number) =>
     .fill(0)
     .map((_, i: number) => i);
 
-export const random = (n: number) => Math.floor(Math.random() * (n + 1));
-
 export const vertexEquals = ([x1, y1]: Vertex, [x2, y2]: Vertex) => x1 === x2 && y1 === y2;
 
 export function getHoshis(width: number, height: number): Vertex[] {

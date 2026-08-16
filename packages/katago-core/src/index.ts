@@ -1,5 +1,13 @@
 import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
-import {getBoardSize, getGameInfo, getLine, normalizeMovePoint, pointToVertex, vertexToPoint} from '@ulugo/sgf-core';
+import {
+  getBoardSize,
+  getGameInfo,
+  getLine,
+  isPointOnBoard,
+  normalizeMovePoint,
+  pointToVertex,
+  vertexToPoint,
+} from '@ulugo/sgf-core';
 import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 
 export interface KataGoSettings {
@@ -20,6 +28,7 @@ export interface KataGoQueryOptions {
   maxVisits?: number;
   priority?: number;
   live?: boolean;
+  includeOwnership?: boolean;
   overrideSettings?: KataGoAnalysisQuery['overrideSettings'];
 }
 
@@ -96,7 +105,8 @@ export interface KataGoConsoleMessage {
 export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOptions): KataGoAnalysisQuery {
   const boardSize = getBoardSize(document);
   const gameInfo = getGameInfo(document);
-  const history = buildKataGoHistory(document, options.path);
+  const rules = normalizeRules(gameInfo.RU);
+  const history = buildKataGoHistory(document, options.path, allowsSuicideRules(rules));
   const moves = [...history.moves];
   if (options.nextMove != null) {
     moves.push([options.nextMove.color, sgfPointToGtp(options.nextMove.point, boardSize)]);
@@ -107,15 +117,15 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
     boardXSize: boardSize,
     boardYSize: boardSize,
     komi: normalizeKomi(gameInfo.KM),
-    rules: normalizeRules(gameInfo.RU),
+    rules,
     initialPlayer: history.initialPlayer,
     initialStones: history.initialStones,
     moves,
     analyzeTurns: options.analyzeTurns ?? [moves.length],
     maxVisits: options.maxVisits,
     priority: options.priority,
-    includePolicy: true,
-    includeOwnership: true,
+    includePolicy: false,
+    includeOwnership: options.includeOwnership ?? true,
     reportDuringSearchEvery: options.live ? 0.25 : undefined,
     overrideSettings: options.overrideSettings,
   };
@@ -123,7 +133,8 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
 
 function buildKataGoHistory(
   document: SgfDocument,
-  path: number[]
+  path: number[],
+  allowSuicide: boolean
 ): {initialPlayer: SgfColor; initialStones: Array<[SgfColor, string]>; moves: Array<[SgfColor, string]>} {
   const boardSize = getBoardSize(document);
   const line = getLine(document, path);
@@ -149,8 +160,12 @@ function buildKataGoHistory(
   let nextColor: SgfColor = 'B';
   for (const node of line.slice(0, setupIndex + 1)) {
     for (const point of node.data.AE ?? []) stones.delete(point);
-    for (const point of node.data.AB ?? []) stones.set(point, 'B');
-    for (const point of node.data.AW ?? []) stones.set(point, 'W');
+    for (const point of node.data.AB ?? []) {
+      if (isPointOnBoard(point, boardSize)) stones.set(point, 'B');
+    }
+    for (const point of node.data.AW ?? []) {
+      if (isPointOnBoard(point, boardSize)) stones.set(point, 'W');
+    }
 
     const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
     if (color == null) {
@@ -159,9 +174,9 @@ function buildKataGoHistory(
     }
     const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
     nextColor = color === 'B' ? 'W' : 'B';
-    if (point === '') continue;
+    if (point === '' || !isPointOnBoard(point, boardSize)) continue;
     stones.set(point, color);
-    applyCaptures(point, color, stones, boardSize);
+    applyCaptures(point, color, stones, boardSize, allowSuicide);
   }
 
   const initialStones = [...stones.entries()].map(([point, color]): [SgfColor, string] => [
@@ -185,14 +200,28 @@ function setupNextColor(node: {data: Record<string, string[]>}): SgfColor | null
   return value === 'B' || value === 'W' ? value : null;
 }
 
-function applyCaptures(point: string, color: SgfColor, stones: Map<string, SgfColor>, size: number): void {
+function applyCaptures(
+  point: string,
+  color: SgfColor,
+  stones: Map<string, SgfColor>,
+  size: number,
+  allowSuicide: boolean
+): void {
   const opponent = color === 'B' ? 'W' : 'B';
+  const checkedOpponentPoints = new Set<string>();
   for (const neighbor of neighbors(point, size)) {
-    if (stones.get(neighbor) !== opponent) continue;
+    if (stones.get(neighbor) !== opponent || checkedOpponentPoints.has(neighbor)) continue;
     const group = collectGroup(neighbor, stones, size);
+    for (const groupPoint of group.points) checkedOpponentPoints.add(groupPoint);
     if (group.liberties === 0) {
       for (const capturedPoint of group.points) stones.delete(capturedPoint);
     }
+  }
+
+  if (!allowSuicide) return;
+  const ownGroup = collectGroup(point, stones, size);
+  if (ownGroup.liberties === 0) {
+    for (const capturedPoint of ownGroup.points) stones.delete(capturedPoint);
   }
 }
 
@@ -204,20 +233,18 @@ function collectGroup(
   const color = stones.get(start);
   if (color == null) return {points: [], liberties: 0};
 
-  const seen = new Set<string>();
+  const seen = new Set<string>([start]);
   const liberties = new Set<string>();
   const queue = [start];
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point)) continue;
-    seen.add(point);
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     for (const neighbor of neighbors(point, size)) {
       const stone = stones.get(neighbor);
       if (stone == null) {
         liberties.add(neighbor);
       } else if (stone === color && !seen.has(neighbor)) {
+        seen.add(neighbor);
         queue.push(neighbor);
       }
     }
@@ -273,4 +300,9 @@ export function normalizeRules(value: unknown): string {
 
 export function usesAreaValueOffset(rules: unknown): boolean {
   return ['chinese', 'aga', 'new-zealand', 'tromp-taylor', 'stone-scoring'].includes(normalizeRules(rules));
+}
+
+function allowsSuicideRules(value: unknown): boolean {
+  const rules = normalizeRules(value);
+  return rules === 'new-zealand' || rules === 'tromp-taylor';
 }

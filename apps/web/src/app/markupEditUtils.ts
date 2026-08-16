@@ -208,9 +208,9 @@ function connectedStonePoints(
   const result: string[] = [];
   const seen = new Set<string>();
   const queue = [start];
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point) || stones.get(point) !== color) continue;
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
+    if (seen.has(point) || stones.get(point) !== color) continue;
     seen.add(point);
     result.push(point);
     queue.push(...neighborPoints(point, boardSize));
@@ -241,9 +241,9 @@ function connectedMarkupPoints(node: SgfNode, start: string, markup: PointMarkup
   const result: string[] = [];
   const seen = new Set<string>();
   const queue = [start];
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point) || !samePointMarkup(pointMarkup(node, point), markup)) continue;
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
+    if (seen.has(point) || !samePointMarkup(pointMarkup(node, point), markup)) continue;
     seen.add(point);
     result.push(point);
     queue.push(...neighborPoints(point, boardSize));

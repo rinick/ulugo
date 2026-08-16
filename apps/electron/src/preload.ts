@@ -55,6 +55,12 @@ contextBridge.exposeInMainWorld('ulugo', {
       ipcRenderer.on('ulugo:katago:analysis-error', listener);
       return () => ipcRenderer.off('ulugo:katago:analysis-error', listener);
     },
+    onAnalysisReset: (callback: (queryIds: string[], fatal: boolean) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, queryIds: string[], fatal?: boolean) =>
+        callback(queryIds, fatal === true);
+      ipcRenderer.on('ulugo:katago:analysis-reset', listener);
+      return () => ipcRenderer.off('ulugo:katago:analysis-reset', listener);
+    },
     onConsoleMessage: (callback: (message: unknown) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, message: unknown) => callback(message);
       ipcRenderer.on('ulugo:katago:console', listener);

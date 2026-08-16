@@ -4,9 +4,11 @@ import type {ReactNode} from 'react';
 import {CommentsPanel, type AnalysisChartSummary} from '../comments/CommentsPanel';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {SgfTreePanel} from '../sgf-tree/SgfTreePanel';
+import type {TreeLayout} from '../sgf-tree/layout';
 
 interface AppRightPanelProps {
   document: SgfDocument;
+  treeLayout: TreeLayout;
   path: number[];
   blackPlayerName: string;
   whitePlayerName: string;
@@ -47,6 +49,7 @@ interface AppRightPanelProps {
 
 export function AppRightPanel({
   document,
+  treeLayout,
   path,
   blackPlayerName,
   whitePlayerName,
@@ -105,7 +108,6 @@ export function AppRightPanel({
           chartMaxMoveNumber={chartMaxMoveNumber}
           commentReadOnly={commentReadOnly}
           commentRows={commentRows}
-          moveDisplay={analysisSettings.moveDisplay}
           showScore={forceComments ? false : analysisSettings.showScore}
           showPointLoss={forceComments ? false : analysisSettings.showPointLoss}
           showWinrate={forceComments ? false : analysisSettings.showWinrate}
@@ -122,6 +124,7 @@ export function AppRightPanel({
       )}
       <SgfTreePanel
         document={document}
+        layout={treeLayout}
         selectedPath={path}
         onSelectPath={onSelectPath}
         onMoveToMain={onMoveToMain}

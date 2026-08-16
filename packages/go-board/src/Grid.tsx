@@ -2,7 +2,6 @@ import {createElement as h, useMemo} from 'react';
 import type {Vertex} from './helper';
 
 interface GridProps {
-  vertexSize: number;
   width: number;
   height: number;
   xs: number[];

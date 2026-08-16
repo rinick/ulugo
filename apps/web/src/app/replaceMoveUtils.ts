@@ -89,9 +89,8 @@ export function replaceNextMoveBranch({
   const referenceMoves = state.referenceMoves ?? referenceSequence.moves;
   const referenceHasSetup = state.referenceHasSetup ?? referenceSequence.hasSetup;
   const insertsMove = insert || setupBoundary || originalNextPath == null;
-  const color = insertsMove ? deriveBoardPosition(document, path).nextColor : originalMove!.color;
-
   const position = deriveBoardPosition(document, path);
+  const color = insertsMove ? position.nextColor : originalMove!.color;
   if (!isLegalMove(position, color, point, rules)) return null;
 
   const next = cloneDocument(document);
@@ -223,7 +222,8 @@ export function replaceMoveStones(
   document: SgfDocument,
   path: number[],
   branchMemory: Map<string, number>,
-  state: ReplaceMoveState | null = null
+  state: ReplaceMoveState | null = null,
+  currentPositionStones?: ReadonlyMap<string, SgfColor>
 ): {
   past: Map<string, SgfColor>;
   future: Map<string, SgfColor>;
@@ -231,9 +231,11 @@ export function replaceMoveStones(
   missing: Set<string>;
   extra: Set<string>;
 } {
-  const currentStones = deriveBoardPosition(document, path).stones;
+  const currentStones = currentPositionStones ?? deriveBoardPosition(document, path).stones;
   const referencePath = state?.originalPath ?? path;
-  const referenceStones = deriveBoardPosition(document, referencePath).stones;
+  const referenceStones = samePath(referencePath, path)
+    ? currentStones
+    : deriveBoardPosition(document, referencePath).stones;
   const past = new Map<string, SgfColor>();
   const future = new Map<string, SgfColor>();
 

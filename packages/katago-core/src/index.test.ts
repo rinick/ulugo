@@ -37,6 +37,13 @@ describe('katago-core', () => {
     const query = buildKataGoQuery(second.document, {id: 'test', path: second.path});
 
     expect(query.analyzeTurns).toEqual([2]);
+    expect(query.includePolicy).toBe(false);
+  });
+
+  it('allows callers to omit ownership data', () => {
+    const query = buildKataGoQuery(createNewGame(), {id: 'test', path: [], includeOwnership: false});
+
+    expect(query.includeOwnership).toBe(false);
   });
 
   it('merges history before mid-game setup into KataGo initial stones', () => {
@@ -54,6 +61,47 @@ describe('katago-core', () => {
     expect(query.moves).toEqual([['B', 'C17']]);
     expect(query.analyzeTurns).toEqual([1]);
   });
+
+  it('removes captured connected groups before a mid-game setup', () => {
+    const document = parseSgf('(;SZ[5];W[aa];W[ab];W[ba];W[bb];B[ac];B[bc];B[ca];B[cb];PL[B]AB[ee])');
+    const query = buildKataGoQuery(document, {id: 'test', path: Array<number>(9).fill(0)});
+
+    expect(query.initialStones).toEqual(
+      expect.arrayContaining([
+        ['B', 'A3'],
+        ['B', 'B3'],
+        ['B', 'C5'],
+        ['B', 'C4'],
+        ['B', 'E1'],
+      ])
+    );
+    expect(query.initialStones).toHaveLength(5);
+  });
+
+  it('keeps a group with liberties when a move touches it from two sides before setup', () => {
+    const document = parseSgf('(;SZ[5];W[aa];W[ab];W[ba];B[bb];PL[W]AB[ee])');
+    const query = buildKataGoQuery(document, {id: 'test', path: Array<number>(5).fill(0)});
+
+    expect(query.initialStones).toEqual([
+      ['W', 'A5'],
+      ['W', 'A4'],
+      ['W', 'B5'],
+      ['B', 'B4'],
+      ['B', 'E1'],
+    ]);
+  });
+
+  it.each(['New Zealand', 'Tromp-Taylor'])(
+    'removes suicidal groups under %s rules before a mid-game setup',
+    (rules) => {
+      const document = parseSgf(
+        `(;SZ[5]RU[${rules}];B[cb];B[bc];W[ca];W[db];W[bb];W[ba];W[ac];W[bd];W[dc];W[cd];B[cc];PL[W]AB[ee])`
+      );
+      const query = buildKataGoQuery(document, {id: 'test', path: Array<number>(12).fill(0)});
+
+      expect(query.initialStones.filter(([color]) => color === 'B')).toEqual([['B', 'E1']]);
+    }
+  );
 
   it('keeps moves before ordinary games when no setup node is present', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd];W[pp])');

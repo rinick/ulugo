@@ -103,6 +103,7 @@ export interface UlugoElectronApi {
     stopAnalysis: (queryIds?: string[]) => Promise<void>;
     onAnalysis: (callback: (result: KataGoAnalysisResult) => void) => () => void;
     onAnalysisError: (callback: (message: string) => void) => () => void;
+    onAnalysisReset: (callback: (queryIds: string[], fatal: boolean) => void) => () => void;
     onConsoleMessage: (callback: (message: KataGoConsoleMessage) => void) => () => void;
   };
   analysis: {

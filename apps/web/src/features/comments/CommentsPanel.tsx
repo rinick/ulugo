@@ -13,7 +13,6 @@ interface CommentsPanelProps {
   chartMaxMoveNumber: number;
   commentReadOnly?: boolean;
   commentRows?: number;
-  moveDisplay?: AnalysisSettings['moveDisplay'];
   showScore: boolean;
   showPointLoss: boolean;
   showWinrate: boolean;
@@ -55,6 +54,12 @@ interface PointLossPoint extends PointLoss {
   y2: number;
 }
 
+const chartWidth = 360;
+const chartHeight = 190;
+const chartPadding = {top: 16, right: 8, bottom: 18, left: 28};
+const emptyChartData: AnalysisChartPoint[] = [];
+const emptyPointLossData: PointLoss[] = [];
+
 export function CommentsPanel({
   value,
   onChange,
@@ -63,7 +68,6 @@ export function CommentsPanel({
   chartMaxMoveNumber,
   commentReadOnly = false,
   commentRows,
-  moveDisplay = ['scoreChange'],
   showScore,
   showPointLoss,
   showWinrate,
@@ -81,10 +85,22 @@ export function CommentsPanel({
   const commentInputRef = useRef<TextAreaRef>(null);
   const pendingCommentFocusRef = useRef(false);
   const showChart = showAnalysisControls && (showScore || showWinrate || showPointLoss || showIntensity);
-  const scoreData = useMemo(() => chartData.filter((item) => item.series === 'score'), [chartData]);
-  const winrateData = useMemo(() => chartData.filter((item) => item.series === 'winrate'), [chartData]);
-  const intensityData = useMemo(() => chartData.filter((item) => item.series === 'intensity'), [chartData]);
-  const pointLossData = useMemo(() => buildPointLossData(scoreData), [scoreData]);
+  const scoreData = useMemo(
+    () => (showScore || showPointLoss ? chartData.filter((item) => item.series === 'score') : emptyChartData),
+    [chartData, showPointLoss, showScore]
+  );
+  const winrateData = useMemo(
+    () => (showWinrate ? chartData.filter((item) => item.series === 'winrate') : emptyChartData),
+    [chartData, showWinrate]
+  );
+  const intensityData = useMemo(
+    () => (showIntensity ? chartData.filter((item) => item.series === 'intensity') : emptyChartData),
+    [chartData, showIntensity]
+  );
+  const pointLossData = useMemo(
+    () => (showPointLoss ? buildPointLossData(scoreData) : emptyPointLossData),
+    [scoreData, showPointLoss]
+  );
   const hasVisibleData =
     (showScore && scoreData.length > 0) ||
     (showWinrate && winrateData.length > 0) ||
@@ -161,14 +177,13 @@ export function CommentsPanel({
         {showChart ? (
           hasVisibleData ? (
             <AnalysisChart
-              scoreData={showScore ? scoreData : []}
-              pointLossData={showPointLoss ? pointLossData : []}
-              winrateData={showWinrate ? winrateData : []}
-              intensityData={showIntensity ? intensityData : []}
+              scoreData={scoreData}
+              pointLossData={pointLossData}
+              winrateData={winrateData}
+              intensityData={intensityData}
               intensityDisplayLimit={intensityDisplayLimit}
               maxMoveNumber={chartMaxMoveNumber}
               allData={chartData}
-              moveDisplay={moveDisplay}
               selectedMoveNumber={selectedMoveNumber}
               summary={chartSummary}
               onPreviousMove={onPreviousMove}
@@ -204,7 +219,6 @@ function AnalysisChart({
   intensityDisplayLimit,
   maxMoveNumber,
   allData,
-  moveDisplay,
   selectedMoveNumber,
   summary,
   onPreviousMove,
@@ -218,7 +232,6 @@ function AnalysisChart({
   intensityDisplayLimit: number;
   maxMoveNumber: number;
   allData: AnalysisChartPoint[];
-  moveDisplay: AnalysisSettings['moveDisplay'];
   selectedMoveNumber: number | null;
   summary: AnalysisChartSummary | null;
   onPreviousMove?: () => void;
@@ -227,57 +240,92 @@ function AnalysisChart({
 }) {
   const [hoverMoveNumber, setHoverMoveNumber] = useState<number | null>(null);
   const [hoverChartX, setHoverChartX] = useState<number | null>(null);
-  const width = 360;
-  const height = 190;
-  const padding = {top: 16, right: 8, bottom: 18, left: 28};
   const maxMove = Math.max(0, maxMoveNumber);
-  const pointScale = scoreScaleFor(scoreData, pointLossData);
-  const chartScale = intensityChartScale(pointScale, intensityData, intensityDisplayLimit);
-  const scorePoints = makePoints(scoreData, width, padding, maxMove, (value) =>
-    valueToCenteredY(value, chartScale, height, padding)
-  );
-  const pointLossPoints = makePointLossPoints(pointLossData, width, padding, maxMove, chartScale, height);
-  const intensityAreaPath = makeIntensityAreaPath(intensityData, width, padding, maxMove, chartScale, height);
-  const scoreAxisLabel =
-    scorePoints.length > 0
-      ? {top: 'B+', bottom: 'W+'}
-      : pointLossPoints.length > 0
-        ? {top: 'W-', bottom: 'B-'}
-        : {top: '', bottom: '−'};
-  const winratePoints = makePoints(winrateData, width, padding, maxMove, (value) =>
-    valueToWinrateY(value, height, padding)
-  );
-  const centerY = (padding.top + height - padding.bottom) / 2;
-  const halfChartScale = Math.round(chartScale / 2);
-  const halfScoreY = valueToCenteredY(halfChartScale, chartScale, height, padding);
-  const negativeHalfScoreY = valueToCenteredY(-halfChartScale, chartScale, height, padding);
+  const {
+    chartScale,
+    scorePoints,
+    pointLossPoints,
+    intensityAreaPath,
+    scoreAxisLabel,
+    winratePoints,
+    centerY,
+    halfChartScale,
+    halfScoreY,
+    negativeHalfScoreY,
+  } = useMemo(() => {
+    const pointScale = scoreScaleFor(scoreData, pointLossData);
+    const nextChartScale = intensityChartScale(pointScale, intensityData, intensityDisplayLimit);
+    const nextScorePoints = makePoints(scoreData, chartWidth, chartPadding, maxMove, (value) =>
+      valueToCenteredY(value, nextChartScale, chartHeight, chartPadding)
+    );
+    const nextPointLossPoints = makePointLossPoints(
+      pointLossData,
+      chartWidth,
+      chartPadding,
+      maxMove,
+      nextChartScale,
+      chartHeight
+    );
+    const nextHalfChartScale = Math.round(nextChartScale / 2);
+
+    return {
+      chartScale: nextChartScale,
+      scorePoints: nextScorePoints,
+      pointLossPoints: nextPointLossPoints,
+      intensityAreaPath: makeIntensityAreaPath(
+        intensityData,
+        chartWidth,
+        chartPadding,
+        maxMove,
+        nextChartScale,
+        chartHeight
+      ),
+      scoreAxisLabel:
+        nextScorePoints.length > 0
+          ? {top: 'B+', bottom: 'W+'}
+          : nextPointLossPoints.length > 0
+            ? {top: 'W-', bottom: 'B-'}
+            : {top: '', bottom: '−'},
+      winratePoints: makePoints(winrateData, chartWidth, chartPadding, maxMove, (value) =>
+        valueToWinrateY(value, chartHeight, chartPadding)
+      ),
+      centerY: (chartPadding.top + chartHeight - chartPadding.bottom) / 2,
+      halfChartScale: nextHalfChartScale,
+      halfScoreY: valueToCenteredY(nextHalfChartScale, nextChartScale, chartHeight, chartPadding),
+      negativeHalfScoreY: valueToCenteredY(-nextHalfChartScale, nextChartScale, chartHeight, chartPadding),
+    };
+  }, [intensityData, intensityDisplayLimit, maxMove, pointLossData, scoreData, winrateData]);
+  const summariesByMove = useMemo(() => buildChartSummaries(allData), [allData]);
   const selectedX =
     selectedMoveNumber == null
       ? null
-      : moveNumberToX(Math.max(0, Math.min(maxMove, selectedMoveNumber)), maxMove, width, padding);
+      : moveNumberToX(Math.max(0, Math.min(maxMove, selectedMoveNumber)), maxMove, chartWidth, chartPadding);
   const currentMoveNumber =
     hoverMoveNumber ?? (selectedMoveNumber == null ? null : Math.max(0, Math.min(maxMove, selectedMoveNumber)));
   const currentMoveLabel =
-    currentMoveNumber == null ? null : moveAxisLabelFor(currentMoveNumber, maxMove, width, padding, hoverChartX);
-  const hoverSummary = hoverMoveNumber == null ? null : chartSummaryForMove(allData, hoverMoveNumber);
-  const selectedSummary =
-    selectedMoveNumber == null ? summary : (chartSummaryForMove(allData, selectedMoveNumber) ?? summary);
+    currentMoveNumber == null
+      ? null
+      : moveAxisLabelFor(currentMoveNumber, maxMove, chartWidth, chartPadding, hoverChartX);
+  const hoverSummary = hoverMoveNumber == null ? null : (summariesByMove.get(hoverMoveNumber) ?? null);
+  const selectedSummary = selectedMoveNumber == null ? summary : (summariesByMove.get(selectedMoveNumber) ?? summary);
 
   function handleMouseDown(event: MouseEvent<SVGSVGElement>): void {
     if (onSelectMove == null) return;
 
     event.preventDefault();
-    const {x} = mouseEventToViewBoxPoint(event, width, height);
-    const moveNumber = xToMoveNumber(x, maxMove, width, padding);
+    const {x} = mouseEventToViewBoxPoint(event, chartWidth, chartHeight);
+    const moveNumber = xToMoveNumber(x, maxMove, chartWidth, chartPadding);
     onSelectMove(moveNumber);
   }
 
   function handleMouseMove(event: MouseEvent<SVGSVGElement>): void {
-    const point = mouseEventToViewBoxPoint(event, width, height);
-    const nextHoverMoveNumber = xToHoverMoveNumber(point.x, point.y, maxMove, width, height, padding);
+    const point = mouseEventToViewBoxPoint(event, chartWidth, chartHeight);
+    const nextHoverMoveNumber = xToHoverMoveNumber(point.x, point.y, maxMove, chartWidth, chartHeight, chartPadding);
     setHoverMoveNumber(nextHoverMoveNumber);
     setHoverChartX(
-      nextHoverMoveNumber == null ? null : Math.max(padding.left, Math.min(width - padding.right, point.x))
+      nextHoverMoveNumber == null
+        ? null
+        : Math.max(chartPadding.left, Math.min(chartWidth - chartPadding.right, point.x))
     );
   }
 
@@ -291,7 +339,7 @@ function AnalysisChart({
     <div className="analysis-chart-wrap">
       <svg
         className="analysis-chart"
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         role="img"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -304,54 +352,60 @@ function AnalysisChart({
         {intensityAreaPath === '' ? null : <path className="analysis-chart-intensity" d={intensityAreaPath} />}
         <line
           className="analysis-chart-grid"
-          x1={padding.left}
-          x2={width - padding.right}
-          y1={padding.top}
-          y2={padding.top}
+          x1={chartPadding.left}
+          x2={chartWidth - chartPadding.right}
+          y1={chartPadding.top}
+          y2={chartPadding.top}
         />
         <line
           className="analysis-chart-grid"
-          x1={padding.left}
-          x2={width - padding.right}
+          x1={chartPadding.left}
+          x2={chartWidth - chartPadding.right}
           y1={halfScoreY}
           y2={halfScoreY}
         />
-        <line className="analysis-chart-axis" x1={padding.left} x2={width - padding.right} y1={centerY} y2={centerY} />
+        <line
+          className="analysis-chart-axis"
+          x1={chartPadding.left}
+          x2={chartWidth - chartPadding.right}
+          y1={centerY}
+          y2={centerY}
+        />
         <line
           className="analysis-chart-grid"
-          x1={padding.left}
-          x2={width - padding.right}
+          x1={chartPadding.left}
+          x2={chartWidth - chartPadding.right}
           y1={negativeHalfScoreY}
           y2={negativeHalfScoreY}
         />
         <line
           className="analysis-chart-grid"
-          x1={padding.left}
-          x2={width - padding.right}
-          y1={height - padding.bottom}
-          y2={height - padding.bottom}
+          x1={chartPadding.left}
+          x2={chartWidth - chartPadding.right}
+          y1={chartHeight - chartPadding.bottom}
+          y2={chartHeight - chartPadding.bottom}
         />
         <line
           className="analysis-chart-grid vertical"
-          x1={padding.left}
-          x2={padding.left}
-          y1={padding.top}
-          y2={height - padding.bottom}
+          x1={chartPadding.left}
+          x2={chartPadding.left}
+          y1={chartPadding.top}
+          y2={chartHeight - chartPadding.bottom}
         />
         <line
           className="analysis-chart-grid vertical"
-          x1={width - padding.right}
-          x2={width - padding.right}
-          y1={padding.top}
-          y2={height - padding.bottom}
+          x1={chartWidth - chartPadding.right}
+          x2={chartWidth - chartPadding.right}
+          y1={chartPadding.top}
+          y2={chartHeight - chartPadding.bottom}
         />
         {selectedX == null ? null : (
           <line
             className="analysis-chart-selected"
             x1={selectedX}
             x2={selectedX}
-            y1={padding.top}
-            y2={height - padding.bottom}
+            y1={chartPadding.top}
+            y2={chartHeight - chartPadding.bottom}
           />
         )}
         {hoverChartX == null ? null : (
@@ -359,8 +413,8 @@ function AnalysisChart({
             className="analysis-chart-hover"
             x1={hoverChartX}
             x2={hoverChartX}
-            y1={padding.top}
-            y2={height - padding.bottom}
+            y1={chartPadding.top}
+            y2={chartHeight - chartPadding.bottom}
           />
         )}
 
@@ -374,7 +428,7 @@ function AnalysisChart({
 
         {scorePoints.length > 0 || pointLossPoints.length > 0 || intensityAreaPath !== '' ? (
           <>
-            <text className="analysis-chart-label score" x="2" y={padding.top + 4}>
+            <text className="analysis-chart-label score" x="2" y={chartPadding.top + 4}>
               {`${scoreAxisLabel.top}${chartScale}`}
             </text>
             <text className="analysis-chart-label score" x="2" y={halfScoreY + 4}>
@@ -386,7 +440,7 @@ function AnalysisChart({
             <text className="analysis-chart-label score" x="2" y={negativeHalfScoreY + 4}>
               {`${scoreAxisLabel.bottom}${halfChartScale}`}
             </text>
-            <text className="analysis-chart-label score" x="2" y={height - padding.bottom + 4}>
+            <text className="analysis-chart-label score" x="2" y={chartHeight - chartPadding.bottom + 4}>
               {`${scoreAxisLabel.bottom}${chartScale}`}
             </text>
           </>
@@ -397,28 +451,38 @@ function AnalysisChart({
         pointLossPoints.length === 0 &&
         intensityAreaPath === '' ? (
           <>
-            <text className="analysis-chart-label winrate" x="2" y={padding.top + 4}>
+            <text className="analysis-chart-label winrate" x="2" y={chartPadding.top + 4}>
               100%
             </text>
             <text className="analysis-chart-label winrate" x="2" y={centerY + 4}>
               50%
             </text>
-            <text className="analysis-chart-label winrate" x="2" y={height - padding.bottom + 4}>
+            <text className="analysis-chart-label winrate" x="2" y={chartHeight - chartPadding.bottom + 4}>
               0%
             </text>
           </>
         ) : null}
 
-        <text className="analysis-chart-label move" x={padding.left} y={height - 3}>
+        <text className="analysis-chart-label move" x={chartPadding.left} y={chartHeight - 3}>
           0
         </text>
         {maxMove > 0 ? (
-          <text className="analysis-chart-label move" x={width - padding.right} y={height - 3} textAnchor="end">
+          <text
+            className="analysis-chart-label move"
+            x={chartWidth - chartPadding.right}
+            y={chartHeight - 3}
+            textAnchor="end"
+          >
             {maxMove}
           </text>
         ) : null}
         {currentMoveLabel == null ? null : (
-          <text className="analysis-chart-label move current" x={currentMoveLabel.x} y={height - 3} textAnchor="middle">
+          <text
+            className="analysis-chart-label move current"
+            x={currentMoveLabel.x}
+            y={chartHeight - 3}
+            textAnchor="middle"
+          >
             {currentMoveLabel.text}
           </text>
         )}
@@ -561,30 +625,41 @@ function AnalysisChartSummaryView({summary}: {summary: AnalysisChartSummary | nu
   );
 }
 
-function chartSummaryForMove(data: AnalysisChartPoint[], moveNumber: number): AnalysisChartSummary | null {
-  const scorePoint = data.find((item) => item.moveNumber === moveNumber && item.series === 'score');
-  const previousScore = data.find((item) => item.moveNumber === moveNumber - 1 && item.series === 'score')?.value;
-  const winratePoint = data.find((item) => item.moveNumber === moveNumber && item.series === 'winrate');
-  const previousWinrate = data.find((item) => item.moveNumber === moveNumber - 1 && item.series === 'winrate')?.value;
-  const scoreLead = scorePoint?.value ?? null;
-  const winrate = winratePoint?.value ?? null;
-  const color = scorePoint?.color;
+function buildChartSummaries(data: AnalysisChartPoint[]): Map<number, AnalysisChartSummary> {
+  const scoreByMove = new Map<number, AnalysisChartPoint>();
+  const winrateByMove = new Map<number, AnalysisChartPoint>();
+  for (const point of data) {
+    if (point.series === 'score') scoreByMove.set(point.moveNumber, point);
+    if (point.series === 'winrate') winrateByMove.set(point.moveNumber, point);
+  }
 
-  return scoreLead == null && winrate == null
-    ? null
-    : {
-        scoreLead,
-        winrate,
-        color,
-        pointLoss:
-          color == null || scoreLead == null || previousScore == null
-            ? null
-            : lossForColor(scoreLead - previousScore, color),
-        winrateLoss:
-          color == null || winrate == null || previousWinrate == null
-            ? null
-            : lossForColor(winrate - previousWinrate, color),
-      };
+  const summaries = new Map<number, AnalysisChartSummary>();
+  const moveNumbers = new Set([...scoreByMove.keys(), ...winrateByMove.keys()]);
+  for (const moveNumber of moveNumbers) {
+    const scorePoint = scoreByMove.get(moveNumber);
+    const winratePoint = winrateByMove.get(moveNumber);
+    const scoreLead = scorePoint?.value ?? null;
+    const winrate = winratePoint?.value ?? null;
+    const color = scorePoint?.color;
+    const previousScore = scoreByMove.get(moveNumber - 1)?.value;
+    const previousWinrate = winrateByMove.get(moveNumber - 1)?.value;
+
+    summaries.set(moveNumber, {
+      scoreLead,
+      winrate,
+      color,
+      pointLoss:
+        color == null || scoreLead == null || previousScore == null
+          ? null
+          : lossForColor(scoreLead - previousScore, color),
+      winrateLoss:
+        color == null || winrate == null || previousWinrate == null
+          ? null
+          : lossForColor(winrate - previousWinrate, color),
+    });
+  }
+
+  return summaries;
 }
 
 function mouseEventToViewBoxPoint(

@@ -1,14 +1,19 @@
-import {app, BrowserWindow, Menu, clipboard, dialog, ipcMain, shell, type MessageBoxOptions, type WebContents} from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  clipboard,
+  dialog,
+  ipcMain,
+  shell,
+  type MessageBoxOptions,
+  type WebContents,
+} from 'electron';
 import {spawn, type ChildProcessWithoutNullStreams} from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {cancelGoogleDriveBridge, openGoogleDriveSgf, saveGoogleDriveSgf} from './googleDriveBridge';
-import {
-  addRecentFile,
-  autoSaveGame,
-  readRecentFiles,
-  type AutoSaveCandidate,
-} from './recentFiles';
+import {addRecentFile, autoSaveGame, readRecentFiles, type AutoSaveCandidate} from './recentFiles';
 import {
   downloadKataGoAsset,
   fileExists,
@@ -183,7 +188,10 @@ interface ImageOpenResult {
 }
 
 let katagoProcess: ChildProcessWithoutNullStreams | null = null;
-let katagoOutputBuffer = '';
+let katagoStart: {generation: number; promise: Promise<void>} | null = null;
+let katagoEngineGeneration = 0;
+let kataGoSettingsCache: KataGoSettings | null = null;
+let kataGoSettingsLoad: Promise<KataGoSettings> | null = null;
 let katagoSender: WebContents | null = null;
 let mainWindow: BrowserWindow | null = null;
 let pendingOpenFilePath: string | null = gameRecordFilePathFromArgs(process.argv);
@@ -389,17 +397,13 @@ function registerIpc(): void {
   );
   ipcMain.handle('ulugo:google-drive:cancel', () => cancelGoogleDriveBridge());
 
-  ipcMain.handle('ulugo:katago:get-settings', async () => {
-    const settings = await readJson('katago-settings.json', defaultKataGoSettings);
-    const normalized = await normalizeKataGoSettings(settings);
-    await writeJson('katago-settings.json', normalized);
-    return normalized;
-  });
+  ipcMain.handle('ulugo:katago:get-settings', () => readKataGoSettings());
   ipcMain.handle('ulugo:katago:save-settings', async (_event, settings: KataGoSettings) => {
-    const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+    const previous = await readKataGoSettings();
     const next = await normalizeKataGoSettings({...defaultKataGoSettings, ...settings});
+    await writeKataGoSettings(next);
     restartKataGoEngineIfSettingsChanged(previous, next);
-    return writeJson('katago-settings.json', next);
+    return next;
   });
   ipcMain.handle('ulugo:katago:get-assets', async () => getKataGoAssetInventory());
   ipcMain.handle('ulugo:katago:refresh-assets', async (event) => {
@@ -419,7 +423,7 @@ function registerIpc(): void {
 
     sendKataGoConsole(event.sender, 'ulugo', 'info', `Uninstalling ${asset.label}.`);
     await uninstallKataGoAsset(asset, request.kind);
-    const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+    const previous = await readKataGoSettings();
     const next = await normalizeKataGoSettings({
       ...previous,
       executablePath:
@@ -427,8 +431,8 @@ function registerIpc(): void {
       modelPath: request.kind === 'model' && previous.modelPath === asset.path ? '' : previous.modelPath,
       configPath: request.kind === 'katago' && previous.executablePath === asset.path ? '' : previous.configPath,
     });
+    await writeKataGoSettings(next);
     restartKataGoEngineIfSettingsChanged(previous, next);
-    await writeJson('katago-settings.json', next);
     sendKataGoConsole(event.sender, 'ulugo', 'info', `${asset.label} uninstalled.`);
     return getKataGoAssetInventory();
   });
@@ -442,11 +446,14 @@ function registerIpc(): void {
   });
   ipcMain.handle('ulugo:katago:analyze', async (event, query: KataGoAnalysisQuery) => {
     const normalizedQuery = normalizeAnalysisQuery(query);
+    activeKataGoQueryIds.add(normalizedQuery.id);
     try {
-      const settings = await normalizeKataGoSettings(await readJson('katago-settings.json', defaultKataGoSettings));
+      const settings = await readKataGoSettings();
       await ensureKataGoEngine(settings, event.sender);
-      await writeKataGoQuery(withKataGoOverrideSettings(normalizedQuery, settings));
+      if (!activeKataGoQueryIds.has(normalizedQuery.id)) return;
+      await writeKataGoMessage(withKataGoOverrideSettings(normalizedQuery, settings));
     } catch (error) {
+      if (!activeKataGoQueryIds.delete(normalizedQuery.id)) return;
       const message = error instanceof Error ? error.message : 'Failed to write KataGo analysis query.';
       sendKataGoConsole(event.sender, 'katago', 'error', message);
       event.sender.send('ulugo:katago:analysis', {id: normalizedQuery.id, error: message, isDuringSearch: false});
@@ -577,8 +584,7 @@ async function getKataGoAssetInventory(): Promise<{
   models: KataGoAsset[];
   settings: KataGoSettings;
 }> {
-  const settings = await normalizeKataGoSettings(await readJson('katago-settings.json', defaultKataGoSettings));
-  await writeJson('katago-settings.json', settings);
+  const settings = await readKataGoSettings();
   const catalog = await readKataGoAssetCatalog();
   const assets = await listKataGoAssets(catalog);
   if (settings.executablePath !== '' && !assets.katago.some((asset) => asset.path === settings.executablePath)) {
@@ -599,15 +605,16 @@ async function selectKataGoAsset(kind: KataGoAssetKind, assetId: string): Promis
   const asset = assets.find((item) => item.id === assetId);
   if (asset == null || asset.path == null) throw new Error(`Selected ${kind} is not installed.`);
 
-  const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+  const previous = inventory.settings;
   const next = await normalizeKataGoSettings(
     kind === 'katago'
       ? {...previous, executablePath: asset.path, configPath: ''}
       : {...previous, modelPath: asset.path},
     path.dirname(asset.path)
   );
+  await writeKataGoSettings(next);
   restartKataGoEngineIfSettingsChanged(previous, next);
-  return writeJson('katago-settings.json', next);
+  return next;
 }
 
 async function installKataGoAsset(
@@ -619,13 +626,13 @@ async function installKataGoAsset(
   const result = await downloadKataGoAsset(option, kind, (progress) => {
     sender.send('ulugo:katago:download-progress', progress);
   });
-  const settings = await readJson('katago-settings.json', defaultKataGoSettings);
+  const settings = await readKataGoSettings();
   const nextSettings = await normalizeKataGoSettings(
     kind === 'katago' ? {...settings, executablePath: result.path} : {...settings, modelPath: result.path},
     path.dirname(result.path)
   );
+  await writeKataGoSettings(nextSettings);
   restartKataGoEngineIfSettingsChanged(settings, nextSettings);
-  await writeJson('katago-settings.json', nextSettings);
   sendKataGoConsole(sender, 'ulugo', 'info', `${option.label} installed at ${result.path}.`);
   return {...result, settings: nextSettings};
 }
@@ -686,10 +693,10 @@ async function setupFirstRunMacKataGo(sender: WebContents): Promise<void> {
   }
 
   sendKataGoConsole(sender, 'ulugo', 'info', `Found KataGo at ${executablePath}.`);
-  const previous = await readJson('katago-settings.json', defaultKataGoSettings);
+  const previous = await readKataGoSettings();
   const next = await normalizeKataGoSettings({...previous, executablePath, configPath: ''});
+  await writeKataGoSettings(next);
   restartKataGoEngineIfSettingsChanged(previous, next);
-  await writeJson('katago-settings.json', next);
 }
 
 async function findKataGoOnPath(): Promise<string | null> {
@@ -788,9 +795,7 @@ function normalizeAnalysisSettings(
     ...defaultAnalysisSettings,
     ...storedSettings,
     moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
-    intensityDisplayLimit: normalizeIntensityDisplayLimit(
-      settings.intensityDisplayLimit ?? legacyMaxIntensity
-    ),
+    intensityDisplayLimit: normalizeIntensityDisplayLimit(settings.intensityDisplayLimit ?? legacyMaxIntensity),
     mode,
     ...activeModeSettings,
     modeSettings,
@@ -851,6 +856,32 @@ function settingsPath(name: string): string {
   return path.join(app.getPath('userData'), name);
 }
 
+async function readKataGoSettings(): Promise<KataGoSettings> {
+  if (kataGoSettingsCache != null) return kataGoSettingsCache;
+  if (kataGoSettingsLoad == null) {
+    kataGoSettingsLoad = (async () => {
+      const stored = await readJson('katago-settings.json', defaultKataGoSettings);
+      const normalized = await normalizeKataGoSettings(stored);
+      await writeJson('katago-settings.json', normalized);
+      kataGoSettingsCache = normalized;
+      return normalized;
+    })();
+  }
+
+  try {
+    return await kataGoSettingsLoad;
+  } finally {
+    kataGoSettingsLoad = null;
+  }
+}
+
+async function writeKataGoSettings(settings: KataGoSettings): Promise<KataGoSettings> {
+  if (kataGoSettingsLoad != null) await kataGoSettingsLoad.catch(() => undefined);
+  const saved = await writeJson('katago-settings.json', settings);
+  kataGoSettingsCache = saved;
+  return saved;
+}
+
 async function normalizeKataGoSettings(settings: KataGoSettings, searchDirectory?: string): Promise<KataGoSettings> {
   const executablePath = await findKataGoExecutablePath(settings.executablePath);
   const modelPath = await findInstalledAssetPath('model', settings.modelPath);
@@ -903,6 +934,33 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
   katagoSender = sender;
   if (katagoProcess != null) return;
 
+  if (katagoStart != null) {
+    const pendingStart = katagoStart;
+    try {
+      await pendingStart.promise;
+    } catch (error) {
+      if (pendingStart.generation === katagoEngineGeneration) throw error;
+    }
+    if (katagoProcess == null) {
+      if (pendingStart.generation === katagoEngineGeneration) throw new Error('KataGo exited while starting.');
+      if (katagoStart === pendingStart) katagoStart = null;
+      return ensureKataGoEngine(await readKataGoSettings(), sender);
+    }
+    return;
+  }
+
+  const generation = katagoEngineGeneration;
+  const promise = startKataGoEngine(settings, sender, generation);
+  const start = {generation, promise};
+  katagoStart = start;
+  try {
+    await promise;
+  } finally {
+    if (katagoStart === start) katagoStart = null;
+  }
+}
+
+async function startKataGoEngine(settings: KataGoSettings, sender: WebContents, generation: number): Promise<void> {
   if (settings.executablePath === '' || !(await fileExists(settings.executablePath))) {
     throw new Error('KataGo cannot start because no installed executable is selected.');
   }
@@ -914,7 +972,6 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
   }
 
   const {command, args, options} = kataGoCommand(settings);
-  katagoOutputBuffer = '';
   sendKataGoConsole(sender, 'ulugo', 'info', `Starting KataGo: ${command} ${args.join(' ')}`);
   sendKataGoConsole(
     sender,
@@ -922,12 +979,16 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
     'info',
     `KataGo tuning: maxVisits=${settings.maxVisits}, fastVisits=${settings.fastVisits}, wideRootNoise=${settings.wideRootNoise}.`
   );
-  katagoProcess = spawn(command, args, options);
+  if (generation !== katagoEngineGeneration) throw new Error('KataGo configuration changed while starting.');
 
-  katagoProcess.stdout.on('data', (chunk: Buffer) => {
-    katagoOutputBuffer += chunk.toString('utf8');
-    const lines = katagoOutputBuffer.split(/\r?\n/);
-    katagoOutputBuffer = lines.pop() ?? '';
+  const process = spawn(command, args, options);
+  let outputBuffer = '';
+  katagoProcess = process;
+
+  process.stdout.on('data', (chunk: Buffer) => {
+    outputBuffer += chunk.toString('utf8');
+    const lines = outputBuffer.split(/\r?\n/);
+    outputBuffer = lines.pop() ?? '';
 
     for (const line of lines) {
       if (line.trim() === '') continue;
@@ -956,7 +1017,7 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
     }
   });
 
-  katagoProcess.stderr.on('data', (chunk: Buffer) => {
+  process.stderr.on('data', (chunk: Buffer) => {
     const message = chunk.toString('utf8').trim();
     if (message !== '') {
       const level = /error|failed|fatal/i.test(message) ? 'error' : /warn/i.test(message) ? 'warning' : 'info';
@@ -965,21 +1026,25 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
     }
   });
 
-  katagoProcess.stdin.on('error', (error) => {
+  process.stdin.on('error', (error) => {
     sendKataGoConsole(katagoSender, 'katago', 'error', error.message);
     katagoSender?.send('ulugo:katago:analysis-error', error.message);
   });
 
-  katagoProcess.on('error', (error) => {
+  process.on('error', (error) => {
     sendKataGoConsole(katagoSender, 'katago', 'error', error.message);
     katagoSender?.send('ulugo:katago:analysis-error', error.message);
-    katagoProcess = null;
-    activeKataGoQueryIds.clear();
+    if (katagoProcess === process) {
+      katagoProcess = null;
+      resetActiveKataGoQueries(true);
+    }
   });
 
-  katagoProcess.on('exit', (code, signal) => {
-    katagoProcess = null;
-    activeKataGoQueryIds.clear();
+  process.on('exit', (code, signal) => {
+    if (katagoProcess === process) {
+      katagoProcess = null;
+      resetActiveKataGoQueries(true);
+    }
     sendKataGoConsole(
       katagoSender,
       code === 0 || signal != null ? 'ulugo' : 'katago',
@@ -989,16 +1054,6 @@ async function ensureKataGoEngine(settings: KataGoSettings, sender: WebContents)
     if (code !== 0 && signal == null)
       katagoSender?.send('ulugo:katago:analysis-error', `KataGo exited with code ${code}.`);
   });
-}
-
-async function writeKataGoQuery(query: KataGoAnalysisQuery): Promise<void> {
-  activeKataGoQueryIds.add(query.id);
-  try {
-    await writeKataGoMessage(query);
-  } catch (error) {
-    activeKataGoQueryIds.delete(query.id);
-    throw error;
-  }
 }
 
 async function writeKataGoMessage(message: unknown): Promise<void> {
@@ -1044,11 +1099,19 @@ function restartKataGoEngineIfSettingsChanged(previous: KataGoSettings, next: Ka
     return;
   }
 
+  katagoEngineGeneration += 1;
   if (katagoProcess == null) return;
-  activeKataGoQueryIds.clear();
-  katagoProcess.kill();
+  const process = katagoProcess;
+  resetActiveKataGoQueries();
   katagoProcess = null;
+  process.kill();
   sendKataGoConsole(katagoSender, 'ulugo', 'info', 'KataGo configuration changed. The engine will restart on demand.');
+}
+
+function resetActiveKataGoQueries(fatal = false): void {
+  const queryIds = [...activeKataGoQueryIds];
+  activeKataGoQueryIds.clear();
+  if (queryIds.length > 0 || fatal) katagoSender?.send('ulugo:katago:analysis-reset', queryIds, fatal);
 }
 
 function kataGoCommand(settings: KataGoSettings): {
@@ -1126,15 +1189,14 @@ function normalizeRules(value: unknown): string {
 }
 
 async function stopKataGoAnalysis(queryIds?: string[]): Promise<void> {
-  if (katagoProcess == null) return;
   const idsToTerminate = queryIds ?? [...activeKataGoQueryIds];
-  if (idsToTerminate.length === 0) return;
-
   if (queryIds == null) {
     activeKataGoQueryIds.clear();
   } else {
     for (const queryId of queryIds) activeKataGoQueryIds.delete(queryId);
   }
+  if (katagoProcess == null || idsToTerminate.length === 0) return;
+
   await Promise.all(
     idsToTerminate.map((queryId) =>
       writeKataGoMessage({

@@ -55,35 +55,48 @@ export function getCurrentBranchMovePaths(
   return paths;
 }
 
-export function getAnalysisQueuePaths(document: SgfDocument, branchPaths: number[][]): number[][] {
-  const queued = new Set<string>();
-  const paths: number[][] = [];
+export function getCurrentBranchLeafNodeId(
+  document: SgfDocument,
+  selectedPath: number[],
+  branchMemory: Map<string, number>
+): string {
+  let node = getNodeAtPath(document, selectedPath);
+  let key = pathKey(selectedPath);
 
-  function addPath(nextPath: number[]): void {
-    if (!isAnalysisPath(document, nextPath)) return;
-    const key = pathKey(nextPath);
-    if (queued.has(key)) return;
-    queued.add(key);
-    paths.push(nextPath);
+  while (node.children.length > 0) {
+    const rememberedChild = branchMemory.get(key) ?? 0;
+    const nextIndex = rememberedChild < node.children.length ? rememberedChild : 0;
+    node = node.children[nextIndex];
+    key = key === '' ? String(nextIndex) : `${key}.${nextIndex}`;
   }
 
-  for (const branchPath of branchPaths) addPath(branchPath);
+  return node.id;
+}
+
+export function getAnalysisQueuePaths(document: SgfDocument, branchPaths: number[][]): number[][] {
+  const lastPath = branchPaths.at(-1);
+  if (lastPath == null) return [];
+
+  const nodes = getLine(document, lastPath);
+  const queuedNodeIds = new Set<string>();
+  const paths: number[][] = [];
+  for (const branchPath of branchPaths) {
+    const node = nodes[branchPath.length];
+    if (
+      node != null &&
+      !queuedNodeIds.has(node.id) &&
+      (branchPath.length === 0 || node.data.B != null || node.data.W != null)
+    ) {
+      queuedNodeIds.add(node.id);
+      paths.push(branchPath);
+    }
+  }
 
   return paths;
 }
 
-function isAnalysisPath(document: SgfDocument, path: number[]): boolean {
-  if (path.length === 0) return true;
-  const node = getNodeAtPath(document, path);
-  return node.data.B != null || node.data.W != null;
-}
-
 export function nodeKey(document: SgfDocument, path: number[]): string {
   return getNodeAtPath(document, path).id;
-}
-
-export function getLinePaths(path: number[]): number[][] {
-  return [[], ...path.map((_, index) => path.slice(0, index + 1))];
 }
 
 export function normalizeSelectedPath(document: SgfDocument, path: number[]): number[] {

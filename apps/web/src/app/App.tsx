@@ -77,6 +77,7 @@ import {
   findCurrentStoneMovePath,
   findFutureMovePath,
   getAnalysisQueuePaths,
+  getCurrentBranchLeafNodeId,
   getCurrentBranchMovePaths,
   nextFirstChildPath,
   nextRememberedPath,
@@ -126,6 +127,7 @@ interface ReplaceDocumentOptions {
   clearAnalysisCache?: boolean;
   convertHiddenPassPath?: number[];
   invalidateAnalysisPath?: number[];
+  preserveAnalysisQueries?: boolean;
   replaceMoveState?: ReplaceMoveState | null;
   resetSelectionMoved?: boolean;
 }
@@ -136,18 +138,22 @@ interface DisplayScoringSummary {
   result: string;
 }
 
-function useStableBranchPaths(document: SgfDocument, paths: number[][]): number[][] {
-  const current = useRef<{document: SgfDocument; leafPath: number[]; paths: number[][]} | null>(null);
-  const leafPath = paths.at(-1) ?? [];
-  // A document and leaf path uniquely identify the complete branch in the SGF tree.
-  if (
-    current.current == null ||
-    current.current.document !== document ||
-    !samePath(current.current.leafPath, leafPath)
-  ) {
-    current.current = {document, leafPath, paths};
-  }
-  return current.current.paths;
+function useStableBranchPaths(
+  document: SgfDocument,
+  selectedPath: number[],
+  branchMemory: Map<string, number>
+): number[][] {
+  const leafNodeId = useMemo(
+    () => getCurrentBranchLeafNodeId(document, selectedPath, branchMemory),
+    [branchMemory, document, selectedPath]
+  );
+  // A document and leaf node uniquely identify the complete branch in the SGF tree.
+  return useMemo(
+    () => getCurrentBranchMovePaths(document, selectedPath, branchMemory),
+    // selectedPath and branchMemory can change without changing this branch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [document, leafNodeId]
+  );
 }
 
 export function App() {
@@ -224,11 +230,7 @@ export function App() {
   const currentLanguage = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
   const antdLocale = antdLocales[currentLanguage];
   const appFontFamily = useMemo(() => getAppFontFamily(currentLanguage), [currentLanguage]);
-  const calculatedAnalysisChartPaths = useMemo(
-    () => getCurrentBranchMovePaths(document, path, branchMemoryRef.current),
-    [document, path]
-  );
-  const analysisChartPaths = useStableBranchPaths(document, calculatedAnalysisChartPaths);
+  const analysisChartPaths = useStableBranchPaths(document, path, branchMemoryRef.current);
   const analysisPaths = useMemo(
     () => getAnalysisQueuePaths(document, analysisChartPaths),
     [analysisChartPaths, document]
@@ -236,7 +238,13 @@ export function App() {
   const referenceMoveStones = useMemo(
     () =>
       tool === 'replace'
-        ? replaceMoveStones(document, operationPath, branchMemoryRef.current, replaceMoveState)
+        ? replaceMoveStones(
+            document,
+            operationPath,
+            branchMemoryRef.current,
+            replaceMoveState,
+            samePath(path, operationPath) ? position.stones : undefined
+          )
         : {
             past: new Map<string, SgfColor>(),
             future: new Map<string, SgfColor>(),
@@ -244,7 +252,7 @@ export function App() {
             missing: new Set<string>(),
             extra: new Set<string>(),
           },
-    [document, operationPath, replaceMoveState, tool]
+    [document, operationPath, path, position.stones, replaceMoveState, tool]
   );
   const shortcutLabels = useMemo(
     () =>
@@ -323,6 +331,7 @@ export function App() {
     skipEmptyInitialBoardLiveAnalysis: !selectionMoved,
     startFailedMessage: t('analysisStartFailed'),
   });
+  const clearKataGoConsoleMessages = useCallback(() => setKataGoConsoleMessages([]), [setKataGoConsoleMessages]);
   function handleImportedDocument(importedDocument: SgfDocument, initialPath: number[] = []): void {
     const startAnalysis =
       capabilities.katago && (analysisMode || (analysisSettings.mode === 'review' && analysisSettings.autoAnalyze));
@@ -350,12 +359,7 @@ export function App() {
     if (shouldAutoEstimateRecognizedGame(recognizedDocument)) {
       const {estimateScoringPoints} = await import('@ulugo/scoring-core');
       const scoringPoints = estimateScoringPoints(deriveBoardPosition(recognizedDocument, []));
-      const result = addScoringNode(
-        recognizedDocument,
-        [],
-        scoringPoints.blackPoints,
-        scoringPoints.whitePoints
-      );
+      const result = addScoringNode(recognizedDocument, [], scoringPoints.blackPoints, scoringPoints.whitePoints);
       importedDocument = result.document;
       initialPath = result.path;
     }
@@ -470,10 +474,12 @@ export function App() {
     setAutoBoardBackgroundReady(true);
   }, [autoBoardBackgroundReady, analysisSettings.showTopMoves, capabilities.katago, kataGoInitialized]);
 
-  function rememberPath(nextPath: number[]): void {
-    for (let index = 0; index < nextPath.length; index += 1) {
-      const parent = nextPath.slice(0, index);
-      branchMemoryRef.current.set(pathKey(parent), nextPath[index]);
+  function rememberPath(nextPath: number[], startIndex = 0): void {
+    let parentKey = pathKey(nextPath.slice(0, startIndex));
+    for (let index = startIndex; index < nextPath.length; index += 1) {
+      const childIndex = nextPath[index];
+      branchMemoryRef.current.set(parentKey, childIndex);
+      parentKey = parentKey === '' ? String(childIndex) : `${parentKey}.${childIndex}`;
     }
   }
 
@@ -531,7 +537,7 @@ export function App() {
 
   function replaceDocument(next: SgfDocument, nextPath: number[] = [], options: ReplaceDocumentOptions = {}): void {
     const normalizedPath = normalizeSelectedPath(next, nextPath);
-    resetAnalysisForDocumentChange(next, options);
+    if (options.preserveAnalysisQueries !== true) resetAnalysisForDocumentChange(next, options);
     setDocument(next);
     setPath(normalizedPath);
     setSelectionMoved(
@@ -551,15 +557,18 @@ export function App() {
 
   function selectPath(nextPath: number[], options: {keepAutoColorOverride?: boolean} = {}): void {
     const normalizedPath = normalizeSelectedPath(document, nextPath);
-    if (!samePath(path, normalizedPath) && shouldDeleteScoringNodeOnExit(document, path)) {
+    const pathChanged = !samePath(path, normalizedPath);
+    if (pathChanged && shouldDeleteScoringNodeOnExit(document, path)) {
       const result = deleteNode(document, path);
       replaceDocument(result.document, selectedPathAfterDelete(normalizedPath, path));
       return;
     }
 
-    rememberPath(normalizedPath);
-    setPath(normalizedPath);
-    if (!samePath(path, normalizedPath)) setSelectionMoved(true);
+    if (pathChanged) {
+      rememberPath(normalizedPath, sharedPathLength(path, normalizedPath));
+      setPath(normalizedPath);
+      setSelectionMoved(true);
+    }
     resetLabelTextForUnmarkedSelection(document, normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
     if (tool === 'replace') {
@@ -608,7 +617,7 @@ export function App() {
   }
 
   function handleCommentChange(value: string): void {
-    replaceDocument(updateComment(document, operationPath, value), operationPath);
+    replaceDocument(updateComment(document, operationPath, value), operationPath, {preserveAnalysisQueries: true});
   }
 
   const navigateToFirst = useCallback(() => {
@@ -617,8 +626,9 @@ export function App() {
 
   const navigatePrevious = useCallback(
     (steps = 1) => {
-      rememberPath(path);
-      selectPath(path.slice(0, Math.max(0, path.length - steps)));
+      const nextLength = Math.max(0, path.length - steps);
+      rememberPath(path, nextLength);
+      selectPath(path.slice(0, nextLength));
     },
     [document, path]
   );
@@ -745,13 +755,7 @@ export function App() {
       if (printPreviewOpen) return;
       if (isModalOpen() || isPopupOpen()) return;
 
-      if (
-        isElectron &&
-        event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        event.key.toLowerCase() === 'v'
-      ) {
+      if (isElectron && event.ctrlKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === 'v') {
         if (isTextInputActive()) return;
         event.preventDefault();
         void gameRecordFiles.openFromClipboard();
@@ -1111,13 +1115,13 @@ export function App() {
     });
     if (result == null) return;
 
-    replaceDocument(result.document, operationPath);
+    replaceDocument(result.document, operationPath, {preserveAnalysisQueries: true});
     markupActionRef.current = result.nextAction;
     if (result.incrementTextFrom != null) setLabelText(nextLabelText(result.incrementTextFrom));
   }
 
   function handleEraseAllMarkup(): void {
-    replaceDocument(eraseAllMarkup(document, operationPath), operationPath);
+    replaceDocument(eraseAllMarkup(document, operationPath), operationPath, {preserveAnalysisQueries: true});
   }
 
   function resetLabelTextForUnmarkedSelection(nextDocument: SgfDocument, nextPath: number[]): void {
@@ -1414,11 +1418,12 @@ export function App() {
             hidden={minimalMode}
             consoleMessages={kataGoConsoleMessages}
             consoleRef={kataGoConsoleRef}
-            onClearConsole={() => setKataGoConsoleMessages([])}
+            onClearConsole={clearKataGoConsoleMessages}
           />
           <AppBoardRegion
             document={document}
             path={path}
+            position={position}
             showCoordinates={minimalMode ? minimalShowCoordinates : showCoordinates}
             showMarkup={showBoardMarkup}
             moveNumberLimit={boardMoveNumberLimit}
@@ -1454,6 +1459,7 @@ export function App() {
           {!minimalMode || minimalRightPanelOpen ? (
             <AppRightPanel
               document={document}
+              treeLayout={treeLayout}
               path={path}
               blackPlayerName={blackPlayerName}
               whitePlayerName={whitePlayerName}
@@ -1498,9 +1504,7 @@ export function App() {
               }}
               onSelectPath={selectPath}
               onMoveToMain={handleMoveBranchToMain}
-              onRecordWithCamera={
-                supportsCameraCapture ? () => recordCameraInputRef.current?.click() : undefined
-              }
+              onRecordWithCamera={supportsCameraCapture ? () => recordCameraInputRef.current?.click() : undefined}
               onMoveLeft={handleMoveBranchLeft}
               onMoveRight={handleMoveBranchRight}
               onPrune={handlePruneBranch}
@@ -1631,7 +1635,11 @@ export function App() {
         values={gameInfo}
         onCancel={() => setGameInfoOpen(false)}
         onSave={(values) => {
-          replaceDocument(updateGameInfo(document, values), path, {clearAnalysisCache: true});
+          const analysisChanged = values.KM !== gameInfo.KM || values.RU !== gameInfo.RU;
+          replaceDocument(updateGameInfo(document, values), path, {
+            clearAnalysisCache: analysisChanged,
+            preserveAnalysisQueries: !analysisChanged,
+          });
           setGameInfoOpen(false);
         }}
       />
@@ -1662,6 +1670,13 @@ function shiftBranchMemoryForInsertedRoot(branchMemory: Map<string, number>): vo
   for (const [key, childIndex] of entries) {
     branchMemory.set(key === '' ? '0' : `0.${key}`, childIndex);
   }
+}
+
+function sharedPathLength(left: number[], right: number[]): number {
+  const length = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < length && left[index] === right[index]) index += 1;
+  return index;
 }
 
 function newStartupState(document: SgfDocument, path: number[], startedFromEmpty: boolean): StartupState {

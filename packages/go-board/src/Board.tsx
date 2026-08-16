@@ -1,8 +1,8 @@
-import {createElement as h, Component} from 'react';
+import {createElement as h, PureComponent} from 'react';
 import type {CSSProperties} from 'react';
 import classnames from 'classnames';
 
-import {random, vertexEquals, vertexEvents, range, getHoshis, type Vertex as VertexPoint} from './helper';
+import {vertexEquals, vertexEvents, range, getHoshis, type Vertex as VertexPoint} from './helper';
 import {CoordX, CoordY} from './Coord';
 import Grid from './Grid';
 import Vertex, {type AnalysisOverlay, type HotZone, type MoveHint, type VertexEventHandlers} from './Vertex';
@@ -42,27 +42,23 @@ export interface BoardProps extends PublicVertexEventHandlers {
 }
 
 interface BoardState {
-  signMap: Map<Sign>;
   width: number;
   height: number;
   xs: number[];
   ys: number[];
   hoshis: VertexPoint[];
-  randomMap: number[][];
 }
 
 const emptyState: BoardState = {
-  signMap: [],
   width: 0,
   height: 0,
   xs: [],
   ys: [],
   hoshis: [],
-  randomMap: [],
 };
 
-export default class Board extends Component<BoardProps, BoardState> {
-  static getDerivedStateFromProps: (props: BoardProps, state: BoardState) => Partial<BoardState>;
+export default class Board extends PureComponent<BoardProps, BoardState> {
+  static getDerivedStateFromProps: (props: BoardProps, state: BoardState) => Partial<BoardState> | null;
 
   constructor(props: BoardProps) {
     super(props);
@@ -71,7 +67,7 @@ export default class Board extends Component<BoardProps, BoardState> {
   }
 
   render() {
-    let {width, height, xs, ys, hoshis, randomMap} = this.state;
+    let {width, height, xs, ys, hoshis} = this.state;
 
     let {
       vertexSize = 24,
@@ -89,6 +85,9 @@ export default class Board extends Component<BoardProps, BoardState> {
       showCoordinates = false,
       selectedVertices = [],
     } = this.props;
+    const vertexEventProps = vertexEvents.map((eventName) => ({
+      [`on${eventName}`]: this.props[`onVertex${eventName}`],
+    }));
 
     return h(
       'div',
@@ -134,7 +133,6 @@ export default class Board extends Component<BoardProps, BoardState> {
         },
 
         h(Grid, {
-          vertexSize,
           width,
           height,
           xs,
@@ -171,7 +169,6 @@ export default class Board extends Component<BoardProps, BoardState> {
                     key: [x, y].join('-'),
                     position: [x, y],
 
-                    random: randomMap?.[y]?.[x],
                     sign: signMap?.[y]?.[x],
                     extraStone: extraStoneMap?.[y]?.[x],
                     missingStone: missingStoneMap?.[y]?.[x],
@@ -192,10 +189,7 @@ export default class Board extends Component<BoardProps, BoardState> {
                     selectedTop: selected && selectedVertices.some((v) => vertexEquals(v, [x, y - 1])),
                     selectedBottom: selected && selectedVertices.some((v) => vertexEquals(v, [x, y + 1])),
                   },
-
-                  ...vertexEvents.map((e) => ({
-                    [`on${e}`]: this.props[`onVertex${e}`],
-                  }))
+                  ...vertexEventProps
                 )
               );
             })
@@ -214,25 +208,23 @@ export default class Board extends Component<BoardProps, BoardState> {
   }
 }
 
-Board.getDerivedStateFromProps = function (props: BoardProps, state: BoardState): Partial<BoardState> {
+Board.getDerivedStateFromProps = function (props: BoardProps, state: BoardState): Partial<BoardState> | null {
   let {signMap = []} = props;
 
   let width = signMap.length === 0 ? 0 : signMap[0].length;
   let height = signMap.length;
 
   if (state.width === width && state.height === height) {
-    return {signMap};
+    return null;
   }
 
   // Board size changed
 
   return {
-    signMap,
     width,
     height,
     xs: range(width),
     ys: range(height),
     hoshis: getHoshis(width, height),
-    randomMap: signMap.map((row) => row.map((_) => random(4))),
   };
 };

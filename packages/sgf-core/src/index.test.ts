@@ -13,6 +13,7 @@ import {
   eraseAllMarkup,
   eraseMarkup,
   formatPoint,
+  getBoardSize,
   getInitialCaptures,
   moveBranch,
   moveBranchToMain,
@@ -38,6 +39,14 @@ describe('sgf-core', () => {
   it('creates explicit board sizes', () => {
     expect(serializeSgf(createNewGame(13))).toContain('SZ[13]');
     expect(serializeSgf(createNewGame(9))).toContain('SZ[9]');
+  });
+
+  it('limits board sizes to the supported coordinate range', () => {
+    expect(getBoardSize(parseSgf('(;SZ[1])'))).toBe(1);
+    expect(getBoardSize(parseSgf('(;SZ[25])'))).toBe(25);
+    for (const size of ['0', '-1', '1.5', '26', '100000', 'invalid']) {
+      expect(getBoardSize(parseSgf(`(;SZ[${size}])`))).toBe(19);
+    }
   });
 
   it('parses and serializes variations', () => {
@@ -245,6 +254,31 @@ describe('sgf-core', () => {
     expect(tree.children[0]).toMatchObject({isScoring: true, scoreColor: 'B'});
   });
 
+  it('uses captured connected groups for score node color', () => {
+    const document = parseSgf('(;SZ[5]KM[0];W[aa];W[ab];W[ba];W[bb];B[ac];B[bc];B[ca];B[cb];TB[]TW[])');
+    let scoringNode = buildTree(document)[0];
+    for (let index = 0; index < 9; index += 1) scoringNode = scoringNode.children[0];
+
+    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'B'});
+  });
+
+  it('keeps a group with liberties when the move touches it from two sides', () => {
+    const tree = buildTree(parseSgf('(;SZ[5]KM[1.5];W[aa];W[ab];W[ba];B[bb];TB[aa]TW[])'))[0];
+    const scoringNode = tree.children[0].children[0].children[0].children[0].children[0];
+
+    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'B'});
+  });
+
+  it.each(['New Zealand', 'Tromp-Taylor'])('removes suicidal groups under %s rules when scoring the tree', (rules) => {
+    const document = parseSgf(
+      `(;SZ[5]KM[0]RU[${rules}];B[cb];B[bc];W[ca];W[db];W[bb];W[ba];W[ac];W[bd];W[dc];W[cd];B[cc];TB[]TW[])`
+    );
+    let scoringNode = buildTree(document)[0];
+    while (scoringNode.children.length > 0) scoringNode = scoringNode.children[0];
+
+    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'W'});
+  });
+
   it('adds and updates scoring nodes', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const scoring = addScoringNode(first.document, first.path, ['aa', 'aa'], ['bb']);
@@ -293,6 +327,14 @@ describe('sgf-core', () => {
 
     expect(result.path).toEqual([0, 0]);
     expect(serializeSgf(result.document)).toContain(';B[dd];AW[pp])');
+  });
+
+  it('adds a setup stone where an earlier same-color move was captured', () => {
+    const document = parseSgf('(;SZ[5];B[bb];W[ab];W[ba];W[cb];W[bc])');
+    const result = addSetupStone(document, [0, 0, 0, 0, 0], 'B', 'bb');
+
+    expect(result.placed).toBe(true);
+    expect(serializeSgf(result.document)).toContain(';W[bc];AB[bb])');
   });
 
   it('keeps adding setup stones to the current setup leaf', () => {

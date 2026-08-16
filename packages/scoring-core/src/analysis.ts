@@ -99,9 +99,8 @@ function collectEmptyRegions(position: BoardPosition, groupByPoint: Map<SgfPoint
       const queue = [start];
       seen.add(start);
 
-      while (queue.length > 0) {
-        const point = queue.shift();
-        if (point == null) continue;
+      for (let index = 0; index < queue.length; index += 1) {
+        const point = queue[index];
         points.push(point);
 
         for (const neighbor of orthogonalNeighbors(point, position.size)) {
@@ -322,9 +321,8 @@ function collectAdjacentDeadComponent(
   const seen = new Set<number>([start.id]);
   const queue = [start];
 
-  while (queue.length > 0) {
-    const group = queue.shift();
-    if (group == null) continue;
+  for (let index = 0; index < queue.length; index += 1) {
+    const group = queue[index];
     component.push(group);
 
     for (const opponent of adjacentOpponentGroups(group, groups)) {

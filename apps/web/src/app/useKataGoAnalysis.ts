@@ -7,8 +7,9 @@ import {
   type KataGoConsoleMessage,
   type KataGoSettings,
 } from '@ulugo/katago-core';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {
+  analysisReady,
   buildAnalysisChartData,
   buildStoneScoreDeltas,
   convertHiddenPassAnalysisToRegularPass,
@@ -19,6 +20,7 @@ import {
   hiddenPassAnalysisKey,
   nextColorForPath,
   normalizeWinratePercent,
+  pruneAnalysisCache,
   shouldCountHiddenPassAnalysis,
   updateAnalysisCache,
   type AnalysisQueryContext,
@@ -27,12 +29,15 @@ import {
 import {nodeKey} from './sgfPathUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
 import {
+  buildAnalysisPathEntries,
   buildBackgroundPassAnalysisJobs,
   buildFastAnalysisJobs,
-  getFastQueryIdsOutsidePaths,
+  dispatchFastAnalysisJobs,
+  getFastQueryIdsOutsideEntries,
   getStaleLiveQueryIds,
   livePassAnalysisRequest,
   passAnalysisNodeId,
+  shouldCountPassAnalysis,
   type PassAnalysisRequest,
 } from './analysisQueueUtils';
 import {
@@ -46,6 +51,8 @@ import {
 const deepAnalysisVisits = 10_000_000;
 const maxFastAnalysisQueries = 2;
 const liveAnalysisDelayMs = 100;
+const emptyAnalysisChartData: AnalysisChartPoint[] = [];
+const emptyStoneScoreDeltas = new Map<string, number>();
 
 interface UseKataGoAnalysisOptions {
   enabled: boolean;
@@ -73,6 +80,7 @@ type RequestAnalysis = (
 interface AnalysisRequestOptions {
   live?: boolean;
   priority?: number;
+  includeOwnership?: boolean;
   nextMove?: {color: 'B' | 'W'; point: string};
   overrideSettings?: KataGoAnalysisQuery['overrideSettings'];
   cacheNodeId?: string;
@@ -98,6 +106,11 @@ export function useKataGoAnalysis({
   const [kataGoInitialized, setKataGoInitialized] = useState(false);
   const [analysisQueueRevision, setAnalysisQueueRevision] = useState(0);
   const analysisQueryContextRef = useRef(new Map<string, AnalysisQueryContext>());
+  const kataGoSettingsRef = useRef(defaultKataGoSettings);
+  const documentRef = useRef(document);
+  useLayoutEffect(() => {
+    documentRef.current = document;
+  }, [document]);
   const documentVersionRef = useRef(0);
   const analysisModeRef = useRef(false);
   const analysisDeepModeRef = useRef(false);
@@ -106,7 +119,7 @@ export function useKataGoAnalysis({
   const currentPathSupportsAnalysis = path.length === 0 || !isScoringNode(currentNode);
   const emptyInitialBoardPath = skipEmptyInitialBoardLiveAnalysis && path.length === 0 && !hasSetupStones(currentNode);
   const currentPathNeedsLiveAnalysis = currentPathSupportsAnalysis && (!emptyInitialBoardPath || analysisDeepMode);
-  const currentNodeId = nodeKey(document, path);
+  const currentNodeId = currentNode.id;
   const liveAnalysisTargetVisits = analysisDeepMode
     ? deepAnalysisVisits
     : Math.max(1, kataGoSettings.maxVisits || defaultKataGoSettings.maxVisits);
@@ -114,6 +127,12 @@ export function useKataGoAnalysis({
   const livePassTargetVisits = analysisDeepMode
     ? normalAnalysisTargetVisits
     : Math.max(1, Math.ceil(normalAnalysisTargetVisits * 0.5));
+  const analysisEntries = useMemo(() => buildAnalysisPathEntries(document, analysisPaths), [analysisPaths, document]);
+  const analysisEntryByNodeId = useMemo(
+    () => new Map(analysisEntries.map((entry) => [entry.nodeId, entry])),
+    [analysisEntries]
+  );
+  const currentAnalysisEntry = analysisEntryByNodeId.get(currentNodeId);
 
   const currentAnalysis = useMemo(
     () => (enabled && currentPathSupportsAnalysis ? (analysisCache[currentNodeId]?.result ?? null) : null),
@@ -121,56 +140,96 @@ export function useKataGoAnalysis({
   );
   const currentPassAnalysis = useMemo(() => {
     if (!enabled || !currentPathSupportsAnalysis) return null;
+    if (currentAnalysisEntry != null) return analysisCache[currentAnalysisEntry.passNodeId]?.result ?? null;
+
     const passChildPath = findPassChildPath(document, path);
     const nodeId = passChildPath == null ? hiddenPassAnalysisKey(document, path) : nodeKey(document, passChildPath);
     return analysisCache[nodeId]?.result ?? null;
-  }, [analysisCache, currentPathSupportsAnalysis, document, enabled, path]);
+  }, [analysisCache, currentAnalysisEntry, currentPathSupportsAnalysis, document, enabled, path]);
   const analysisTargetVisits = Math.max(1, kataGoSettings.fastVisits || defaultKataGoSettings.fastVisits);
   const needsPassAnalysis =
     analysisSettings.moveDisplay.includes('value') || analysisSettings.showHotZone || analysisSettings.showIntensity;
-  const analysisPendingCounts = useMemo(() => {
-    if (!enabled) return {normal: 0, hiddenPass: 0};
-
-    const normal = analysisPaths.filter((movePath) => {
-      const nodeId = nodeKey(document, movePath);
-      const cached = analysisCache[nodeId];
-      return cached == null || cached.visits < analysisTargetVisits;
-    }).length;
-    const hiddenPass = needsPassAnalysis
-      ? analysisPaths.filter((movePath) =>
-          shouldCountHiddenPassAnalysis(document, movePath, analysisCache, analysisTargetVisits)
-        ).length
+  const normalAnalysisNeedsOwnership = analysisSettings.showExpectedTerritory || analysisSettings.showHotZone;
+  const passAnalysisNeedsOwnership = analysisSettings.showHotZone;
+  const normalScorePendingCount = useMemo(
+    () =>
+      enabled
+        ? analysisEntries.filter((entry) => !analysisReady(analysisCache[entry.nodeId], analysisTargetVisits, false))
+            .length
+        : 0,
+    [analysisCache, analysisEntries, analysisTargetVisits, enabled]
+  );
+  const currentOwnershipPendingCount =
+    enabled &&
+    normalAnalysisNeedsOwnership &&
+    currentAnalysisEntry != null &&
+    analysisReady(analysisCache[currentNodeId], analysisTargetVisits, false) &&
+    !analysisReady(analysisCache[currentNodeId], analysisTargetVisits, true)
+      ? 1
       : 0;
-    return {normal, hiddenPass};
-  }, [analysisCache, analysisPaths, analysisQueueRevision, analysisTargetVisits, document, enabled, needsPassAnalysis]);
-  const normalFastPendingCount = analysisPendingCounts.normal;
+  const normalFastPendingCount = normalScorePendingCount + currentOwnershipPendingCount;
+  const branchPassPendingCount = useMemo(
+    () =>
+      enabled && needsPassAnalysis
+        ? analysisEntries.filter((entry) =>
+            shouldCountPassAnalysis(entry, analysisCache, analysisTargetVisits, passAnalysisNeedsOwnership)
+          ).length
+        : 0,
+    [analysisCache, analysisEntries, analysisTargetVisits, enabled, needsPassAnalysis, passAnalysisNeedsOwnership]
+  );
   const currentPassPendingCount =
     currentPathSupportsAnalysis &&
     needsPassAnalysis &&
-    shouldCountHiddenPassAnalysis(document, path, analysisCache, analysisTargetVisits)
+    (currentAnalysisEntry == null
+      ? shouldCountHiddenPassAnalysis(document, path, analysisCache, analysisTargetVisits, passAnalysisNeedsOwnership)
+      : shouldCountPassAnalysis(currentAnalysisEntry, analysisCache, analysisTargetVisits, passAnalysisNeedsOwnership))
       ? 1
       : 0;
   const currentLiveAnalysisReady =
     !currentPathNeedsLiveAnalysis ||
-    ((analysisCache[currentNodeId]?.visits ?? 0) >= liveAnalysisTargetVisits &&
-      (!needsPassAnalysis || !shouldCountHiddenPassAnalysis(document, path, analysisCache, livePassTargetVisits)));
+    (analysisReady(analysisCache[currentNodeId], liveAnalysisTargetVisits, normalAnalysisNeedsOwnership) &&
+      (!needsPassAnalysis ||
+        !(currentAnalysisEntry == null
+          ? shouldCountHiddenPassAnalysis(
+              document,
+              path,
+              analysisCache,
+              livePassTargetVisits,
+              passAnalysisNeedsOwnership
+            )
+          : shouldCountPassAnalysis(
+              currentAnalysisEntry,
+              analysisCache,
+              livePassTargetVisits,
+              passAnalysisNeedsOwnership
+            ))));
   const analysisIdle =
     analysisMode &&
     normalFastPendingCount === 0 &&
     !hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live') &&
     currentLiveAnalysisReady;
-  const backgroundPassPendingCount = Math.max(0, analysisPendingCounts.hiddenPass - currentPassPendingCount);
+  const backgroundPassPendingCount = Math.max(
+    0,
+    branchPassPendingCount - (currentAnalysisEntry == null ? 0 : currentPassPendingCount)
+  );
   const fastAnalysisPendingCount =
     normalFastPendingCount + currentPassPendingCount + (analysisIdle ? backgroundPassPendingCount : 0);
+  const showAnalysisChart =
+    analysisSettings.showScore ||
+    analysisSettings.showPointLoss ||
+    analysisSettings.showWinrate ||
+    analysisSettings.showIntensity;
   const analysisChartData = useMemo<AnalysisChartPoint[]>(
-    () => (enabled ? buildAnalysisChartData(document, analysisChartPaths, analysisCache) : []),
-    [analysisCache, analysisChartPaths, document, enabled]
+    () =>
+      enabled && showAnalysisChart
+        ? buildAnalysisChartData(document, analysisChartPaths, analysisCache)
+        : emptyAnalysisChartData,
+    [analysisCache, analysisChartPaths, document, enabled, showAnalysisChart]
   );
   const selectedChartMoveNumber = useMemo(() => {
     if (!enabled) return null;
-
-    const index = analysisChartPaths.findIndex((movePath) => samePath(movePath, path));
-    return index < 0 ? null : index;
+    const chartPath = analysisChartPaths[path.length];
+    return chartPath != null && samePath(chartPath, path) ? path.length : null;
   }, [analysisChartPaths, enabled, path]);
   const analysisChartSummary = useMemo(() => {
     if (!enabled) return null;
@@ -181,9 +240,46 @@ export function useKataGoAnalysis({
     return scoreLead == null && winrate == null ? null : {scoreLead, winrate};
   }, [currentAnalysis, enabled]);
   const stoneScoreDeltas = useMemo(
-    () => (enabled ? buildStoneScoreDeltas(document, path, analysisCache) : new Map<string, number>()),
-    [analysisCache, document, enabled, path]
+    () =>
+      enabled && analysisSettings.stoneOverlay === 'dot'
+        ? buildStoneScoreDeltas(document, path, analysisCache)
+        : emptyStoneScoreDeltas,
+    [analysisCache, analysisSettings.stoneOverlay, document, enabled, path]
   );
+  const fastAnalysisTargetRef = useRef({
+    analysisCache,
+    analysisEntries,
+    analysisIdle,
+    analysisTargetVisits,
+    document,
+    needsPassAnalysis,
+    normalAnalysisNeedsOwnership,
+    passAnalysisNeedsOwnership,
+    path,
+  });
+  useLayoutEffect(() => {
+    fastAnalysisTargetRef.current = {
+      analysisCache,
+      analysisEntries,
+      analysisIdle,
+      analysisTargetVisits,
+      document,
+      needsPassAnalysis,
+      normalAnalysisNeedsOwnership,
+      passAnalysisNeedsOwnership,
+      path,
+    };
+  }, [
+    analysisCache,
+    analysisEntries,
+    analysisIdle,
+    analysisTargetVisits,
+    document,
+    needsPassAnalysis,
+    normalAnalysisNeedsOwnership,
+    passAnalysisNeedsOwnership,
+    path,
+  ]);
 
   const appendKataGoConsoleMessage = useCallback((message: KataGoConsoleMessage): void => {
     setKataGoConsoleMessages((current) => [...current.slice(-499), message]);
@@ -207,6 +303,17 @@ export function useKataGoAnalysis({
     }
     if (changed) setAnalysisQueueRevision((current) => current + 1);
   }, []);
+
+  const resetAnalysisForSettingsChange = useCallback((): void => {
+    const pendingQueryIds = [...analysisQueryContextRef.current.keys()];
+    documentVersionRef.current += 1;
+    analysisQueryContextRef.current.clear();
+    if (pendingQueryIds.length > 0) {
+      setAnalysisQueueRevision((current) => current + 1);
+      if (enabled && window.ulugo != null) void window.ulugo.katago.stopAnalysis(pendingQueryIds);
+    }
+    setAnalysisCache({});
+  }, [enabled]);
 
   const setAnalysisModeActive = useCallback(
     (active: boolean, deep = false): void => {
@@ -258,6 +365,7 @@ export function useKataGoAnalysis({
             options.convertHiddenPassPath == null
               ? current
               : convertHiddenPassAnalysisToRegularPass(current, next, options.convertHiddenPassPath);
+          updated = pruneAnalysisCache(updated, next);
           if (options.invalidateAnalysisPath == null) return updated;
 
           const nodeId = getNodeAtPath(next, options.invalidateAnalysisPath).id;
@@ -299,9 +407,11 @@ export function useKataGoAnalysis({
   const refreshKataGoSettings = useCallback(async (): Promise<KataGoSettings> => {
     if (!enabled || window.ulugo == null) return defaultKataGoSettings;
     const settings = await window.ulugo.katago.getSettings();
+    if (!analysisCacheSettingsMatch(kataGoSettingsRef.current, settings)) resetAnalysisForSettingsChange();
+    kataGoSettingsRef.current = settings;
     setKataGoSettings(settings);
     return settings;
-  }, [enabled]);
+  }, [enabled, resetAnalysisForSettingsChange]);
 
   useEffect(() => {
     if (!enabled || window.ulugo == null) return;
@@ -337,23 +447,31 @@ export function useKataGoAnalysis({
 
         return updateAnalysisCache({
           cache: current,
-          document,
+          document: documentRef.current,
           path: context.path,
           nodeId: context.nodeId,
           mergeMove: context.mergeMove,
           result,
           visits,
-          completed: existing?.completed === true || !result.isDuringSearch,
         });
       });
+    });
+    const unsubscribeAnalysisReset = window.ulugo.katago.onAnalysisReset((queryIds, fatal) => {
+      let changed = false;
+      for (const queryId of queryIds) {
+        changed = analysisQueryContextRef.current.delete(queryId) || changed;
+      }
+      if (changed) setAnalysisQueueRevision((current) => current + 1);
+      if (fatal) setAnalysisModeActive(false);
     });
     const unsubscribeConsole = window.ulugo.katago.onConsoleMessage(appendKataGoConsoleMessage);
 
     return () => {
       unsubscribeAnalysis();
+      unsubscribeAnalysisReset();
       unsubscribeConsole();
     };
-  }, [appendKataGoConsoleMessage, document, enabled, setAnalysisModeActive]);
+  }, [appendKataGoConsoleMessage, enabled, setAnalysisModeActive]);
 
   useEffect(() => {
     const element = kataGoConsoleRef.current;
@@ -384,6 +502,7 @@ export function useKataGoAnalysis({
         path: requestPath,
         version: documentVersionRef.current,
         mode,
+        includeOwnership: options.includeOwnership ?? true,
         mergeMove: options.mergeMove,
       });
       setAnalysisQueueRevision((current) => current + 1);
@@ -398,6 +517,7 @@ export function useKataGoAnalysis({
             live: options.live,
             maxVisits,
             priority: options.priority,
+            includeOwnership: options.includeOwnership,
             nextMove: options.nextMove,
             overrideSettings,
           })
@@ -440,17 +560,24 @@ export function useKataGoAnalysis({
     const targetVisits = liveAnalysisTargetVisits;
     const liveNodeId = currentNodeId;
     const passRequest = needsPassAnalysis
-      ? livePassAnalysisRequest(document, path, analysisCache, livePassTargetVisits)
+      ? livePassAnalysisRequest(document, path, analysisCache, livePassTargetVisits, passAnalysisNeedsOwnership)
       : null;
-    const needsMain = (analysisCache[liveNodeId]?.visits ?? 0) < targetVisits;
-    const mainPending = hasPendingAnalysisQuery(analysisQueryContextRef.current, 'live', liveNodeId, null);
+    const needsMain = !analysisReady(analysisCache[liveNodeId], targetVisits, normalAnalysisNeedsOwnership);
+    const mainPending = hasPendingAnalysisQuery(
+      analysisQueryContextRef.current,
+      'live',
+      liveNodeId,
+      null,
+      normalAnalysisNeedsOwnership
+    );
     const passPending =
       passRequest != null &&
       hasPendingAnalysisQuery(
         analysisQueryContextRef.current,
         'live',
         passAnalysisNodeId(document, passRequest),
-        passRequest.passAnalysis === 'hidden' ? 'pass' : null
+        passRequest.passAnalysis === 'hidden' ? 'pass' : null,
+        passAnalysisNeedsOwnership
       );
     if ((!needsMain || mainPending) && (passRequest == null || passPending)) return;
     let cancelled = false;
@@ -461,7 +588,9 @@ export function useKataGoAnalysis({
           analysisQueryContextRef.current,
           needsMain ? liveNodeId : null,
           passRequest == null ? null : passAnalysisNodeId(document, passRequest),
-          passRequest?.passAnalysis === 'hidden'
+          passRequest?.passAnalysis === 'hidden',
+          normalAnalysisNeedsOwnership,
+          passAnalysisNeedsOwnership
         );
         if (liveQueryIds.length > 0) {
           removePendingAnalysisQueries(liveQueryIds);
@@ -472,9 +601,17 @@ export function useKataGoAnalysis({
         if (cancelled) return;
 
         await Promise.all([
-          needsMain && !mainPending ? requestAnalysis(path, 'live', targetVisits, {live: true}) : Promise.resolve(),
+          needsMain && !mainPending
+            ? requestAnalysis(path, 'live', targetVisits, {
+                live: true,
+                includeOwnership: normalAnalysisNeedsOwnership,
+              })
+            : Promise.resolve(),
           passRequest != null && !passPending
-            ? requestPassAnalysis(document, requestAnalysis, passRequest, 'live', {live: true})
+            ? requestPassAnalysis(document, requestAnalysis, passRequest, 'live', {
+                live: true,
+                includeOwnership: passAnalysisNeedsOwnership,
+              })
             : Promise.resolve(),
         ]);
       } catch (error: unknown) {
@@ -495,6 +632,8 @@ export function useKataGoAnalysis({
     appendKataGoConsoleMessage,
     analysisCache,
     needsPassAnalysis,
+    normalAnalysisNeedsOwnership,
+    passAnalysisNeedsOwnership,
     clearPendingAnalysisQueries,
     currentNodeId,
     currentPathNeedsLiveAnalysis,
@@ -516,56 +655,73 @@ export function useKataGoAnalysis({
     if (!enabled || window.ulugo == null || !analysisMode) return;
 
     try {
-      const settings = await refreshKataGoSettings();
-      const targetVisits = Math.max(1, settings.fastVisits || defaultKataGoSettings.fastVisits);
       const runVersion = documentVersionRef.current;
-      const staleFastQueryIds = getFastQueryIdsOutsidePaths(analysisQueryContextRef.current, analysisPaths, document);
+      const staleFastQueryIds = getFastQueryIdsOutsideEntries(analysisQueryContextRef.current, analysisEntries);
       if (staleFastQueryIds.length > 0) {
         for (const queryId of staleFastQueryIds) analysisQueryContextRef.current.delete(queryId);
         setAnalysisQueueRevision((current) => current + 1);
         await window.ulugo.katago.stopAnalysis(staleFastQueryIds);
       }
 
-      let availableSlots =
+      const currentTarget = fastAnalysisTargetRef.current;
+      if (
+        currentTarget.analysisCache !== analysisCache ||
+        currentTarget.analysisIdle !== analysisIdle ||
+        currentTarget.analysisEntries !== analysisEntries ||
+        currentTarget.analysisTargetVisits !== analysisTargetVisits ||
+        currentTarget.document !== document ||
+        currentTarget.needsPassAnalysis !== needsPassAnalysis ||
+        currentTarget.normalAnalysisNeedsOwnership !== normalAnalysisNeedsOwnership ||
+        currentTarget.passAnalysisNeedsOwnership !== passAnalysisNeedsOwnership ||
+        currentTarget.path !== path
+      ) {
+        return;
+      }
+
+      const availableSlots =
         maxFastAnalysisQueries - getPendingAnalysisQueryIds(analysisQueryContextRef.current, 'fast').length;
       if (availableSlots <= 0) return;
 
       const jobs = buildFastAnalysisJobs({
-        analysisPaths,
-        currentPath: path,
+        analysisEntries,
+        currentNodeId,
         passAnalysisMode: needsPassAnalysis,
-        document,
+        currentAnalysisNeedsOwnership: normalAnalysisNeedsOwnership,
+        passAnalysisNeedsOwnership,
         analysisCache,
-        targetVisits,
+        targetVisits: analysisTargetVisits,
         pendingQueries: analysisQueryContextRef.current,
       });
       if (jobs.length === 0 && analysisIdle && needsPassAnalysis) {
         jobs.push(
           ...buildBackgroundPassAnalysisJobs({
-            analysisPaths,
-            document,
+            analysisEntries,
             analysisCache,
-            targetVisits,
+            targetVisits: analysisTargetVisits,
             pendingQueries: analysisQueryContextRef.current,
+            requireOwnership: passAnalysisNeedsOwnership,
+            limit: availableSlots,
           })
         );
       }
 
-      for (const job of jobs) {
-        if (availableSlots <= 0 || !analysisModeRef.current || runVersion !== documentVersionRef.current) break;
-        if (job.passAnalysis != null) {
-          await requestPassAnalysis(
-            document,
-            requestAnalysis,
-            {path: job.path, passAnalysis: job.passAnalysis, targetVisits},
-            'fast',
-            {priority: job.passAnalysis === 'hidden' ? -100 : undefined}
-          );
-        } else {
-          await requestAnalysis(job.path, 'fast', targetVisits);
-        }
-        availableSlots -= 1;
-      }
+      if (!analysisModeRef.current || runVersion !== documentVersionRef.current) return;
+      await dispatchFastAnalysisJobs(jobs, availableSlots, (job) =>
+        job.passAnalysis != null
+          ? requestPassAnalysis(
+              document,
+              requestAnalysis,
+              {path: job.path, passAnalysis: job.passAnalysis, targetVisits: analysisTargetVisits},
+              'fast',
+              {
+                priority: job.passAnalysis === 'hidden' ? -100 : undefined,
+                includeOwnership: passAnalysisNeedsOwnership,
+              }
+            )
+          : requestAnalysis(job.path, 'fast', analysisTargetVisits, {
+              includeOwnership: job.includeOwnership === true,
+            })
+      );
     } catch (error) {
       appendKataGoConsoleMessage(
         createLocalConsoleMessage('ulugo', 'error', error instanceof Error ? error.message : startFailedMessage)
@@ -573,23 +729,25 @@ export function useKataGoAnalysis({
     }
   }, [
     analysisCache,
+    analysisEntries,
     analysisIdle,
     analysisMode,
-    analysisPaths,
+    analysisTargetVisits,
     needsPassAnalysis,
+    normalAnalysisNeedsOwnership,
+    passAnalysisNeedsOwnership,
     appendKataGoConsoleMessage,
     document,
     enabled,
     path,
-    refreshKataGoSettings,
     requestAnalysis,
     startFailedMessage,
   ]);
 
   useEffect(() => {
-    if (!analysisMode || deferAnalysisTargetChange || analysisPaths.length === 0) return;
+    if (!analysisMode || deferAnalysisTargetChange || analysisEntries.length === 0) return;
     void handleFastAnalysis();
-  }, [analysisPaths.length, analysisMode, analysisQueueRevision, deferAnalysisTargetChange, handleFastAnalysis]);
+  }, [analysisEntries.length, analysisMode, analysisQueueRevision, deferAnalysisTargetChange, handleFastAnalysis]);
 
   return {
     analysisSettings,
@@ -621,6 +779,16 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function analysisCacheSettingsMatch(left: KataGoSettings, right: KataGoSettings): boolean {
+  return (
+    left.executablePath === right.executablePath &&
+    left.modelPath === right.modelPath &&
+    left.configPath === right.configPath &&
+    left.altCommand === right.altCommand &&
+    left.wideRootNoise === right.wideRootNoise
+  );
+}
+
 function hasSetupStones(node: ReturnType<typeof getNodeAtPath>): boolean {
   return ['AB', 'AW', 'AE'].some((key) => (node.data[key]?.length ?? 0) > 0);
 }
@@ -630,7 +798,7 @@ function requestPassAnalysis(
   requestAnalysis: RequestAnalysis,
   request: PassAnalysisRequest,
   mode: AnalysisQueryContext['mode'],
-  options: Pick<AnalysisRequestOptions, 'live' | 'priority'> = {}
+  options: Pick<AnalysisRequestOptions, 'includeOwnership' | 'live' | 'priority'> = {}
 ): Promise<void> {
   return requestAnalysis(request.path, mode, request.targetVisits, passAnalysisOptions(document, request, options));
 }
@@ -638,7 +806,7 @@ function requestPassAnalysis(
 function passAnalysisOptions(
   document: SgfDocument,
   request: PassAnalysisRequest,
-  options: Pick<AnalysisRequestOptions, 'live' | 'priority'>
+  options: Pick<AnalysisRequestOptions, 'includeOwnership' | 'live' | 'priority'>
 ): AnalysisRequestOptions {
   const requestOptions: AnalysisRequestOptions = {...options, overrideSettings: {wideRootNoise: 0}};
   if (request.passAnalysis !== 'hidden') return requestOptions;

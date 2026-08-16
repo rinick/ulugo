@@ -238,9 +238,8 @@ function collectUnassignedEmptyComponent(
   const queue = [start];
   seen.add(start);
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null) continue;
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     component.push(point);
 
     for (const neighbor of orthogonalNeighbors(point, analysis.position.size)) {
@@ -299,10 +298,8 @@ function distanceToEffectiveColor(analysis: ScoringAnalysis, color: Stone): Map<
     for (const point of group.points) queue.push({point, distance: 0});
   }
 
-  while (queue.length > 0) {
-    const item = queue.shift();
-    if (item == null) continue;
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const item = queue[index];
     for (const neighbor of orthogonalNeighbors(item.point, analysis.position.size)) {
       if (analysis.position.stones.has(neighbor) || distances.has(neighbor)) continue;
 

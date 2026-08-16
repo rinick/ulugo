@@ -7,17 +7,17 @@ export function collectEstimateStoneGroup(
   stones: Map<SgfPoint, Stone>,
   size: number
 ): SgfPoint[] {
-  const seen = new Set<SgfPoint>();
+  if (stones.get(start) !== color) return [];
+
+  const seen = new Set<SgfPoint>([start]);
   const queue = [start];
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point)) continue;
-    if (stones.get(point) !== color) continue;
-    seen.add(point);
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     for (const neighbor of estimateStoneNeighbors(point, color, stones, size)) {
-      if (!seen.has(neighbor)) queue.push(neighbor);
+      if (seen.has(neighbor)) continue;
+      seen.add(neighbor);
+      queue.push(neighbor);
     }
   }
 
@@ -188,20 +188,20 @@ function countOrthogonalGroupLiberties(
   stones: Map<SgfPoint, Stone>,
   size: number
 ): number {
-  const seen = new Set<SgfPoint>();
+  if (stones.get(start) !== color) return 0;
+
+  const seen = new Set<SgfPoint>([start]);
   const liberties = new Set<SgfPoint>();
   const queue = [start];
 
-  while (queue.length > 0) {
-    const point = queue.shift();
-    if (point == null || seen.has(point) || stones.get(point) !== color) continue;
-    seen.add(point);
-
+  for (let index = 0; index < queue.length; index += 1) {
+    const point = queue[index];
     for (const neighbor of orthogonalNeighbors(point, size)) {
       const neighborColor = stones.get(neighbor);
       if (neighborColor == null) {
         liberties.add(neighbor);
       } else if (neighborColor === color && !seen.has(neighbor)) {
+        seen.add(neighbor);
         queue.push(neighbor);
       }
     }
