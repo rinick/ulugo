@@ -15,6 +15,7 @@ import {
   formatPoint,
   getBoardSize,
   getInitialCaptures,
+  getInitialNextColor,
   moveBranch,
   moveBranchToMain,
   parseGib,
@@ -185,6 +186,18 @@ describe('sgf-core', () => {
 
     expect(whiteToPlay.setupColor).toBe('B');
     expect(blackToPlay.setupColor).toBe('W');
+  });
+
+  it.each([
+    ['a handicap', '(;GM[1]SZ[19]HA[2]AB[pd]AW[dp])', 'W', 'B'],
+    ['a black-only root setup', '(;GM[1]SZ[19]AB[pd][dp])', 'W', 'B'],
+    ['an explicit Black player', '(;GM[1]SZ[19]HA[2]AB[pd][dp]PL[B])', 'B', 'W'],
+    ['a mixed root setup', '(;GM[1]SZ[19]AB[pd]AW[dp])', 'B', 'W'],
+  ] as const)('infers the initial player and setup color for %s', (_name, sgf, nextColor, setupColor) => {
+    const document = parseSgf(sgf);
+
+    expect(getInitialNextColor(document)).toBe(nextColor);
+    expect(buildTree(document)[0].setupColor).toBe(setupColor);
   });
 
   it('keeps only an empty move-zero setup gray', () => {

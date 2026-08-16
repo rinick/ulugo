@@ -2,6 +2,7 @@ import type {AnalysisChartPoint, KataGoAnalysisResult, KataGoMoveInfo} from '@ul
 import {usesAreaValueOffset} from '@ulugo/katago-core';
 import {
   getBoardSize,
+  getInitialNextColor,
   getLine,
   getNodeAtPath,
   normalizeMovePoint,
@@ -107,7 +108,7 @@ export function findPassChildIndex(node: SgfNode, boardSize: number): number {
 }
 
 export function nextColorForPath(document: SgfDocument, path: number[]): SgfColor {
-  let nextColor: SgfColor = 'B';
+  let nextColor = getInitialNextColor(document);
   for (const node of getLine(document, path)) nextColor = nextColorAfterNode(node, nextColor);
   return nextColor;
 }
@@ -320,7 +321,7 @@ export function buildAnalysisChartData(
   const nodes = getLine(document, lastPath);
   const boardSize = getBoardSize(document);
   const valueOffset = usesAreaValueOffset(document.root.data.RU?.[0]) ? 1 : 0;
-  let nextColor: SgfColor = 'B';
+  let nextColor = getInitialNextColor(document);
 
   nodes.forEach((node, index) => {
     nextColor = nextColorAfterNode(node, nextColor);

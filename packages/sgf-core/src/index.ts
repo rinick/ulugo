@@ -678,7 +678,11 @@ function stoneColorBeforePath(document: SgfDocument, path: number[], point: SgfP
   const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
   const allowSuicide = allowsSuicideRules(document.root.data.RU?.[0]);
   const boardSize = getBoardSize(document);
-  let state: TreeBoardState = {stones: new Map(), captures: getInitialCaptures(document), nextColor: 'B'};
+  let state: TreeBoardState = {
+    stones: new Map(),
+    captures: getInitialCaptures(document),
+    nextColor: getInitialNextColor(document),
+  };
   for (const node of getLine(document, path.slice(0, -1))) {
     state = applyTreeBoardNode(state, node, boardSize, useAgaPassStones, allowSuicide);
   }
@@ -749,6 +753,17 @@ export function getGameInfo(document: SgfDocument): Record<string, string> {
   return Object.fromEntries(keys.map((key) => [key, document.root.data[key]?.[0] ?? '']));
 }
 
+export function getInitialNextColor(document: SgfDocument): SgfColor {
+  const data = document.root.data;
+  const player = data.PL?.[0];
+  if (player === 'B' || player === 'W') return player;
+
+  const handicap = Number(data.HA?.[0]);
+  const hasBlackOnlySetup =
+    data.B == null && data.W == null && (data.AB ?? []).length > 0 && (data.AW ?? []).length === 0;
+  return (Number.isInteger(handicap) && handicap >= 2) || hasBlackOnlySetup ? 'W' : 'B';
+}
+
 export function isScoringNode(node: SgfNode): boolean {
   return node.data.B == null && node.data.W == null && (node.data.TB != null || node.data.TW != null);
 }
@@ -816,7 +831,7 @@ export function buildTree(document: SgfDocument): TreeItem[] {
     walk(document.root, [], 0, {
       stones: new Map(),
       captures: getInitialCaptures(document),
-      nextColor: 'B',
+      nextColor: getInitialNextColor(document),
     })
   );
   return items;

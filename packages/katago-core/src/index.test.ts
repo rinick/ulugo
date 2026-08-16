@@ -133,4 +133,12 @@ describe('katago-core', () => {
     expect(query.initialPlayer).toBe('B');
     expect(query.moves).toEqual([]);
   });
+
+  it('uses White as KataGo initial player after a black-only root setup', () => {
+    const document = parseSgf('(;GM[1]SZ[19]HA[2]AB[pd][dp];W[pp])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0]});
+
+    expect(query.initialPlayer).toBe('W');
+    expect(query.moves).toEqual([['W', 'Q4']]);
+  });
 });

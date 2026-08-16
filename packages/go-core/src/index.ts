@@ -1,6 +1,7 @@
 import {
   getBoardSize,
   getInitialCaptures,
+  getInitialNextColor,
   getLine,
   isPointOnBoard,
   normalizeMovePoint,
@@ -44,7 +45,7 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
   const line = getLine(document, path);
   let moveNumber = 0;
   let lastMove: SgfPoint | null = null;
-  let nextColor: Stone = 'B';
+  let nextColor: Stone = getInitialNextColor(document);
   const allowSuicide = allowsSuicideRules(document.root.data.RU?.[0]);
   const useAgaPassStones = isAgaRules(document.root.data.RU?.[0]);
 

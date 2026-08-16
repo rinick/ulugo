@@ -137,6 +137,10 @@ describe('buildAnalysisChartData', () => {
     expectIntensityColors('(;SZ[9]PL[W];W[aa];B[bb])', 3, ['W', 'B', 'W']);
   });
 
+  it('infers White to play after a black-only root setup', () => {
+    expectIntensityColors('(;SZ[9]HA[2]AB[cc][gg];W[ee];B[ff])', 3, ['W', 'B', 'W']);
+  });
+
   it('honors PL on a setup node in the middle of a game', () => {
     expectIntensityColors('(;SZ[9];B[aa];AB[bb]PL[B];B[cc])', 4, ['B', 'W', 'B', 'W']);
   });

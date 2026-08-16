@@ -2,6 +2,7 @@ import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
 import {
   getBoardSize,
   getGameInfo,
+  getInitialNextColor,
   getLine,
   isPointOnBoard,
   normalizeMovePoint,
@@ -147,7 +148,7 @@ function buildKataGoHistory(
   }
   if (setupIndex < 0) {
     return {
-      initialPlayer: 'B',
+      initialPlayer: getInitialNextColor(document),
       initialStones: [],
       moves: line.flatMap((node): Array<[SgfColor, string]> => {
         const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
@@ -157,7 +158,7 @@ function buildKataGoHistory(
   }
 
   const stones = new Map<string, SgfColor>();
-  let nextColor: SgfColor = 'B';
+  let nextColor: SgfColor = getInitialNextColor(document);
   for (const node of line.slice(0, setupIndex + 1)) {
     for (const point of node.data.AE ?? []) stones.delete(point);
     for (const point of node.data.AB ?? []) {

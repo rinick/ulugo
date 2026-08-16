@@ -75,6 +75,12 @@ describe('go-core', () => {
     expect(deriveBoardPosition(document, [0, 0]).nextColor).toBe('B');
   });
 
+  it('infers White to play after a black-only root setup', () => {
+    const document = parseSgf('(;GM[1]SZ[19]HA[2]AB[pd][dp];W[pp])');
+
+    expect(deriveBoardPosition(document, []).nextColor).toBe('W');
+  });
+
   it('derives labels and markup from the current node', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     let document = addMarkup(first.document, first.path, 'CR', 'dd');
