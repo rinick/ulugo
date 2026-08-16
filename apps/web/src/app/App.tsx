@@ -136,6 +136,20 @@ interface DisplayScoringSummary {
   result: string;
 }
 
+function useStableBranchPaths(document: SgfDocument, paths: number[][]): number[][] {
+  const current = useRef<{document: SgfDocument; leafPath: number[]; paths: number[][]} | null>(null);
+  const leafPath = paths.at(-1) ?? [];
+  // A document and leaf path uniquely identify the complete branch in the SGF tree.
+  if (
+    current.current == null ||
+    current.current.document !== document ||
+    !samePath(current.current.leafPath, leafPath)
+  ) {
+    current.current = {document, leafPath, paths};
+  }
+  return current.current.paths;
+}
+
 export function App() {
   const {t, i18n} = useTranslation();
   const [startupState] = useState(readStartupState);
@@ -210,10 +224,11 @@ export function App() {
   const currentLanguage = normalizeLanguage(i18n.resolvedLanguage ?? i18n.language);
   const antdLocale = antdLocales[currentLanguage];
   const appFontFamily = useMemo(() => getAppFontFamily(currentLanguage), [currentLanguage]);
-  const analysisChartPaths = useMemo(
+  const calculatedAnalysisChartPaths = useMemo(
     () => getCurrentBranchMovePaths(document, path, branchMemoryRef.current),
     [document, path]
   );
+  const analysisChartPaths = useStableBranchPaths(document, calculatedAnalysisChartPaths);
   const analysisPaths = useMemo(
     () => getAnalysisQueuePaths(document, analysisChartPaths),
     [analysisChartPaths, document]

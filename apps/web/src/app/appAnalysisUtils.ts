@@ -1,7 +1,14 @@
 import type {AnalysisChartPoint, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
-import {deriveBoardPosition} from '@ulugo/go-core';
 import {usesAreaValueOffset} from '@ulugo/katago-core';
-import {getBoardSize, getNodeAtPath, normalizeMovePoint, type SgfColor, type SgfDocument} from '@ulugo/sgf-core';
+import {
+  getBoardSize,
+  getLine,
+  getNodeAtPath,
+  normalizeMovePoint,
+  type SgfColor,
+  type SgfDocument,
+  type SgfNode,
+} from '@ulugo/sgf-core';
 import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 import {getLinePaths, nodeKey} from './sgfPathUtils';
 
@@ -45,7 +52,7 @@ export function getAnalysisVisits(result: KataGoAnalysisResult): number {
 }
 
 export function hiddenPassAnalysisKey(document: SgfDocument, path: number[]): string {
-  return `${nodeKey(document, path)}:pass`;
+  return hiddenPassAnalysisNodeId(nodeKey(document, path));
 }
 
 export function shouldRequestHiddenPassAnalysis(
@@ -84,16 +91,14 @@ export function shouldCountHiddenPassAnalysis(
 
 export function findPassChildPath(document: SgfDocument, path: number[]): number[] | null {
   const parent = getNodeAtPath(document, path);
-  const boardSize = getBoardSize(document);
-  const index = parent.children.findIndex((child) => {
-    const color = child.data.B != null ? 'B' : child.data.W != null ? 'W' : null;
-    return color != null && normalizeMovePoint(child.data[color]?.[0] ?? '', boardSize) === '';
-  });
+  const index = passChildIndex(parent, getBoardSize(document));
   return index < 0 ? null : [...path, index];
 }
 
 export function nextColorForPath(document: SgfDocument, path: number[]): SgfColor {
-  return deriveBoardPosition(document, path).nextColor;
+  let nextColor: SgfColor = 'B';
+  for (const node of getLine(document, path)) nextColor = nextColorAfterNode(node, nextColor);
+  return nextColor;
 }
 
 export function updateAnalysisCache({
@@ -274,11 +279,17 @@ export function buildAnalysisChartData(
   cache: Record<string, CachedAnalysis>
 ): AnalysisChartPoint[] {
   const data: AnalysisChartPoint[] = [];
-  const valueOffset = usesAreaValueOffset(document.root.data.RU?.[0]) ? 1 : 0;
+  const lastPath = paths.at(-1);
+  if (lastPath == null) return data;
 
-  paths.forEach((path, index) => {
-    const rootInfo = cache[nodeKey(document, path)]?.result.rootInfo;
-    const node = getNodeAtPath(document, path);
+  const nodes = getLine(document, lastPath);
+  const boardSize = getBoardSize(document);
+  const valueOffset = usesAreaValueOffset(document.root.data.RU?.[0]) ? 1 : 0;
+  let nextColor: SgfColor = 'B';
+
+  nodes.forEach((node, index) => {
+    nextColor = nextColorAfterNode(node, nextColor);
+    const rootInfo = cache[node.id]?.result.rootInfo;
     const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : undefined;
     if (rootInfo?.scoreLead != null)
       data.push({
@@ -291,12 +302,11 @@ export function buildAnalysisChartData(
       data.push({moveNumber: index, series: 'winrate', value: normalizeWinratePercent(rootInfo.winrate)});
 
     const rootScore = rootInfo?.scoreLead ?? rootInfo?.scoreMean;
-    const passPath = findPassChildPath(document, path);
-    const passNodeId = passPath == null ? hiddenPassAnalysisKey(document, path) : nodeKey(document, passPath);
+    const passChild = node.children[passChildIndex(node, boardSize)];
+    const passNodeId = passChild == null ? hiddenPassAnalysisNodeId(node.id) : passChild.id;
     const passRootInfo = cache[passNodeId]?.result.rootInfo;
     const passScore = passRootInfo?.scoreLead ?? passRootInfo?.scoreMean;
     if (rootScore != null && passScore != null) {
-      const nextColor = deriveBoardPosition(document, path).nextColor;
       const passLoss = (rootScore - passScore) * (nextColor === 'B' ? 1 : -1);
       data.push({
         moveNumber: index,
@@ -308,6 +318,24 @@ export function buildAnalysisChartData(
   });
 
   return data;
+}
+
+function hiddenPassAnalysisNodeId(nodeId: string): string {
+  return `${nodeId}:pass`;
+}
+
+function passChildIndex(node: SgfNode, boardSize: number): number {
+  return node.children.findIndex((child) => {
+    const color = child.data.B != null ? 'B' : child.data.W != null ? 'W' : null;
+    return color != null && normalizeMovePoint(child.data[color]?.[0] ?? '', boardSize) === '';
+  });
+}
+
+function nextColorAfterNode(node: SgfNode, current: SgfColor): SgfColor {
+  if (node.data.B != null) return 'W';
+  if (node.data.W != null) return 'B';
+  const nextColor = node.data.PL?.[0];
+  return nextColor === 'B' || nextColor === 'W' ? nextColor : current;
 }
 
 export function buildStoneScoreDeltas(

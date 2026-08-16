@@ -359,6 +359,7 @@ export function GoBoard({
     (candidate: PvPreviewCandidate) => {
       clearPvTimers();
       pendingPvRef.current = null;
+      setPlacementPreview(null);
       setPvPreview({...candidate, pv: [...candidate.pv], visibleCount: 1});
 
       if (candidate.pv.length <= 1) return;
@@ -374,7 +375,7 @@ export function GoBoard({
         });
       }, 300);
     },
-    [clearPvTimers]
+    [clearPvTimers, setPlacementPreview]
   );
 
   const schedulePvPreview = useCallback(
@@ -516,19 +517,43 @@ export function GoBoard({
   );
   const handleVertexMouseEnter = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+      const hoverCandidate = hoverCandidateAtVertex(vertex);
+      if (hoverCandidate != null && analysisSettings.pvPreviewDelay > 0) {
+        schedulePvPreview(hoverCandidate);
+        const placementCandidate = placementCandidateAtVertex(vertex);
+        if (pvPreview?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
+          showMousePlacementPreview(event, placementCandidate);
+        }
+        return;
+      }
       const placementCandidate = placementCandidateAtVertex(vertex);
       if (placementCandidate != null) {
         clearPvPreview();
         showMousePlacementPreview(event, placementCandidate);
         return;
       }
-      const candidate = hoverCandidateAtVertex(vertex);
-      if (candidate != null) schedulePvPreview(candidate);
     },
-    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview, showMousePlacementPreview]
+    [
+      analysisSettings.pvPreviewDelay,
+      clearPvPreview,
+      hoverCandidateAtVertex,
+      placementCandidateAtVertex,
+      pvPreview?.triggerKey,
+      schedulePvPreview,
+      showMousePlacementPreview,
+    ]
   );
   const handleVertexMouseMove = useCallback(
     (event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
+      const hoverCandidate = hoverCandidateAtVertex(vertex);
+      if (hoverCandidate != null && analysisSettings.pvPreviewDelay > 0) {
+        schedulePvPreview(hoverCandidate);
+        const placementCandidate = placementCandidateAtVertex(vertex);
+        if (pvPreview?.triggerKey !== hoverCandidate.triggerKey && placementCandidate != null) {
+          showMousePlacementPreview(event, placementCandidate);
+        }
+        return;
+      }
       const placementCandidate = placementCandidateAtVertex(vertex);
       if (placementCandidate != null) {
         clearPvPreview();
@@ -536,10 +561,16 @@ export function GoBoard({
         return;
       }
       if (placementPreviewRef.current?.source === 'mouse') setPlacementPreview(null);
-      const candidate = hoverCandidateAtVertex(vertex);
-      if (candidate != null) schedulePvPreview(candidate);
     },
-    [clearPvPreview, hoverCandidateAtVertex, placementCandidateAtVertex, schedulePvPreview, showMousePlacementPreview]
+    [
+      analysisSettings.pvPreviewDelay,
+      clearPvPreview,
+      hoverCandidateAtVertex,
+      placementCandidateAtVertex,
+      pvPreview?.triggerKey,
+      schedulePvPreview,
+      showMousePlacementPreview,
+    ]
   );
   const handleVertexMouseLeave = useCallback(
     (_event: MouseEvent<HTMLDivElement>, vertex: Vertex) => {
