@@ -229,13 +229,42 @@ interface TygemClient {
   close(): void;
 }
 
-interface TygemCredentials {
+interface RemoteProtocolGameSummary {
+  gameId: string;
+  blackName: string;
+  blackRankLabel: string;
+  whiteName: string;
+  whiteRankLabel: string;
+  boardSize: number;
+  startTime: Date;
+  result: string;
+  winnerColor: 'black' | 'white' | 'draw' | 'unknown';
+}
+
+interface KgsClient {
+  readonly username: string;
+  listGames(queryUsername?: string): Promise<{username: string; games: RemoteProtocolGameSummary[]}>;
+  downloadGame(gameId: string): Promise<string>;
+  close(): void;
+}
+
+interface PandanetClient {
+  readonly username: string;
+  listGames(queryUsername?: string, page?: number): Promise<{games: RemoteProtocolGameSummary[]; nextPage: number | null}>;
+  downloadGame(gameId: string): Promise<string>;
+}
+
+interface RemoteCredentials {
   username: string;
   password: string;
 }
 
+type PrivateLoginProtocol = 'kgs' | 'pandanet' | 'tygem';
+
 interface PrivateGoProtocol {
   FoxClient?: {forUsername(username: string): Promise<FoxClient>};
+  KgsClient?: {login(username: string, password: string): Promise<KgsClient>};
+  PandanetClient?: {login(username: string, password: string): Promise<PandanetClient>};
   TygemClient?: {login(username: string, password: string): Promise<TygemClient>};
 }
 
@@ -253,9 +282,10 @@ let autoSaveBeforeQuitComplete = false;
 let consoleMessageCounter = 0;
 const activeKataGoQueryIds = new Set<string>();
 const firstRunSetupFileName = 'katago-first-run-setup.json';
-const tygemCredentialsFileName = 'tygem-login.json';
 const privateGoProtocol = loadPrivateGoProtocol();
 const foxProtocol = privateGoProtocol?.FoxClient == null ? null : {FoxClient: privateGoProtocol.FoxClient};
+let kgsClient: KgsClient | null = null;
+let pandanetClient: PandanetClient | null = null;
 let tygemClient: TygemClient | null = null;
 
 app.setPath('userData', path.join(app.getPath('home'), '.ulugo'));
@@ -512,37 +542,15 @@ function registerIpc(): void {
   ipcMain.handle('ulugo:tygem:is-available', () => privateGoProtocol?.TygemClient != null);
   ipcMain.handle('ulugo:tygem:get-saved-login', async () => {
     if (privateGoProtocol?.TygemClient == null) return null;
-    const credentials = await readTygemCredentials();
+    const credentials = await readRemoteCredentials('tygem');
     return credentials == null ? null : {username: credentials.username, hasPassword: true};
   });
   ipcMain.handle('ulugo:tygem:login', async (_event, request: unknown) => {
     if (privateGoProtocol?.TygemClient == null) throw new Error('Tygem protocol support is not installed.');
-    if (typeof request !== 'object' || request == null) throw new Error('Invalid Tygem login request.');
-    const {username, password, useSavedPassword} = request as {
-      username?: unknown;
-      password?: unknown;
-      useSavedPassword?: unknown;
-    };
-    if (typeof username !== 'string' || username.trim() === '') throw new Error('Tygem username cannot be empty.');
-    const normalizedUsername = username.trim();
-    let loginPassword: string;
-    let saveCredentials = false;
-    if (typeof password === 'string' && password !== '') {
-      loginPassword = password;
-      saveCredentials = true;
-    } else if (useSavedPassword === true) {
-      const saved = await readTygemCredentials();
-      if (saved == null || saved.username.toLowerCase() !== normalizedUsername.toLowerCase()) {
-        throw new Error('No saved Tygem password is available for this account.');
-      }
-      loginPassword = saved.password;
-    } else {
-      throw new Error('Tygem password cannot be empty.');
-    }
-
-    const client = await privateGoProtocol.TygemClient.login(normalizedUsername, loginPassword);
-    const credentialsSaved = saveCredentials
-      ? await writeTygemCredentials({username: client.username, password: loginPassword})
+    const login = await resolveRemoteLogin('tygem', 'Tygem', request);
+    const client = await privateGoProtocol.TygemClient.login(login.username, login.password);
+    const credentialsSaved = login.saveCredentials
+      ? await writeRemoteCredentials('tygem', {username: client.username, password: login.password})
       : true;
     tygemClient?.close();
     tygemClient = client;
@@ -599,6 +607,81 @@ function registerIpc(): void {
     return {
       content: await tygemClient.downloadGame(itemId),
       fileName: `tygem-${itemId.toLowerCase()}.gib`,
+    };
+  });
+
+  ipcMain.handle('ulugo:kgs:is-available', () => privateGoProtocol?.KgsClient != null);
+  ipcMain.handle('ulugo:kgs:get-saved-login', async () => {
+    if (privateGoProtocol?.KgsClient == null) return null;
+    const credentials = await readRemoteCredentials('kgs');
+    return credentials == null ? null : {username: credentials.username, hasPassword: true};
+  });
+  ipcMain.handle('ulugo:kgs:login', async (_event, request: unknown) => {
+    if (privateGoProtocol?.KgsClient == null) throw new Error('KGS protocol support is not installed.');
+    const login = await resolveRemoteLogin('kgs', 'KGS', request);
+    const client = await privateGoProtocol.KgsClient.login(login.username, login.password);
+    const credentialsSaved = login.saveCredentials
+      ? await writeRemoteCredentials('kgs', {username: client.username, password: login.password})
+      : true;
+    kgsClient?.close();
+    kgsClient = client;
+    return {query: client.username, credentialsSaved};
+  });
+  ipcMain.handle('ulugo:kgs:list-games', async (_event, request: unknown) => {
+    if (kgsClient == null) throw new Error('Log in to KGS first.');
+    const query = remoteQuery(request, 'KGS');
+    const result = await kgsClient.listGames(query);
+    return {
+      query: result.username,
+      items: result.games.map((game) => mapRemoteGame(game, result.username)),
+      nextCursor: null,
+    };
+  });
+  ipcMain.handle('ulugo:kgs:download-game', async (_event, request: unknown) => {
+    if (kgsClient == null) throw new Error('Log in to KGS first.');
+    const {itemId} = remoteGameRequest(request, 'KGS');
+    return {
+      content: await kgsClient.downloadGame(itemId),
+      fileName: `kgs-${path.basename(itemId)}`,
+    };
+  });
+
+  ipcMain.handle('ulugo:pandanet:is-available', () => privateGoProtocol?.PandanetClient != null);
+  ipcMain.handle('ulugo:pandanet:get-saved-login', async () => {
+    if (privateGoProtocol?.PandanetClient == null) return null;
+    const credentials = await readRemoteCredentials('pandanet');
+    return credentials == null ? null : {username: credentials.username, hasPassword: true};
+  });
+  ipcMain.handle('ulugo:pandanet:login', async (_event, request: unknown) => {
+    if (privateGoProtocol?.PandanetClient == null) throw new Error('Pandanet protocol support is not installed.');
+    const login = await resolveRemoteLogin('pandanet', 'Pandanet', request);
+    const client = await privateGoProtocol.PandanetClient.login(login.username, login.password);
+    const credentialsSaved = login.saveCredentials
+      ? await writeRemoteCredentials('pandanet', {username: client.username, password: login.password})
+      : true;
+    pandanetClient = client;
+    return {query: client.username, credentialsSaved};
+  });
+  ipcMain.handle('ulugo:pandanet:list-games', async (_event, request: unknown) => {
+    if (pandanetClient == null) throw new Error('Log in to Pandanet first.');
+    const query = remoteQuery(request, 'Pandanet');
+    const cursor = (request as {cursor?: unknown}).cursor;
+    if (cursor != null && (typeof cursor !== 'string' || !/^\d+$/.test(cursor) || Number(cursor) < 1)) {
+      throw new Error('Invalid Pandanet archive cursor.');
+    }
+    const result = await pandanetClient.listGames(query, cursor == null ? 1 : Number(cursor));
+    return {
+      query,
+      items: result.games.map((game) => mapRemoteGame(game, query)),
+      nextCursor: result.nextPage == null ? null : String(result.nextPage),
+    };
+  });
+  ipcMain.handle('ulugo:pandanet:download-game', async (_event, request: unknown) => {
+    if (pandanetClient == null) throw new Error('Log in to Pandanet first.');
+    const {itemId} = remoteGameRequest(request, 'Pandanet');
+    return {
+      content: await pandanetClient.downloadGame(itemId),
+      fileName: `pandanet-${itemId.replace(':', '-')}.sgf`,
     };
   });
 
@@ -676,13 +759,84 @@ function registerIpc(): void {
   );
 }
 
+async function resolveRemoteLogin(
+  protocol: PrivateLoginProtocol,
+  displayName: string,
+  request: unknown
+): Promise<{username: string; password: string; saveCredentials: boolean}> {
+  if (typeof request !== 'object' || request == null) throw new Error(`Invalid ${displayName} login request.`);
+  const {username, password, useSavedPassword} = request as {
+    username?: unknown;
+    password?: unknown;
+    useSavedPassword?: unknown;
+  };
+  if (typeof username !== 'string' || username.trim() === '') throw new Error(`${displayName} username cannot be empty.`);
+  const normalizedUsername = username.trim();
+  if (typeof password === 'string' && password !== '') {
+    return {username: normalizedUsername, password, saveCredentials: true};
+  }
+  if (useSavedPassword === true) {
+    const saved = await readRemoteCredentials(protocol);
+    if (saved != null && saved.username.toLowerCase() === normalizedUsername.toLowerCase()) {
+      return {username: normalizedUsername, password: saved.password, saveCredentials: false};
+    }
+    throw new Error(`No saved ${displayName} password is available for this account.`);
+  }
+  throw new Error(`${displayName} password cannot be empty.`);
+}
+
+function remoteQuery(request: unknown, displayName: string): string {
+  if (typeof request !== 'object' || request == null) throw new Error(`Invalid ${displayName} game list request.`);
+  const {query} = request as {query?: unknown};
+  if (typeof query !== 'string' || query.trim() === '') throw new Error(`${displayName} username cannot be empty.`);
+  return query.trim();
+}
+
+function remoteGameRequest(request: unknown, displayName: string): {query: string; itemId: string} {
+  const query = remoteQuery(request, displayName);
+  const {itemId} = request as {itemId?: unknown};
+  if (typeof itemId !== 'string' || itemId.trim() === '') throw new Error(`${displayName} game ID cannot be empty.`);
+  return {query, itemId: itemId.trim()};
+}
+
+function mapRemoteGame(game: RemoteProtocolGameSummary, queryUsername: string) {
+  const queryPlayer =
+    game.blackName.toLowerCase() === queryUsername.toLowerCase()
+      ? 'black'
+      : game.whiteName.toLowerCase() === queryUsername.toLowerCase()
+        ? 'white'
+        : null;
+  return {
+    id: game.gameId,
+    blackName: game.blackName,
+    blackRank: game.blackRankLabel,
+    whiteName: game.whiteName,
+    whiteRank: game.whiteRankLabel,
+    boardSize: game.boardSize,
+    startTime: game.startTime.toISOString(),
+    result: game.result,
+    queryPlayer,
+    queryOutcome:
+      game.winnerColor === 'draw'
+        ? 'draw'
+        : game.winnerColor === 'unknown' || queryPlayer == null
+          ? 'unknown'
+          : game.winnerColor === queryPlayer
+            ? 'win'
+            : 'loss',
+  };
+}
+
 function loadPrivateGoProtocol(): PrivateGoProtocol | null {
   const modulePath = path.join(__dirname, 'private/go-protocol/index.js');
   if (!existsSync(modulePath)) return null;
 
   try {
     const protocol = require(modulePath) as PrivateGoProtocol;
-    return typeof protocol.FoxClient?.forUsername === 'function' || typeof protocol.TygemClient?.login === 'function'
+    return typeof protocol.FoxClient?.forUsername === 'function' ||
+      typeof protocol.KgsClient?.login === 'function' ||
+      typeof protocol.PandanetClient?.login === 'function' ||
+      typeof protocol.TygemClient?.login === 'function'
       ? protocol
       : null;
   } catch (error) {
@@ -1076,17 +1230,17 @@ function settingsPath(name: string): string {
   return path.join(app.getPath('userData'), name);
 }
 
-function canPersistTygemCredentials(): boolean {
+function canPersistRemoteCredentials(): boolean {
   return (
     safeStorage.isEncryptionAvailable() &&
     (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
   );
 }
 
-async function readTygemCredentials(): Promise<TygemCredentials | null> {
-  if (!canPersistTygemCredentials()) return null;
+async function readRemoteCredentials(protocol: PrivateLoginProtocol): Promise<RemoteCredentials | null> {
+  if (!canPersistRemoteCredentials()) return null;
   try {
-    const stored = JSON.parse(await fs.readFile(settingsPath(tygemCredentialsFileName), 'utf8')) as {
+    const stored = JSON.parse(await fs.readFile(settingsPath(`${protocol}-login.json`), 'utf8')) as {
       version?: unknown;
       encrypted?: unknown;
     };
@@ -1103,12 +1257,15 @@ async function readTygemCredentials(): Promise<TygemCredentials | null> {
   }
 }
 
-async function writeTygemCredentials(credentials: TygemCredentials): Promise<boolean> {
-  if (!canPersistTygemCredentials()) return false;
+async function writeRemoteCredentials(
+  protocol: PrivateLoginProtocol,
+  credentials: RemoteCredentials
+): Promise<boolean> {
+  if (!canPersistRemoteCredentials()) return false;
   try {
     const encrypted = safeStorage.encryptString(JSON.stringify(credentials)).toString('base64');
     await fs.mkdir(app.getPath('userData'), {recursive: true});
-    const filePath = settingsPath(tygemCredentialsFileName);
+    const filePath = settingsPath(`${protocol}-login.json`);
     await fs.writeFile(filePath, JSON.stringify({version: 1, encrypted}, null, 2), {encoding: 'utf8', mode: 0o600});
     if (process.platform !== 'win32') await fs.chmod(filePath, 0o600);
     return true;

@@ -199,6 +199,8 @@ export function App() {
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [remoteSgfSourceId, setRemoteSgfSourceId] = useState<string | null>(null);
   const [foxAvailable, setFoxAvailable] = useState(false);
+  const [kgsAvailable, setKgsAvailable] = useState(false);
+  const [pandanetAvailable, setPandanetAvailable] = useState(false);
   const [tygemAvailable, setTygemAvailable] = useState(false);
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [recognitionSetupMode, setRecognitionSetupMode] = useState(false);
@@ -425,6 +427,22 @@ export function App() {
       .catch(() => {
         if (active) setTygemAvailable(false);
       });
+    void window.ulugo.kgs
+      .isAvailable()
+      .then((available) => {
+        if (active) setKgsAvailable(available);
+      })
+      .catch(() => {
+        if (active) setKgsAvailable(false);
+      });
+    void window.ulugo.pandanet
+      .isAvailable()
+      .then((available) => {
+        if (active) setPandanetAvailable(available);
+      })
+      .catch(() => {
+        if (active) setPandanetAvailable(false);
+      });
     return () => {
       active = false;
     };
@@ -462,6 +480,50 @@ export function App() {
               loginLabel: t('tygemLogin'),
               loginErrorMessage: t('tygemLoginFailed'),
               credentialsNotSavedMessage: t('tygemCredentialsNotSaved'),
+              queryEditableAfterLogin: true,
+            },
+          },
+        ]
+      : []),
+    ...(kgsAvailable && window.ulugo != null
+      ? [
+          {
+            id: 'kgs',
+            title: t('openFromKgs'),
+            queryLabel: t('kgsUsername'),
+            queryPlaceholder: t('kgsUsernamePlaceholder'),
+            loadErrorMessage: t('kgsLoadFailed'),
+            openErrorMessage: t('kgsOpenFailed'),
+            storageKey: 'ulugo.kgs.username',
+            source: window.ulugo.kgs,
+            auth: {
+              passwordLabel: t('kgsPassword'),
+              savedPasswordPlaceholder: t('kgsSavedPassword'),
+              loginLabel: t('kgsLogin'),
+              loginErrorMessage: t('kgsLoginFailed'),
+              credentialsNotSavedMessage: t('kgsCredentialsNotSaved'),
+              queryEditableAfterLogin: true,
+            },
+          },
+        ]
+      : []),
+    ...(pandanetAvailable && window.ulugo != null
+      ? [
+          {
+            id: 'pandanet',
+            title: t('openFromPandanet'),
+            queryLabel: t('pandanetUsername'),
+            queryPlaceholder: t('pandanetUsernamePlaceholder'),
+            loadErrorMessage: t('pandanetLoadFailed'),
+            openErrorMessage: t('pandanetOpenFailed'),
+            storageKey: 'ulugo.pandanet.username',
+            source: window.ulugo.pandanet,
+            auth: {
+              passwordLabel: t('pandanetPassword'),
+              savedPasswordPlaceholder: t('pandanetSavedPassword'),
+              loginLabel: t('pandanetLogin'),
+              loginErrorMessage: t('pandanetLoginFailed'),
+              credentialsNotSavedMessage: t('pandanetCredentialsNotSaved'),
               queryEditableAfterLogin: true,
             },
           },

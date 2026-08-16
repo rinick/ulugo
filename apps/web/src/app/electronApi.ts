@@ -92,6 +92,8 @@ export interface UlugoElectronApi {
     cancel: () => Promise<void>;
   };
   fox: RemoteSgfSourceApi;
+  kgs: RemoteSgfSourceApi;
+  pandanet: RemoteSgfSourceApi;
   tygem: RemoteSgfSourceApi;
   katago: {
     getSettings: () => Promise<KataGoSettings>;

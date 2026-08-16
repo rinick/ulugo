@@ -33,6 +33,24 @@ contextBridge.exposeInMainWorld('ulugo', {
       ipcRenderer.invoke('ulugo:fox:list-games', request),
     read: (request: {query: string; itemId: string}) => ipcRenderer.invoke('ulugo:fox:download-game', request),
   },
+  kgs: {
+    isAvailable: () => ipcRenderer.invoke('ulugo:kgs:is-available'),
+    getSavedLogin: () => ipcRenderer.invoke('ulugo:kgs:get-saved-login'),
+    login: (request: {username: string; password?: string; useSavedPassword?: boolean}) =>
+      ipcRenderer.invoke('ulugo:kgs:login', request),
+    list: (request: {query: string; cursor?: string; limit?: number}) =>
+      ipcRenderer.invoke('ulugo:kgs:list-games', request),
+    read: (request: {query: string; itemId: string}) => ipcRenderer.invoke('ulugo:kgs:download-game', request),
+  },
+  pandanet: {
+    isAvailable: () => ipcRenderer.invoke('ulugo:pandanet:is-available'),
+    getSavedLogin: () => ipcRenderer.invoke('ulugo:pandanet:get-saved-login'),
+    login: (request: {username: string; password?: string; useSavedPassword?: boolean}) =>
+      ipcRenderer.invoke('ulugo:pandanet:login', request),
+    list: (request: {query: string; cursor?: string; limit?: number}) =>
+      ipcRenderer.invoke('ulugo:pandanet:list-games', request),
+    read: (request: {query: string; itemId: string}) => ipcRenderer.invoke('ulugo:pandanet:download-game', request),
+  },
   tygem: {
     isAvailable: () => ipcRenderer.invoke('ulugo:tygem:is-available'),
     getSavedLogin: () => ipcRenderer.invoke('ulugo:tygem:get-saved-login'),
