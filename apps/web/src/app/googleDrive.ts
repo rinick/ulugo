@@ -38,6 +38,9 @@ interface PickerBuilder {
 }
 
 interface PickerDocsView {
+  setIncludeFolders: (included: boolean) => PickerDocsView;
+  setLabel: (label: string) => void;
+  setMode: (mode: string) => PickerDocsView;
   setParent: (parentId: string) => PickerDocsView;
 }
 
@@ -53,6 +56,7 @@ interface GoogleGlobals {
   };
   picker: {
     Action: {PICKED: string; CANCEL: string};
+    DocsViewMode: {LIST: string};
     Feature: Record<string, string>;
     ViewId: {DOCS: string};
     DocsView: new (viewId: string) => PickerDocsView;
@@ -240,11 +244,20 @@ function pickGoogleDriveFile(token: string, folderId: string): Promise<{id: stri
   if (google == null) throw new Error('Google Picker is unavailable.');
 
   return new Promise((resolve) => {
-    const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setParent(folderId);
+    const ulugoView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMode(google.picker.DocsViewMode.LIST)
+      .setParent(folderId);
+    const driveView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMode(google.picker.DocsViewMode.LIST);
+    ulugoView.setLabel('Ulugo');
+    driveView.setLabel('Google Drive');
     const builder = new google.picker.PickerBuilder()
       .setAppId(googleProjectNumber)
       .setOAuthToken(token)
-      .addView(view)
+      .addView(ulugoView)
+      .addView(driveView)
       .setCallback((data) => {
         if (data.action === google.picker.Action.CANCEL) {
           resolve(null);

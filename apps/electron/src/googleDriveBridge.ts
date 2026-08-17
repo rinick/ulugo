@@ -387,11 +387,20 @@ function pickGoogleDriveFile(token, folderId) {
   const google = window.google;
   if (google == null || google.picker == null) throw new Error('Google Picker is unavailable.');
   return new Promise(function(resolve) {
-    const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setParent(folderId);
+    const ulugoView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMode(google.picker.DocsViewMode.LIST)
+      .setParent(folderId);
+    const driveView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setMode(google.picker.DocsViewMode.LIST);
+    ulugoView.setLabel('Ulugo');
+    driveView.setLabel('Google Drive');
     const builder = new google.picker.PickerBuilder()
       .setAppId(GOOGLE_PROJECT_NUMBER)
       .setOAuthToken(token)
-      .addView(view)
+      .addView(ulugoView)
+      .addView(driveView)
       .setCallback(function(data) {
         if (data.action === google.picker.Action.CANCEL) {
           resolve(null);
