@@ -2011,7 +2011,7 @@ button.ant-btn.left-panel-toggle {
   .left-panel, .left-panel-toggle {
     display: none;
   }
-  .right-region {
+  body.platform-web .right-region {
     flex-basis: 250px;
     width: 250px;
   }

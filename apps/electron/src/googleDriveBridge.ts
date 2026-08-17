@@ -7,6 +7,9 @@ const googleProjectNumber = '218591242507';
 const webGoogleClientId = '218591242507-ri5lbt729mok7n0tkbst69lhcb3kpele.apps.googleusercontent.com';
 const googleDriveBridgePorts = [5274, 5375, 5476, 5072];
 const sgfMimeType = 'application/x-go-sgf';
+const googleDriveFolderName = 'Ulugo';
+const googleDriveFolderMimeType = 'application/vnd.google-apps.folder';
+const googleDriveFolderMarker = 'ulugoFolder';
 
 interface GoogleDriveBridgeSgf {
   content: string;
@@ -267,6 +270,9 @@ const GOOGLE_SCOPE = ${JSON.stringify(googleDriveScope)};
 const GOOGLE_PROJECT_NUMBER = ${JSON.stringify(googleProjectNumber)};
 const GOOGLE_CLIENT_ID = ${JSON.stringify(webGoogleClientId)};
 const SGF_MIME_TYPE = ${JSON.stringify(sgfMimeType)};
+const DRIVE_FOLDER_NAME = ${JSON.stringify(googleDriveFolderName)};
+const DRIVE_FOLDER_MIME_TYPE = ${JSON.stringify(googleDriveFolderMimeType)};
+const DRIVE_FOLDER_MARKER = ${JSON.stringify(googleDriveFolderMarker)};
 const AUTHORIZED_KEY = 'ulugo.googleDriveAuthorized';
 const TOKEN_KEY = 'ulugo.googleDriveBridgeToken';
 
@@ -274,9 +280,10 @@ run().catch(reportError);
 
 async function run() {
   const token = await authorizeGoogleDrive();
+  const folderId = await ensureGoogleDriveFolder(token);
   if (MODE === 'open') {
     await loadPicker();
-    const file = await pickGoogleDriveFile(token);
+    const file = await pickGoogleDriveFile(token, folderId);
     if (file == null) {
       await reportCancel();
       return;
@@ -291,7 +298,7 @@ async function run() {
   setStatus('Saving to Google Drive...');
   const sgf = await readSgf();
   const result = sgf.fileId == null || sgf.fileId === ''
-    ? await createGoogleDriveFile(token, sgf.content, sgf.fileName)
+    ? await createGoogleDriveFile(token, folderId, sgf.content, sgf.fileName)
     : await updateGoogleDriveFile(token, sgf.fileId, sgf.content, sgf.fileName);
   await writeSgf(result);
   finish('File saved. Return to Ulugo. You can close this tab.');
@@ -376,11 +383,11 @@ function loadScript(id, src) {
   });
 }
 
-function pickGoogleDriveFile(token) {
+function pickGoogleDriveFile(token, folderId) {
   const google = window.google;
   if (google == null || google.picker == null) throw new Error('Google Picker is unavailable.');
   return new Promise(function(resolve) {
-    const view = new google.picker.View(google.picker.ViewId.DOCS);
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setParent(folderId);
     const builder = new google.picker.PickerBuilder()
       .setAppId(GOOGLE_PROJECT_NUMBER)
       .setOAuthToken(token)
@@ -403,13 +410,48 @@ function pickGoogleDriveFile(token) {
   });
 }
 
-async function createGoogleDriveFile(token, content, fileName) {
+async function ensureGoogleDriveFolder(token) {
+  const folder =
+    await findGoogleDriveFolder(
+      token,
+      "mimeType='" + DRIVE_FOLDER_MIME_TYPE + "' and trashed=false and appProperties has { key='" + DRIVE_FOLDER_MARKER + "' and value='true' }"
+    ) ||
+    await findGoogleDriveFolder(
+      token,
+      "name='" + DRIVE_FOLDER_NAME + "' and mimeType='" + DRIVE_FOLDER_MIME_TYPE + "' and trashed=false and 'root' in parents"
+    );
+  if (folder != null) return folder.id;
+
+  const response = await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify({
+      name: DRIVE_FOLDER_NAME,
+      mimeType: DRIVE_FOLDER_MIME_TYPE,
+      parents: ['root'],
+      appProperties: { [DRIVE_FOLDER_MARKER]: 'true' }
+    })
+  });
+  const created = await response.json();
+  if (created.id == null) throw new Error('Google Drive did not return the Ulugo folder ID.');
+  return created.id;
+}
+
+async function findGoogleDriveFolder(token, query) {
+  const params = new URLSearchParams({ q: query, spaces: 'drive', fields: 'files(id)', pageSize: '1' });
+  const response = await driveFetch('https://www.googleapis.com/drive/v3/files?' + params, token);
+  const result = await response.json();
+  const file = result.files && result.files[0];
+  return file != null && file.id != null ? { id: file.id } : null;
+}
+
+async function createGoogleDriveFile(token, folderId, content, fileName) {
   const boundary = 'ulugo_' + Date.now() + '_' + Math.random().toString(36).slice(2);
   const body = [
     '--' + boundary,
     'Content-Type: application/json; charset=UTF-8',
     '',
-    JSON.stringify({ name: fileName, mimeType: SGF_MIME_TYPE }),
+    JSON.stringify({ name: fileName, mimeType: SGF_MIME_TYPE, parents: [folderId] }),
     '--' + boundary,
     'Content-Type: ' + SGF_MIME_TYPE + '; charset=UTF-8',
     '',
