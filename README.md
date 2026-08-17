@@ -18,6 +18,16 @@ Ulugo is an offline AI review tool for Go/Weiqi, and it can also be used as an s
 - Show top moves and territories
 ![](/screenshot/review.webp)
 
+### Go Server Support
+- Directly open game record from online game servers
+  - Fox Weiqi
+  - Tygem
+  - KGS
+  - Pandanet
+  - OGS
+- Save and open game record from Google Drive
+![](/screenshot/open-from.webp)
+
 #### Edit Mode
 - Open, edit, and save SGF game records
 - Work with SGF markup and comments

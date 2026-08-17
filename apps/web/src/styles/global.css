@@ -2015,7 +2015,7 @@ button.ant-btn.left-panel-toggle {
     flex-basis: 250px;
     width: 250px;
   }
-  .comments-panel {
+  body.platform-web .comments-panel {
     max-height: 30%;
   }
 }
