@@ -34,7 +34,7 @@ describe('sgf-core', () => {
     expect(sgf).toContain('GM[1]FF[4]CA[UTF-8]SZ[19]');
     expect(sgf).toContain('KM[6.5]RU[Japanese]');
     expect(sgf).toMatch(/DT\[\d{4}-\d{2}-\d{2}\]/);
-    expect(sgf).toMatch(/GN\[Game \d{12}\]/);
+    expect(sgf).toMatch(/GN\[\d{4}-\d{4}-\d{4}\]/);
   });
 
   it('creates explicit board sizes', () => {
