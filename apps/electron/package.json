@@ -2,7 +2,7 @@
   "name": "@ulugo/electron",
   "productName": "ulugo",
   "description": "Ulugo AI review",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "type": "commonjs",
   "main": "dist/main.js",
