@@ -1,5 +1,5 @@
-import {LoadingOutlined} from '@ant-design/icons';
-import {Button, Input, Modal, Table, message} from 'antd';
+import {LoadingOutlined, LockOutlined} from '@ant-design/icons';
+import {Button, Input, Modal, Table, Tooltip, message} from 'antd';
 import type {ColumnsType} from 'antd/es/table';
 import {useCallback, useEffect, useRef, useState, type UIEvent} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -185,7 +185,7 @@ export function RemoteSgfModal({
   }, [authenticated, getSavedLogin, open, requiresAuth]);
 
   async function openItem(item: RemoteSgfListItem): Promise<void> {
-    if (loadedQuery === '') return;
+    if (loadedQuery === '' || !item.canOpen) return;
     setOpeningItemId(item.id);
     try {
       const result = await source.read({query: loadedQuery, itemId: item.id});
@@ -214,6 +214,16 @@ export function RemoteSgfModal({
 
   const columns: ColumnsType<RemoteSgfListItem> = [
     {
+      width: 40,
+      align: 'center',
+      render: (_, item) =>
+        item.canOpen ? null : (
+          <Tooltip title={t('privateGameUnavailable')}>
+            <LockOutlined aria-label={t('privateGameUnavailable')} />
+          </Tooltip>
+        ),
+    },
+    {
       title: t('date'),
       dataIndex: 'startTime',
       width: 180,
@@ -226,7 +236,8 @@ export function RemoteSgfModal({
     {title: t('result'), dataIndex: 'result', width: 90},
   ];
 
-  const selectedItem = selectedItemId == null ? null : (items.find((item) => item.id === selectedItemId) ?? null);
+  const selectedItem =
+    selectedItemId == null ? null : (items.find((item) => item.id === selectedItemId && item.canOpen) ?? null);
 
   return (
     <Modal
@@ -313,11 +324,13 @@ export function RemoteSgfModal({
             rowSelection={{
               type: 'radio',
               selectedRowKeys: selectedItemId == null ? [] : [selectedItemId],
+              getCheckboxProps: (item) => ({disabled: !item.canOpen}),
               onSelect: (item) => setSelectedItemId(item.id),
             }}
             onRow={(item) => ({
-              onClick: () => setSelectedItemId(item.id),
+              onClick: () => setSelectedItemId(item.canOpen ? item.id : null),
               onDoubleClick: () => {
+                if (!item.canOpen) return;
                 setSelectedItemId(item.id);
                 void openItem(item);
               },

@@ -7,6 +7,7 @@ export interface RemoteSgfListItem {
   boardSize: number | string;
   startTime: string;
   result: string;
+  canOpen: boolean;
   queryPlayer: 'black' | 'white' | null;
   queryOutcome: 'win' | 'loss' | 'draw' | 'unknown';
 }

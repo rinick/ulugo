@@ -239,6 +239,7 @@ interface RemoteProtocolGameSummary {
   startTime: Date;
   result: string;
   winnerColor: 'black' | 'white' | 'draw' | 'unknown';
+  isPrivate?: boolean;
 }
 
 interface KgsClient {
@@ -510,6 +511,7 @@ function registerIpc(): void {
           boardSize: game.boardSize,
           startTime: game.startTime.toISOString(),
           result: game.result,
+          canOpen: true,
           queryPlayer,
           queryOutcome:
             game.winnerColor === 'draw'
@@ -583,6 +585,7 @@ function registerIpc(): void {
           boardSize: 19,
           startTime: game.startTime.toISOString(),
           result: game.result,
+          canOpen: true,
           queryPlayer,
           queryOutcome:
             game.winnerColor === 'draw'
@@ -602,7 +605,7 @@ function registerIpc(): void {
     if (typeof request !== 'object' || request == null) throw new Error('Invalid Tygem game request.');
     const {query, itemId} = request as {query?: unknown; itemId?: unknown};
     if (typeof query !== 'string' || query.trim() === '') throw new Error('Tygem username cannot be empty.');
-    if (typeof itemId !== 'string' || !/^[a-f\d]{16}$/i.test(itemId)) throw new Error('Invalid Tygem game ID.');
+    if (typeof itemId !== 'string' || !/^[a-f\d]{8}$/i.test(itemId)) throw new Error('Invalid Tygem game ID.');
 
     return {
       content: await tygemClient.downloadGame(itemId),
@@ -815,6 +818,7 @@ function mapRemoteGame(game: RemoteProtocolGameSummary, queryUsername: string) {
     boardSize: game.boardSize,
     startTime: game.startTime.toISOString(),
     result: game.result,
+    canOpen: game.isPrivate !== true,
     queryPlayer,
     queryOutcome:
       game.winnerColor === 'draw'

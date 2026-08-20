@@ -126,6 +126,7 @@ function mapGame(game: OgsGame, playerId: number): RemoteSgfListItem {
     boardSize: game.width === game.height ? game.width : `${game.width}×${game.height}`,
     startTime: game.ended || game.started,
     result: formatResult(winnerColor, game.outcome),
+    canOpen: true,
     queryPlayer,
     queryOutcome:
       winnerColor === 'draw'
