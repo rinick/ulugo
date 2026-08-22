@@ -1179,6 +1179,12 @@ body.minimal .app-content > .right-region .capture-summary {
   font-size: 11px;
 }
 
+.ulugo-documentation-link-wrap {
+  flex: 0 0 auto;
+  padding: 0 13px;
+  margin-top: 5px;
+}
+
 .policy-links {
   display: flex;
   align-items: end;

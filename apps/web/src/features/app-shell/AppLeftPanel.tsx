@@ -1,4 +1,4 @@
-import {CloudDownloadOutlined} from '@ant-design/icons';
+import {CloudDownloadOutlined, ReadOutlined} from '@ant-design/icons';
 import {Button} from 'antd';
 import type {KataGoConsoleMessage} from '@ulugo/katago-core';
 import {memo, useEffect, useState, type RefObject} from 'react';
@@ -6,6 +6,7 @@ import {useTranslation} from 'react-i18next';
 import '../../../../../policies/privacy-policy.md?url';
 import '../../../../../policies/terms-of-service.md?url';
 import {formatConsoleTime} from '../../app/katagoConsoleUtils';
+import {normalizeLanguage} from '../../app/localizationUtils';
 import {DesktopReleasePanel} from './DesktopReleasePanel';
 
 const privacyPolicyUrl = 'https://ulugo.com/assets/privacy-policy.md';
@@ -30,7 +31,8 @@ export const AppLeftPanel = memo(function AppLeftPanel({
   consoleRef,
   onClearConsole,
 }: AppLeftPanelProps) {
-  const {t} = useTranslation();
+  const {t, i18n} = useTranslation();
+  const documentationUrl = `https://deepmess.com/${normalizeLanguage(i18n.resolvedLanguage ?? i18n.language)}/ulugo/`;
   const panelHidden = !open || hidden;
   const panelClassName = ['left-panel', panelHidden ? 'left-panel-hidden' : ''].filter(Boolean).join(' ');
   const [hasOpened, setHasOpened] = useState(() => open && !hidden);
@@ -81,6 +83,18 @@ export const AppLeftPanel = memo(function AppLeftPanel({
         </span>
       </div>
       <DesktopReleasePanel active={hasOpened} />
+      <div className="ulugo-documentation-link-wrap">
+        <Button
+          block
+          className="desktop-release-download-button ulugo-documentation-link"
+          href={documentationUrl}
+          icon={<ReadOutlined />}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t('ulugoDocumentation')}
+        </Button>
+      </div>
       <div className="policy-links">
         <Button type="link" href={privacyPolicyUrl} target="_blank" rel="noreferrer">
           Privacy Policy
