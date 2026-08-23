@@ -88,7 +88,7 @@ import {
 import {blurNonTextControlFocus, isModalOpen, isPopupOpen, isTextInputActive} from './domUtils';
 import {type AppLanguage, antdLocales, normalizeLanguage, saveLanguage} from './localizationUtils';
 import {getAppFontFamily} from './fonts';
-import {appTheme} from './appTheme';
+import {createAppTheme} from './appTheme';
 import {ogsRemoteSgfSource} from './ogsRemoteSgf';
 import type {RemoteSgfSourceConfig} from './remoteSgf';
 import {
@@ -172,6 +172,8 @@ export function App() {
   const {
     uiScale,
     setUiScale,
+    darkMode,
+    setDarkMode,
     showCoordinates,
     setShowCoordinates,
     playStoneSound,
@@ -210,6 +212,7 @@ export function App() {
   const [autoBoardBackgroundReady, setAutoBoardBackgroundReady] = useState(false);
   const [keyboardShortcuts, setKeyboardShortcuts] = useState(() => readKeyboardShortcuts());
   const [keyboardNavigationActive, setKeyboardNavigationActive] = useState(false);
+  const appTheme = useMemo(() => createAppTheme(darkMode), [darkMode]);
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const recordCameraInputRef = useRef<HTMLInputElement>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
@@ -274,6 +277,17 @@ export function App() {
     globalThis.document.documentElement.lang = currentLanguage;
     globalThis.document.documentElement.style.setProperty('--ulugo-font-family', appFontFamily);
   }, [appFontFamily, currentLanguage]);
+
+  useEffect(() => {
+    globalThis.document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+    ConfigProvider.config({
+      holderRender: (children) => (
+        <ConfigProvider locale={antdLocale} componentSize="small" theme={appTheme}>
+          {children}
+        </ConfigProvider>
+      ),
+    });
+  }, [antdLocale, appTheme, darkMode]);
 
   useEffect(() => {
     let canceled = false;
@@ -1458,7 +1472,7 @@ export function App() {
         onCloseKataGoAutotuning={() => setKataGoAutotuningOpen(false)}
       />
       <Layout
-        className="app-shell"
+        className={darkMode ? 'app-shell app-shell-dark' : 'app-shell'}
         onClickCapture={handleAppClickCapture}
         onDragOver={gameRecordFiles.handleDragOver}
         onDrop={gameRecordFiles.handleDrop}
@@ -1761,6 +1775,7 @@ export function App() {
         settings={analysisSettings}
         language={currentLanguage}
         uiScale={uiScale}
+        darkMode={darkMode}
         showCoordinates={showCoordinates}
         playStoneSound={playStoneSound}
         openLastSgfOnStartup={openLastSgfOnStartup}
@@ -1770,6 +1785,7 @@ export function App() {
         onAnalysisSettingsChange={updateAnalysisSettings}
         onLanguageChange={handleLanguageChange}
         onUiScaleChange={setUiScale}
+        onDarkModeChange={setDarkMode}
         onShowCoordinatesChange={setShowCoordinates}
         onPlayStoneSoundChange={setPlayStoneSound}
         onOpenLastSgfOnStartupChange={setOpenLastSgfOnStartup}

@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import {capabilities} from './capabilities';
 
 const uiScaleStorageKey = 'ulugo.uiScale';
+const darkModeStorageKey = 'ulugo.darkMode';
 const showCoordinatesStorageKey = 'ulugo.showCoordinates';
 const playStoneSoundStorageKey = 'ulugo.playStoneSound';
 const openLastSgfOnStartupStorageKey = 'ulugo.openLastSgfOnStartup';
@@ -13,6 +14,7 @@ const minimalShowCoordinatesStorageKey = 'ulugo.minimalShowCoordinates';
 
 export function useAppPreferences() {
   const [uiScale, setUiScale] = useState(() => readStoredNumber(uiScaleStorageKey, 100, 25, 400));
+  const [darkMode, setDarkMode] = useState(() => readStoredBoolean(darkModeStorageKey, false));
   const [showCoordinates, setShowCoordinates] = useState(() => readStoredBoolean(showCoordinatesStorageKey, true));
   const [playStoneSound, setPlayStoneSound] = useState(() => readStoredBoolean(playStoneSoundStorageKey, true));
   const [openLastSgfOnStartup, setOpenLastSgfOnStartup] = useState(readOpenLastSgfOnStartupPreference);
@@ -52,6 +54,10 @@ export function useAppPreferences() {
   }, [showCoordinates]);
 
   useEffect(() => {
+    writeStoredValue(darkModeStorageKey, darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
     writeStoredValue(playStoneSoundStorageKey, playStoneSound);
   }, [playStoneSound]);
 
@@ -82,6 +88,8 @@ export function useAppPreferences() {
   return {
     uiScale,
     setUiScale,
+    darkMode,
+    setDarkMode,
     showCoordinates,
     setShowCoordinates,
     playStoneSound,

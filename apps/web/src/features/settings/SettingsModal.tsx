@@ -1,5 +1,5 @@
-import {QuestionCircleOutlined, ReloadOutlined} from '@ant-design/icons';
-import {Button, Form, InputNumber, Modal, Select, Slider, Switch, message} from 'antd';
+import {MoonOutlined, QuestionCircleOutlined, ReloadOutlined, SunOutlined} from '@ant-design/icons';
+import {Button, Form, InputNumber, Modal, Radio, Select, Slider, Switch, message} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
@@ -13,6 +13,7 @@ interface SettingsModalProps {
   settings: AnalysisSettings;
   language: AppLanguage;
   uiScale: number;
+  darkMode: boolean;
   showCoordinates: boolean;
   playStoneSound: boolean;
   openLastSgfOnStartup: boolean;
@@ -22,6 +23,7 @@ interface SettingsModalProps {
   onAnalysisSettingsChange: (settings: AnalysisSettings) => void;
   onLanguageChange: (language: AppLanguage) => void;
   onUiScaleChange: (uiScale: number) => void;
+  onDarkModeChange: (darkMode: boolean) => void;
   onShowCoordinatesChange: (showCoordinates: boolean) => void;
   onPlayStoneSoundChange: (playStoneSound: boolean) => void;
   onOpenLastSgfOnStartupChange: (openLastSgfOnStartup: boolean) => void;
@@ -34,6 +36,7 @@ export function SettingsModal({
   settings,
   language,
   uiScale,
+  darkMode,
   showCoordinates,
   playStoneSound,
   openLastSgfOnStartup,
@@ -43,6 +46,7 @@ export function SettingsModal({
   onAnalysisSettingsChange,
   onLanguageChange,
   onUiScaleChange,
+  onDarkModeChange,
   onShowCoordinatesChange,
   onPlayStoneSoundChange,
   onOpenLastSgfOnStartupChange,
@@ -165,18 +169,38 @@ export function SettingsModal({
             />
           </div>
         </Form.Item>
-        <Form.Item label={t('boardBackground')}>
-          <Select
-            size="small"
-            value={settings.boardBackground}
-            onChange={(value) => updateSettings({boardBackground: value as AnalysisSettings['boardBackground']})}
-            options={[
-              ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('auto')}] : []),
-              {value: 'golden', label: t('golden')},
-              {value: 'natural', label: t('natural')},
-              {value: 'flat', label: t('flat')},
-            ]}
-          />
+        <Form.Item>
+          <div className="app-settings-appearance-row">
+            <div className="app-settings-appearance-option">
+              <span>{t('theme')}</span>
+              <Radio.Group
+                size="small"
+                value={darkMode ? 'dark' : 'light'}
+                onChange={(event) => onDarkModeChange(event.target.value === 'dark')}
+              >
+                <Radio.Button value="light" title={t('lightMode')} aria-label={t('lightMode')}>
+                  <SunOutlined />
+                </Radio.Button>
+                <Radio.Button value="dark" title={t('darkMode')} aria-label={t('darkMode')}>
+                  <MoonOutlined />
+                </Radio.Button>
+              </Radio.Group>
+            </div>
+            <div className="app-settings-appearance-option">
+              <span>{t('boardBackground')}</span>
+              <Select
+                size="small"
+                value={settings.boardBackground}
+                onChange={(value) => updateSettings({boardBackground: value as AnalysisSettings['boardBackground']})}
+                options={[
+                  ...(showKataGoAnalysisSettings ? [{value: 'auto', label: t('auto')}] : []),
+                  {value: 'golden', label: t('golden')},
+                  {value: 'natural', label: t('natural')},
+                  {value: 'flat', label: t('flat')},
+                ]}
+              />
+            </div>
+          </div>
         </Form.Item>
         <Form.Item>
           <div className="app-settings-row">
