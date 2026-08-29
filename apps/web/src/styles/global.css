@@ -67,7 +67,7 @@ textarea,
   align-items: stretch;
   gap: 16px;
   height: auto;
-  padding: 8px 12px;
+  padding: 0;
   background: var(--ant-color-bg-container);
   border-bottom: 1px solid var(--ant-color-border);
   line-height: 1.2;
@@ -79,6 +79,7 @@ textarea,
   align-items: stretch;
   gap: 16px;
   min-width: 0;
+  padding: 8px 0 8px 12px;
 }
 
 .app-header-left {
@@ -99,6 +100,7 @@ textarea,
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
+  padding: 8px 12px 8px 0;
 }
 
 .mobile-header-right-toggle {
@@ -2049,14 +2051,14 @@ button.ant-btn.left-panel-toggle {
   }
 }
 
-@container app-shell (max-width: 640px) {
+@container app-shell (max-width: 800px) {
   .app-header {
     position: relative;
-    padding-right: 44px;
     overflow: hidden;
   }
 
   .app-header-main {
+    padding-right: 44px;
     overflow-x: auto;
     overflow-y: hidden;
   }
