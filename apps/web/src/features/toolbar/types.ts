@@ -10,3 +10,5 @@ export type EditorTool =
   | 'square'
   | 'triangle'
   | 'cross';
+
+export type MoveEditAction = 'insert' | 'delete';

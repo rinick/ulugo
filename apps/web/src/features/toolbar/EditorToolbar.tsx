@@ -1,17 +1,19 @@
-import {SwapOutlined} from '@ant-design/icons';
+import {CloseCircleOutlined, PlusCircleOutlined} from '@ant-design/icons';
 import {Button, Space} from 'antd';
 import type React from 'react';
 import {useTranslation} from 'react-i18next';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
-import type {EditorTool} from './types';
+import type {EditorTool, MoveEditAction} from './types';
 
 interface EditorToolbarProps {
   tool: EditorTool;
   nextColor: 'B' | 'W';
-  canReplaceMove: boolean;
+  canEditMoves: boolean;
+  moveEditAction: MoveEditAction;
   showSetupTools?: boolean;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
   onToolChange: (tool: EditorTool) => void;
+  onMoveEditActionChange: (action: MoveEditAction) => void;
   onAutoToolClick: () => void;
   onPass: () => void;
 }
@@ -19,10 +21,12 @@ interface EditorToolbarProps {
 export function EditorToolbar({
   tool,
   nextColor,
-  canReplaceMove,
+  canEditMoves,
+  moveEditAction,
   showSetupTools = true,
   shortcutLabels = {},
   onToolChange,
+  onMoveEditActionChange,
   onAutoToolClick,
   onPass,
 }: EditorToolbarProps) {
@@ -67,10 +71,20 @@ export function EditorToolbar({
         <ToolButton
           tool="replace"
           current={tool}
-          icon={<SwapOutlined />}
-          title={withShortcut(t('replaceMove'), shortcutLabels.replaceMove)}
-          disabled={!canReplaceMove}
-          onToolChange={onToolChange}
+          icon={<PlusCircleOutlined />}
+          title={withShortcut(t('insertMove'), shortcutLabels.insertMove)}
+          disabled={!canEditMoves}
+          onToolChange={() => onMoveEditActionChange('insert')}
+          selected={tool === 'replace' && moveEditAction === 'insert'}
+        />
+        <ToolButton
+          tool="replace"
+          current={tool}
+          icon={<CloseCircleOutlined />}
+          title={withShortcut(t('deleteMove'), shortcutLabels.deleteMove)}
+          disabled={!canEditMoves}
+          onToolChange={() => onMoveEditActionChange('delete')}
+          selected={tool === 'replace' && moveEditAction === 'delete'}
         />
       </Space.Compact>
     </div>
@@ -114,6 +128,7 @@ export function ToolButton({
   children,
   onToolChange,
   onDoubleClick,
+  selected,
 }: {
   className?: string;
   tool: EditorTool;
@@ -125,12 +140,13 @@ export function ToolButton({
   children?: React.ReactNode;
   onToolChange: (tool: EditorTool) => void;
   onDoubleClick?: () => void;
+  selected?: boolean;
 }) {
   return (
     <Button
       className={className}
       size="middle"
-      type={tool === current ? 'primary' : 'default'}
+      type={(selected ?? tool === current) ? 'primary' : 'default'}
       danger={danger}
       disabled={disabled}
       icon={icon}

@@ -62,7 +62,7 @@ import {
   type KeyboardShortcutConfig,
   type ShortcutActionId,
 } from '../features/shortcuts/keyboardShortcuts';
-import type {EditorTool} from '../features/toolbar/types';
+import type {EditorTool, MoveEditAction} from '../features/toolbar/types';
 import {
   nextLabelText,
   recognizedSetupChanges,
@@ -94,14 +94,14 @@ import type {RemoteSgfSourceConfig} from './remoteSgf';
 import {
   confirmReplaceMove,
   createReplaceMoveState,
-  deleteReplaceMove,
+  deleteMoveInReplaceBranch,
   replaceMoveStones,
   gtpMoveToPoint,
   hasNonEmptyRootSetup,
+  insertMoveInReplaceBranch,
   insertEmptyMoveZeroBeforeRootSetup,
   isSetupNode,
   replaceMoveStateForSelection,
-  replaceNextMoveBranch,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
 import {readOpenLastSgfOnStartupPreference, useAppPreferences} from './useAppPreferences';
@@ -120,7 +120,7 @@ interface StartupState {
   startedFromEmpty: boolean;
 }
 
-interface ReplaceMoveSnapshot {
+interface MoveEditSnapshot {
   document: SgfDocument;
   path: number[];
   branchMemory: Map<string, number>;
@@ -168,6 +168,7 @@ export function App() {
   const [labelText, setLabelText] = useState('A');
   const [autoColorOverride, setAutoColorOverride] = useState<'B' | 'W' | null>(null);
   const [replaceMoveState, setReplaceMoveState] = useState<ReplaceMoveState | null>(null);
+  const [moveEditAction, setMoveEditAction] = useState<MoveEditAction>('insert');
   const markupActionRef = useRef<MarkupAction | null>(null);
   const {
     uiScale,
@@ -216,7 +217,7 @@ export function App() {
   const stoneSoundRef = useRef<HTMLAudioElement | null>(null);
   const recordCameraInputRef = useRef<HTMLInputElement>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
-  const replaceMoveSnapshotRef = useRef<ReplaceMoveSnapshot | null>(null);
+  const moveEditSnapshotRef = useRef<MoveEditSnapshot | null>(null);
   const labelResetPathKeyRef = useRef(pathKey([]));
   const setupToolPathKeyRef = useRef(pathKey([]));
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
@@ -614,10 +615,11 @@ export function App() {
 
   useEffect(() => {
     if (!minimalMode) return;
-    replaceMoveSnapshotRef.current = null;
+    moveEditSnapshotRef.current = null;
     setTool('auto');
     setAutoColorOverride(null);
     setReplaceMoveState(null);
+    setMoveEditAction('insert');
   }, [minimalMode]);
 
   useEffect(() => {
@@ -640,38 +642,40 @@ export function App() {
     }
   }
 
-  function finishReplaceSession(nextTool: EditorTool = 'auto'): void {
-    replaceMoveSnapshotRef.current = null;
+  function finishMoveEditSession(nextTool: EditorTool = 'auto'): void {
+    moveEditSnapshotRef.current = null;
     setReplaceMoveState(null);
     setTool(nextTool);
+    setMoveEditAction('insert');
     if (nextTool !== 'auto') setAutoColorOverride(null);
   }
 
-  function handleConfirmReplace(): void {
+  function handleConfirmMoveEdit(): void {
     const result = confirmReplaceMove({
       document,
       path: operationPath,
       branchMemory: branchMemoryRef.current,
       state: replaceMoveState,
     });
-    replaceMoveSnapshotRef.current = null;
+    moveEditSnapshotRef.current = null;
     if (result != null && result.document !== document) {
       replaceDocument(result.document, result.path);
     } else {
       setReplaceMoveState(null);
       setTool('auto');
+      setMoveEditAction('insert');
     }
   }
 
-  function handleCancelReplace(): void {
+  function handleCancelMoveEdit(): void {
     const cancel = () => {
-      const snapshot = replaceMoveSnapshotRef.current;
+      const snapshot = moveEditSnapshotRef.current;
       if (snapshot == null) {
-        finishReplaceSession();
+        finishMoveEditSession();
         return;
       }
 
-      replaceMoveSnapshotRef.current = null;
+      moveEditSnapshotRef.current = null;
       branchMemoryRef.current = new Map(snapshot.branchMemory);
       replaceDocument(snapshot.document, snapshot.path);
     };
@@ -683,8 +687,8 @@ export function App() {
 
     Modal.confirm({
       centered: true,
-      title: t('cancelReplaceConfirmTitle'),
-      content: t('cancelReplaceConfirmContent'),
+      title: t('cancelMoveEditConfirmTitle'),
+      content: t('cancelMoveEditConfirmContent'),
       okText: t('confirm'),
       cancelText: t('cancel'),
       okButtonProps: {danger: true},
@@ -706,8 +710,9 @@ export function App() {
     if (options.replaceMoveState != null) {
       setTool('replace');
     } else if (tool === 'replace') {
-      replaceMoveSnapshotRef.current = null;
+      moveEditSnapshotRef.current = null;
       setTool('auto');
+      setMoveEditAction('insert');
     }
     rememberPath(normalizedPath);
   }
@@ -721,6 +726,11 @@ export function App() {
       return;
     }
 
+    const nextMoveEditState =
+      tool === 'replace'
+        ? replaceMoveStateForSelection(document, normalizedPath, branchMemoryRef.current, replaceMoveState)
+        : null;
+
     if (pathChanged) {
       rememberPath(normalizedPath, sharedPathLength(path, normalizedPath));
       setPath(normalizedPath);
@@ -729,16 +739,10 @@ export function App() {
     resetLabelTextForUnmarkedSelection(document, normalizedPath);
     if (!options.keepAutoColorOverride) setAutoColorOverride(null);
     if (tool === 'replace') {
-      const nextReplaceMoveState = replaceMoveStateForSelection(
-        document,
-        normalizedPath,
-        branchMemoryRef.current,
-        replaceMoveState
-      );
-      if (nextReplaceMoveState == null) {
-        finishReplaceSession();
+      if (nextMoveEditState == null) {
+        finishMoveEditSession();
       } else {
-        setReplaceMoveState(nextReplaceMoveState);
+        setReplaceMoveState(nextMoveEditState);
       }
     } else {
       setReplaceMoveState(null);
@@ -830,19 +834,19 @@ export function App() {
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
-      replaceMoveSnapshotRef.current = {
+      moveEditSnapshotRef.current = {
         document,
         path,
         branchMemory: new Map(branchMemoryRef.current),
       };
       if (operationPath.length === 0) {
         if (path.length !== 0) {
-          replaceMoveSnapshotRef.current = null;
+          moveEditSnapshotRef.current = null;
           return;
         }
         const nextDocument = insertEmptyMoveZeroBeforeRootSetup(document);
         if (nextDocument == null) {
-          replaceMoveSnapshotRef.current = null;
+          moveEditSnapshotRef.current = null;
           return;
         }
         shiftBranchMemoryForInsertedRoot(branchMemoryRef.current);
@@ -853,17 +857,15 @@ export function App() {
         });
         return;
       }
-      const replacementPath = operationPath.slice(0, -1);
-      selectPath(replacementPath);
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
-      setReplaceMoveState(createReplaceMoveState(document, replacementPath, branchMemoryRef.current));
+      setReplaceMoveState(createReplaceMoveState(document, operationPath, branchMemoryRef.current));
       setTool('replace');
       return;
     }
 
     if (tool === 'replace') {
-      finishReplaceSession(nextTool);
+      finishMoveEditSession(nextTool);
       return;
     }
 
@@ -873,9 +875,14 @@ export function App() {
     if (nextTool !== 'auto') setAutoColorOverride(null);
   }
 
+  function handleMoveEditActionChange(action: MoveEditAction): void {
+    setMoveEditAction(action);
+    if (tool !== 'replace') handleToolChange('replace');
+  }
+
   function handleAutoToolClick(): void {
     if (tool === 'replace') {
-      finishReplaceSession();
+      finishMoveEditSession();
       return;
     }
 
@@ -902,7 +909,7 @@ export function App() {
 
   const canNavigatePrevious = path.length > 0;
   const canNavigateNext = currentNode.children.length > 0;
-  const canReplaceMove =
+  const canEditMoves =
     tool === 'replace'
       ? replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
       : operationPath.length > 0 || (path.length === 0 && hasNonEmptyRootSetup(document));
@@ -921,13 +928,13 @@ export function App() {
 
       if (event.key === 'Enter' && tool === 'replace') {
         event.preventDefault();
-        handleConfirmReplace();
+        handleConfirmMoveEdit();
         return;
       }
 
       if (event.key === 'Escape' && tool === 'replace') {
         event.preventDefault();
-        handleCancelReplace();
+        handleCancelMoveEdit();
         return;
       }
 
@@ -997,8 +1004,11 @@ export function App() {
         case 'toolWhite':
           if (!minimalMode) handleToolChange('white');
           break;
-        case 'replaceMove':
-          if (canReplaceMove) handleToolChange('replace');
+        case 'insertMove':
+          if (canEditMoves) handleMoveEditActionChange('insert');
+          break;
+        case 'deleteMove':
+          if (canEditMoves) handleMoveEditActionChange('delete');
           break;
         case 'addLabel':
           handleToolChange('alphabet');
@@ -1075,12 +1085,12 @@ export function App() {
           break;
         case 'toggleAnalysisMode':
           if (minimalMode) break;
-          if (tool === 'replace') finishReplaceSession();
+          if (tool === 'replace') break;
           toggleAnalysisMode();
           break;
         case 'toggleDeepAnalysisMode':
           if (minimalMode) break;
-          if (tool === 'replace') finishReplaceSession();
+          if (tool === 'replace') break;
           toggleDeepAnalysisMode();
           break;
       }
@@ -1122,7 +1132,7 @@ export function App() {
     analysisSettings.showIntensity,
     analysisSettings.stoneOverlay,
     boardSize,
-    canReplaceMove,
+    canEditMoves,
     capabilities.katago,
     currentAnalysis,
     document,
@@ -1146,7 +1156,7 @@ export function App() {
   ]);
 
   function handleAnalysisButtonClick(event: MouseEvent<HTMLElement>): void {
-    if (tool === 'replace') finishReplaceSession();
+    if (tool === 'replace') return;
 
     if (event.shiftKey) {
       toggleDeepAnalysisMode();
@@ -1159,7 +1169,7 @@ export function App() {
     point: string,
     options: BoardVertexClickOptions,
     colorOverride?: SgfColor,
-    insertReplacement = false
+    alternateMoveEditAction = false
   ): Promise<void> {
     if (options.shiftKey) {
       const nextPath = position.stones.has(point)
@@ -1182,14 +1192,35 @@ export function App() {
     }
 
     if (tool === 'replace') {
-      const result = replaceNextMoveBranch({
+      const action = alternateMoveEditAction ? (moveEditAction === 'insert' ? 'delete' : 'insert') : moveEditAction;
+      if (action === 'delete') {
+        const stayAtCurrentPath = !alternateMoveEditAction && moveEditAction === 'delete';
+        const currentTargetPath = findCurrentStoneMovePath(document, operationPath, point);
+        const targetPath =
+          currentTargetPath ?? findFutureMovePath(document, operationPath, point, branchMemoryRef.current);
+        if (targetPath == null) return;
+        const result = deleteMoveInReplaceBranch({
+          document,
+          path: operationPath,
+          targetPath,
+          branchMemory: branchMemoryRef.current,
+          state: replaceMoveState,
+          stayAtCurrentPath,
+        });
+        if (result == null) return;
+
+        rememberPath(result.state.replacementStartPath!);
+        replaceDocument(result.document, result.path, {replaceMoveState: result.state});
+        return;
+      }
+
+      const result = insertMoveInReplaceBranch({
         document,
         path: operationPath,
         point,
         rules: gameInfo.RU,
         branchMemory: branchMemoryRef.current,
         state: replaceMoveState,
-        insert: insertReplacement,
       });
       if (result == null) return;
 
@@ -1312,7 +1343,8 @@ export function App() {
 
   function handlePass(): void {
     if (tool === 'replace') {
-      const result = replaceNextMoveBranch({
+      if (moveEditAction === 'delete') return;
+      const result = insertMoveInReplaceBranch({
         document,
         path: operationPath,
         point: '',
@@ -1359,32 +1391,6 @@ export function App() {
 
   function handleDeleteNode(targetPath = path): void {
     targetPath = scoringOperationPath(document, targetPath);
-    if (
-      tool === 'replace' &&
-      replaceMoveState?.replacementStartPath != null &&
-      samePath(targetPath, replaceMoveState.replacementPath)
-    ) {
-      const result = deleteReplaceMove(document, targetPath);
-      if (result == null) return;
-      const removedIds = new Set(result.removedNodeIds);
-      const referencesByNodeId = Object.fromEntries(
-        Object.entries(replaceMoveState.referencesByNodeId ?? {}).filter(([nodeId]) => !removedIds.has(nodeId))
-      );
-      const stateAfterDelete = {
-        ...replaceMoveState,
-        createdNodeIds: (replaceMoveState.createdNodeIds ?? []).filter((nodeId) => !removedIds.has(nodeId)),
-        referencesByNodeId,
-      };
-      const nextReplaceMoveState = replaceMoveStateForSelection(
-        result.document,
-        result.path,
-        branchMemoryRef.current,
-        stateAfterDelete
-      ) ?? {...stateAfterDelete, replacementPath: result.path, replacementStartPath: result.path};
-      replaceDocument(result.document, result.path, {replaceMoveState: nextReplaceMoveState});
-      return;
-    }
-
     const deleteTarget = () => {
       const result = deleteNode(document, targetPath);
       replaceDocument(result.document, selectedPathAfterDelete(path, targetPath));
@@ -1502,11 +1508,13 @@ export function App() {
                   nextColor={nextAutoColor}
                   canNavigatePrevious={canNavigatePrevious}
                   canNavigateNext={canNavigateNext}
-                  canReplaceMove={canReplaceMove}
+                  canEditMoves={canEditMoves}
+                  moveEditAction={moveEditAction}
                   showMarkup={showMarkup}
                   labelText={labelText}
                   shortcutLabels={shortcutLabels}
                   onToolChange={handleToolChange}
+                  onMoveEditActionChange={handleMoveEditActionChange}
                   onLabelTextChange={setLabelText}
                   onAutoToolClick={handleAutoToolClick}
                   onEraseAllMarkup={handleEraseAllMarkup}
@@ -1637,10 +1645,12 @@ export function App() {
                     <EditorToolbar
                       tool={tool}
                       nextColor={nextAutoColor}
-                      canReplaceMove={canReplaceMove}
+                      canEditMoves={canEditMoves}
+                      moveEditAction={moveEditAction}
                       showSetupTools={false}
                       shortcutLabels={shortcutLabels}
                       onToolChange={handleToolChange}
+                      onMoveEditActionChange={handleMoveEditActionChange}
                       onAutoToolClick={handleAutoToolClick}
                       onPass={handlePass}
                     />
@@ -1671,10 +1681,10 @@ export function App() {
               onEstimateScore={handleEstimateScore}
               estimateScoreEnabled={!kataGoInitialized}
               replaceControls={
-                tool === 'replace' && replaceMoveState?.replacementStartPath != null
+                tool === 'replace'
                   ? {
-                      onConfirm: handleConfirmReplace,
-                      onCancel: handleCancelReplace,
+                      onConfirm: handleConfirmMoveEdit,
+                      onCancel: handleCancelMoveEdit,
                     }
                   : undefined
               }

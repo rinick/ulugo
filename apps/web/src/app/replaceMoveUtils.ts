@@ -14,26 +14,33 @@ import {pathKey} from './sgfPathUtils';
 export interface ReplaceMoveState {
   originalPath: number[];
   replacementPath: number[];
-  referenceMoves?: ReplaceMoveSequenceItem[];
-  referenceHasSetup?: boolean;
-  originalStartPath?: number[];
   replacementStartPath?: number[];
   setupPath?: number[];
   referenceNextPath?: number[];
-  setupDepth?: number;
   createdNodeIds?: string[];
   referencesByNodeId?: Record<string, ReplaceMoveReference>;
-}
-
-interface ReplaceMoveSequenceItem {
-  color: SgfColor;
-  point: string;
 }
 
 interface ReplaceMoveReference {
   originalPath: number[];
   setupPath?: number[];
   referenceNextPath?: number[];
+  inserted?: boolean;
+}
+
+interface EditedBranchItem {
+  key: string;
+  data: Record<string, string[]>;
+  originalNodeId: string;
+  referenceNextNodeId?: string;
+  setupNodeId?: string;
+  inserted: boolean;
+}
+
+interface CreatedBranchItem {
+  item: EditedBranchItem;
+  node: SgfNode;
+  path: number[];
 }
 
 const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
@@ -45,14 +52,9 @@ export function createReplaceMoveState(
 ): ReplaceMoveState {
   const nextPath = nextOriginalBranchPath(document, path, branchMemory);
   const setupPath = nextPath != null && isSetupNode(getNodeAtPath(document, nextPath)) ? nextPath : undefined;
-  const referenceSequence = collectMoveSequence(document, nextPath, (currentPath) =>
-    nextOriginalBranchPath(document, currentPath, branchMemory)
-  );
   return {
     originalPath: path,
     replacementPath: path,
-    referenceMoves: referenceSequence.moves,
-    referenceHasSetup: referenceSequence.hasSetup,
     setupPath,
     referenceNextPath: nextPath ?? undefined,
     createdNodeIds: [],
@@ -60,14 +62,13 @@ export function createReplaceMoveState(
   };
 }
 
-export function replaceNextMoveBranch({
+export function insertMoveInReplaceBranch({
   document,
   path,
   point,
   rules,
   branchMemory,
   state,
-  insert = false,
 }: {
   document: SgfDocument;
   path: number[];
@@ -75,76 +76,314 @@ export function replaceNextMoveBranch({
   rules?: string;
   branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
-  insert?: boolean;
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState | null} | null {
+}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
   if (state == null || !samePath(path, state.replacementPath)) return null;
 
-  const originalNextPath =
-    state.referenceNextPath ?? state.setupPath ?? nextOriginalBranchPath(document, state.originalPath, branchMemory);
-  const setupBoundary = originalNextPath != null && isSetupNode(getNodeAtPath(document, originalNextPath));
-  const originalMove = originalNextPath == null ? null : nodeMove(getNodeAtPath(document, originalNextPath));
-  const referenceSequence = collectMoveSequence(document, originalNextPath, (currentPath) =>
-    nextOriginalBranchPath(document, currentPath, branchMemory)
-  );
-  const referenceMoves = state.referenceMoves ?? referenceSequence.moves;
-  const referenceHasSetup = state.referenceHasSetup ?? referenceSequence.hasSetup;
-  const insertsMove = insert || setupBoundary || originalNextPath == null;
   const position = deriveBoardPosition(document, path);
-  const color = insertsMove ? position.nextColor : originalMove!.color;
-  if (!isLegalMove(position, color, point, rules)) return null;
+  if (!isLegalMove(position, position.nextColor, point, rules)) return null;
 
-  const next = cloneDocument(document);
-  const parent = getNodeAtPath(next, path);
-  const replacesOriginalBranch = samePath(path, state.originalPath);
-  if (!replacesOriginalBranch) parent.children = [];
+  return rebuildMoveEditBranch({
+    document,
+    path,
+    branchMemory,
+    state,
+    rules,
+    edit: {
+      type: 'insert',
+      item: branchItemFromState(document, state, '__insert__', {[position.nextColor]: [point]}, true),
+    },
+  });
+}
 
-  const child = createNode({[color]: [point]});
-  const insertIndex =
-    replacesOriginalBranch && originalNextPath != null ? originalNextPath[originalNextPath.length - 1] : 0;
-  parent.children.splice(insertIndex, 0, child);
-  const nextPath = [...path, insertIndex];
-
-  if (insertsMove && originalNextPath != null) {
-    copyOriginalBranch(next, nextPath, document, originalNextPath, true, rules, branchMemory);
-  } else if (originalNextPath != null) {
-    copyOriginalBranch(next, nextPath, document, originalNextPath, false, rules, branchMemory);
+export function deleteMoveInReplaceBranch({
+  document,
+  path,
+  targetPath,
+  branchMemory,
+  state,
+  stayAtCurrentPath = false,
+}: {
+  document: SgfDocument;
+  path: number[];
+  targetPath: number[];
+  branchMemory: Map<string, number>;
+  state: ReplaceMoveState | null;
+  stayAtCurrentPath?: boolean;
+}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+  if (
+    state == null ||
+    targetPath.length === 0 ||
+    !samePath(path, state.replacementPath) ||
+    (!pathStartsWith(path, targetPath) && !pathStartsWith(targetPath, path)) ||
+    nodeMove(getNodeAtPath(document, targetPath)) == null
+  ) {
+    return null;
   }
 
-  const adjustedOriginalNextPath =
-    originalNextPath == null ? null : replacesOriginalBranch ? [...path, insertIndex + 1] : originalNextPath;
-  const followingOriginalPath =
-    !insertsMove && adjustedOriginalNextPath != null
-      ? nextOriginalBranchPath(next, adjustedOriginalNextPath, branchMemory)
-      : null;
-  const nextReferencePath = insertsMove ? adjustedOriginalNextPath : followingOriginalPath;
-  const nextSetupPath =
-    nextReferencePath != null && isSetupNode(getNodeAtPath(next, nextReferencePath)) ? nextReferencePath : undefined;
-  const replacementStartPath = state.replacementStartPath ?? nextPath;
-  const nextOriginalStatePath = insertsMove ? state.originalPath : (adjustedOriginalNextPath ?? state.originalPath);
-  const nextReference = {
-    originalPath: nextOriginalStatePath,
-    setupPath: nextSetupPath,
-    referenceNextPath: nextReferencePath ?? undefined,
-  };
+  return rebuildMoveEditBranch({
+    document,
+    path,
+    branchMemory,
+    state,
+    edit: {type: 'delete', targetPath, stayAtCurrentPath},
+  });
+}
 
-  return {
-    document: next,
-    path: nextPath,
-    state: {
-      originalPath: nextOriginalStatePath,
-      replacementPath: nextPath,
-      referenceMoves,
-      referenceHasSetup,
-      originalStartPath: state.originalStartPath ?? nextOriginalStatePath,
-      replacementStartPath,
-      setupPath: nextSetupPath,
-      referenceNextPath: nextReferencePath ?? undefined,
-      setupDepth:
-        nextSetupPath != null ? (state.setupDepth ?? nextPath.length - replacementStartPath.length) : undefined,
-      createdNodeIds: [...(state.createdNodeIds ?? []), child.id],
-      referencesByNodeId: {...state.referencesByNodeId, [child.id]: nextReference},
-    },
+function rebuildMoveEditBranch({
+  document,
+  path,
+  branchMemory,
+  state,
+  rules,
+  edit,
+}: {
+  document: SgfDocument;
+  path: number[];
+  branchMemory: Map<string, number>;
+  state: ReplaceMoveState;
+  rules?: string;
+  edit: {type: 'insert'; item: EditedBranchItem} | {type: 'delete'; targetPath: number[]; stayAtCurrentPath: boolean};
+}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+  const existingParentPath = state.replacementStartPath?.slice(0, -1);
+  const affectedParentPath =
+    edit.type === 'insert'
+      ? path
+      : pathStartsWith(edit.targetPath, path) && !samePath(edit.targetPath, path)
+        ? path
+        : edit.targetPath.slice(0, -1);
+  const branchParentPath = earliestComparablePath(existingParentPath, affectedParentPath);
+  if (branchParentPath == null) return null;
+
+  const parentState = replaceMoveStateForSelection(document, branchParentPath, branchMemory, state);
+  if (parentState == null) return null;
+
+  const sourcePaths = collectEditedBranchPaths(document, branchParentPath, branchMemory, state);
+  const items = sourcePaths
+    .filter((sourcePath) => !isTemporaryEmptyNode(document, sourcePath, state))
+    .map((sourcePath) => branchItemFromPath(document, sourcePath, branchMemory, state));
+  const currentNodeId = getNodeAtPath(document, path).id;
+  let selectedKey: string | null = null;
+
+  if (edit.type === 'insert') {
+    const selectedIndex = samePath(path, branchParentPath) ? -1 : items.findIndex((item) => item.key === currentNodeId);
+    if (selectedIndex < -1) return null;
+    items.splice(selectedIndex + 1, 0, edit.item);
+    selectedKey = edit.item.key;
+  } else {
+    const targetNodeId = getNodeAtPath(document, edit.targetPath).id;
+    const targetIndex = items.findIndex((item) => item.key === targetNodeId);
+    if (targetIndex < 0) return null;
+    selectedKey =
+      edit.stayAtCurrentPath && currentNodeId !== targetNodeId ? currentNodeId : (items[targetIndex - 1]?.key ?? null);
+    items.splice(targetIndex, 1);
+  }
+
+  const parentNodeId = getNodeAtPath(document, branchParentPath).id;
+  const originalParentNodeId = getNodeAtPath(document, parentState.originalPath).id;
+  const referenceNextNodeId = nodeIdAtOptionalPath(document, parentState.referenceNextPath);
+  const setupNodeId = nodeIdAtOptionalPath(document, parentState.setupPath);
+  const firstSourcePath = sourcePaths[0];
+  const insertIndex =
+    firstSourcePath?.[branchParentPath.length] ?? getNodeAtPath(document, branchParentPath).children.length;
+  const next = cloneDocument(document);
+
+  if (state.replacementStartPath != null) {
+    const replacementParent = getNodeAtPath(next, state.replacementStartPath.slice(0, -1));
+    replacementParent.children.splice(state.replacementStartPath.at(-1)!, 1);
+  }
+
+  const nextParentPath = findNodePath(next, parentNodeId);
+  if (nextParentPath == null) return null;
+
+  const fallbackItem = branchItemFromState(document, parentState, '__empty__', {});
+  const created = createEditedBranch(
+    next,
+    nextParentPath,
+    insertIndex,
+    items.length === 0 ? [fallbackItem] : items,
+    rules
+  );
+  if (created.length === 0) return null;
+
+  const nextOriginalParentPath = findNodePath(next, originalParentNodeId);
+  const nextReferencePath = referenceNextNodeId == null ? null : findNodePath(next, referenceNextNodeId);
+  const nextSetupPath = setupNodeId == null ? null : findNodePath(next, setupNodeId);
+  if (
+    nextOriginalParentPath == null ||
+    (referenceNextNodeId != null && nextReferencePath == null) ||
+    (setupNodeId != null && nextSetupPath == null)
+  ) {
+    return null;
+  }
+
+  const referencesByNodeId: Record<string, ReplaceMoveReference> = {};
+  for (const entry of created) {
+    const originalPath = findNodePath(next, entry.item.originalNodeId);
+    if (originalPath == null) return null;
+    referencesByNodeId[entry.node.id] = {
+      originalPath,
+      referenceNextPath:
+        entry.item.referenceNextNodeId == null
+          ? undefined
+          : (findNodePath(next, entry.item.referenceNextNodeId) ?? undefined),
+      setupPath: entry.item.setupNodeId == null ? undefined : (findNodePath(next, entry.item.setupNodeId) ?? undefined),
+      inserted: entry.item.inserted,
+    };
+  }
+
+  const replacementStartPath = created[0].path;
+  const baseState: ReplaceMoveState = {
+    originalPath: nextOriginalParentPath,
+    replacementPath: nextParentPath,
+    replacementStartPath,
+    setupPath: nextSetupPath ?? undefined,
+    referenceNextPath: nextReferencePath ?? undefined,
+    createdNodeIds: created.map((entry) => entry.node.id),
+    referencesByNodeId,
   };
+  const selectedPath = created.find((entry) => entry.item.key === selectedKey)?.path ?? nextParentPath;
+  const selectedState = samePath(selectedPath, nextParentPath)
+    ? baseState
+    : replaceMoveStateForSelection(next, selectedPath, branchMemory, baseState);
+  if (selectedState == null) return null;
+
+  return {document: next, path: selectedPath, state: selectedState};
+}
+
+function collectEditedBranchPaths(
+  document: SgfDocument,
+  parentPath: number[],
+  branchMemory: Map<string, number>,
+  state: ReplaceMoveState
+): number[][] {
+  const paths: number[][] = [];
+  const replacementStartPath = state.replacementStartPath;
+
+  if (replacementStartPath == null) {
+    let currentPath = nextOriginalBranchPath(document, parentPath, branchMemory);
+    while (currentPath != null) {
+      paths.push(currentPath);
+      currentPath = nextOriginalBranchPath(document, currentPath, branchMemory);
+    }
+    return paths;
+  }
+
+  for (let depth = parentPath.length + 1; depth <= replacementStartPath.length; depth += 1) {
+    paths.push(replacementStartPath.slice(0, depth));
+  }
+  let currentPath = nextFirstChildPath(document, replacementStartPath);
+  while (currentPath != null) {
+    paths.push(currentPath);
+    currentPath = nextFirstChildPath(document, currentPath);
+  }
+  return paths;
+}
+
+function branchItemFromPath(
+  document: SgfDocument,
+  path: number[],
+  branchMemory: Map<string, number>,
+  state: ReplaceMoveState
+): EditedBranchItem {
+  const selectedState = replaceMoveStateForSelection(document, path, branchMemory, state);
+  const originalPath = selectedState?.originalPath ?? path;
+  const referenceNextPath =
+    selectedState?.referenceNextPath ?? nextOriginalBranchPath(document, originalPath, branchMemory);
+  return {
+    key: getNodeAtPath(document, path).id,
+    data: cloneNodeData(getNodeAtPath(document, path)),
+    originalNodeId: getNodeAtPath(document, originalPath).id,
+    referenceNextNodeId: nodeIdAtOptionalPath(document, referenceNextPath),
+    setupNodeId: nodeIdAtOptionalPath(document, selectedState?.setupPath),
+    inserted: state.referencesByNodeId?.[getNodeAtPath(document, path).id]?.inserted === true,
+  };
+}
+
+function branchItemFromState(
+  document: SgfDocument,
+  state: ReplaceMoveState,
+  key: string,
+  data: Record<string, string[]>,
+  inserted = false
+): EditedBranchItem {
+  return {
+    key,
+    data,
+    originalNodeId: getNodeAtPath(document, state.originalPath).id,
+    referenceNextNodeId: nodeIdAtOptionalPath(document, state.referenceNextPath),
+    setupNodeId: nodeIdAtOptionalPath(document, state.setupPath),
+    inserted,
+  };
+}
+
+function createEditedBranch(
+  document: SgfDocument,
+  parentPath: number[],
+  insertIndex: number,
+  items: EditedBranchItem[],
+  rules?: string
+): CreatedBranchItem[] {
+  const created: CreatedBranchItem[] = [];
+  let previousMoveWasConvertedPass = false;
+
+  for (const item of items) {
+    let data = Object.fromEntries(Object.entries(item.data).map(([key, values]) => [key, [...values]]));
+    const move = moveFromData(data);
+    let convertedPass = false;
+    if (move?.point) {
+      const currentParentPath = created.at(-1)?.path ?? parentPath;
+      const position = deriveBoardPosition(document, currentParentPath);
+      if (!isLegalMove(position, move.color, move.point, rules)) {
+        if (!position.stones.has(move.point)) break;
+        data = {...data, [move.color]: ['']};
+        convertedPass = true;
+      }
+    }
+
+    if (convertedPass && previousMoveWasConvertedPass) {
+      const previous = created.pop();
+      if (previous != null) {
+        getNodeAtPath(document, previous.path.slice(0, -1)).children.splice(previous.path.at(-1)!, 1);
+      }
+      previousMoveWasConvertedPass = false;
+      continue;
+    }
+
+    const node = createNode(data);
+    const currentParentPath = created.at(-1)?.path ?? parentPath;
+    const parent = getNodeAtPath(document, currentParentPath);
+    const childIndex = created.length === 0 ? insertIndex : parent.children.length;
+    parent.children.splice(childIndex, 0, node);
+    created.push({item, node, path: [...currentParentPath, childIndex]});
+    previousMoveWasConvertedPass = convertedPass;
+  }
+
+  return created;
+}
+
+function earliestComparablePath(left: number[] | undefined, right: number[]): number[] | null {
+  if (left == null) return right;
+  if (pathStartsWith(left, right)) return right;
+  if (pathStartsWith(right, left)) return left;
+  return null;
+}
+
+function isTemporaryEmptyNode(document: SgfDocument, path: number[], state: ReplaceMoveState): boolean {
+  const node = getNodeAtPath(document, path);
+  return (
+    Object.keys(node.data).length === 0 &&
+    node.children.length === 0 &&
+    (state.createdNodeIds?.includes(node.id) ?? false)
+  );
+}
+
+function nodeIdAtOptionalPath(document: SgfDocument, path: number[] | null | undefined): string | undefined {
+  return path == null ? undefined : getNodeAtPath(document, path).id;
+}
+
+function moveFromData(data: Record<string, string[]>): {color: SgfColor; point: string} | null {
+  const color: SgfColor | null = data.B != null ? 'B' : data.W != null ? 'W' : null;
+  return color == null ? null : {color, point: data[color]?.[0] ?? ''};
 }
 
 export function confirmReplaceMove({
@@ -199,23 +438,6 @@ export function insertEmptyMoveZeroBeforeRootSetup(document: SgfDocument): SgfDo
 
 export function hasNonEmptyRootSetup(document: SgfDocument): boolean {
   return isSetupNode(document.root) && deriveBoardPosition(document, []).stones.size > 0;
-}
-
-export function deleteReplaceMove(
-  document: SgfDocument,
-  path: number[]
-): {document: SgfDocument; path: number[]; removedNodeIds: string[]} | null {
-  if (path.length === 0) return null;
-
-  const next = cloneDocument(document);
-  const parentPath = path.slice(0, -1);
-  const parent = getNodeAtPath(next, parentPath);
-  const index = path[path.length - 1];
-  const node = parent.children[index];
-  if (node == null) return null;
-
-  parent.children.splice(index, 1, ...node.children.map(cloneNodeWithNewIds));
-  return {document: next, path: parentPath, removedNodeIds: collectNodeIds(node)};
 }
 
 export function replaceMoveStones(
@@ -288,19 +510,17 @@ export function replaceMoveStones(
   }
   for (const point of extraFuture.keys()) extra.add(point);
 
-  if (state?.replacementStartPath != null && state.referenceMoves != null && state.referenceHasSetup !== true) {
-    const currentMoves = collectMoveSequence(document, state.replacementStartPath, (currentPath) =>
-      nextFirstChildPath(document, currentPath)
-    ).moves;
-    const unchangedCurrentIndexes = longestCommonMoveSubsequence(state.referenceMoves, currentMoves);
-
-    currentMoves.forEach((move, index) => {
-      if (unchangedCurrentIndexes.has(index)) return;
+  let editedPath = state?.replacementStartPath ?? null;
+  while (editedPath != null) {
+    const node = getNodeAtPath(document, editedPath);
+    const move = nodeMove(node);
+    if (state?.referencesByNodeId?.[node.id]?.inserted === true && move?.point) {
       extra.add(move.point);
       if (!currentStones.has(move.point) && currentContinuation.get(move.point) === move.color) {
         extraFuture.set(move.point, move.color);
       }
-    });
+    }
+    editedPath = nextFirstChildPath(document, editedPath);
   }
 
   return {past, future, extraFuture, missing, extra};
@@ -312,7 +532,40 @@ export function replaceMoveStateForSelection(
   branchMemory: Map<string, number>,
   state: ReplaceMoveState | null
 ): ReplaceMoveState | null {
-  if (state?.originalStartPath == null || state.replacementStartPath == null) return null;
+  if (state == null) return null;
+  if (samePath(path, state.replacementPath)) return state;
+  if (state.replacementStartPath == null) {
+    if (
+      !pathStartsWith(state.originalPath, path) &&
+      (!pathStartsWith(path, state.originalPath) ||
+        !pathFollowsOriginalBranch(document, state.originalPath, path, branchMemory))
+    ) {
+      return null;
+    }
+    return createReplaceMoveState(document, path, branchMemory);
+  }
+  if (path.length < state.replacementStartPath.length && pathStartsWith(state.replacementStartPath, path)) {
+    const replacementRootReference =
+      path.length + 1 === state.replacementStartPath.length
+        ? state.referencesByNodeId?.[getNodeAtPath(document, state.replacementStartPath).id]
+        : undefined;
+    const referenceNextPath =
+      replacementRootReference == null
+        ? state.replacementStartPath.slice(0, path.length + 1)
+        : samePath(replacementRootReference.originalPath, path)
+          ? replacementRootReference.referenceNextPath
+          : replacementRootReference.originalPath;
+    return {
+      ...state,
+      originalPath: path,
+      replacementPath: path,
+      setupPath:
+        referenceNextPath != null && isSetupNode(getNodeAtPath(document, referenceNextPath))
+          ? referenceNextPath
+          : undefined,
+      referenceNextPath,
+    };
+  }
   if (!pathStartsWith(path, state.replacementStartPath)) return null;
 
   const selectedReference = state.referencesByNodeId?.[getNodeAtPath(document, path).id];
@@ -326,33 +579,22 @@ export function replaceMoveStateForSelection(
     };
   }
 
-  let originalPath = state.originalStartPath;
-  let setupPath: number[] | undefined;
-  const suffix = path.slice(state.replacementStartPath.length);
-  if (suffix.some((index) => index !== 0)) return null;
-  if (nodeMove(getNodeAtPath(document, path)) == null) return null;
+  return null;
+}
 
-  for (let index = 0; index < suffix.length; index += 1) {
-    const nextOriginalPath = nextOriginalBranchPath(document, originalPath, branchMemory);
-    if (nextOriginalPath == null) return null;
-    if (isSetupNode(getNodeAtPath(document, nextOriginalPath))) {
-      setupPath = state.setupPath ?? nextOriginalPath;
-      break;
-    } else {
-      originalPath = nextOriginalPath;
-    }
+function pathFollowsOriginalBranch(
+  document: SgfDocument,
+  startPath: number[],
+  targetPath: number[],
+  branchMemory: Map<string, number>
+): boolean {
+  let currentPath = startPath;
+  while (currentPath.length < targetPath.length) {
+    const nextPath = nextOriginalBranchPath(document, currentPath, branchMemory);
+    if (nextPath == null || !pathStartsWith(targetPath, nextPath)) return false;
+    currentPath = nextPath;
   }
-
-  if (state.setupDepth != null && suffix.length >= state.setupDepth) setupPath = state.setupPath;
-
-  const referenceNextPath = setupPath ?? nextOriginalBranchPath(document, originalPath, branchMemory) ?? undefined;
-  return {
-    ...state,
-    originalPath,
-    replacementPath: path,
-    setupPath,
-    referenceNextPath,
-  };
+  return samePath(currentPath, targetPath);
 }
 
 export function gtpMoveToPoint(move: string, size: number): string | null {
@@ -365,57 +607,17 @@ export function gtpMoveToPoint(move: string, size: number): string | null {
   return vertexToPoint(x, y);
 }
 
-function copyOriginalBranch(
-  targetDocument: SgfDocument,
-  targetPath: number[],
-  sourceDocument: SgfDocument,
-  sourcePath: number[],
-  includeSourceNode: boolean,
-  rules: string | undefined,
-  branchMemory: Map<string, number>
-): void {
-  let currentTargetPath = targetPath;
-  let currentSourcePath = sourcePath;
-  let useCurrentSourcePath = includeSourceNode;
-  let previousMoveWasConvertedPass = false;
-
-  while (true) {
-    const nextSourcePath = useCurrentSourcePath
-      ? currentSourcePath
-      : nextOriginalBranchPath(sourceDocument, currentSourcePath, branchMemory);
-    if (nextSourcePath == null) return;
-    useCurrentSourcePath = false;
-
-    const sourceNode = getNodeAtPath(sourceDocument, nextSourcePath);
-    const move = nodeMove(sourceNode);
-    if (move == null && !isSetupNode(sourceNode)) return;
-
-    let nodeData = cloneNodeData(sourceNode);
-    let convertedPass = false;
-    if (move?.point) {
-      const position = deriveBoardPosition(targetDocument, currentTargetPath);
-      if (!isLegalMove(position, move.color, move.point, rules)) {
-        if (!position.stones.has(move.point)) return;
-        nodeData = {...nodeData, [move.color]: ['']};
-        convertedPass = true;
-      }
+function findNodePath(document: SgfDocument, nodeId: string): number[] | null {
+  const visit = (node: SgfNode, path: number[]): number[] | null => {
+    if (node.id === nodeId) return path;
+    for (let index = 0; index < node.children.length; index += 1) {
+      const result = visit(node.children[index], [...path, index]);
+      if (result != null) return result;
     }
+    return null;
+  };
 
-    if (convertedPass && previousMoveWasConvertedPass) {
-      const previousPath = currentTargetPath;
-      currentTargetPath = previousPath.slice(0, -1);
-      getNodeAtPath(targetDocument, currentTargetPath).children.splice(previousPath.at(-1)!, 1);
-      previousMoveWasConvertedPass = false;
-      currentSourcePath = nextSourcePath;
-      continue;
-    }
-
-    const targetParent = getNodeAtPath(targetDocument, currentTargetPath);
-    targetParent.children.push(createNode(nodeData));
-    currentTargetPath = [...currentTargetPath, targetParent.children.length - 1];
-    currentSourcePath = nextSourcePath;
-    previousMoveWasConvertedPass = convertedPass;
-  }
+  return visit(document.root, []);
 }
 
 function nextOriginalBranchPath(
@@ -433,113 +635,6 @@ function nextOriginalBranchPath(
 
 function nextFirstChildPath(document: SgfDocument, path: number[]): number[] | null {
   return getNodeAtPath(document, path).children.length === 0 ? null : [...path, 0];
-}
-
-function collectMoveSequence(
-  document: SgfDocument,
-  startPath: number[] | null | undefined,
-  nextPath: (path: number[]) => number[] | null
-): {moves: ReplaceMoveSequenceItem[]; hasSetup: boolean} {
-  const moves: ReplaceMoveSequenceItem[] = [];
-  let path = startPath;
-
-  while (path != null) {
-    const node = getNodeAtPath(document, path);
-    if (isSetupNode(node)) return {moves, hasSetup: true};
-
-    const move = nodeMove(node);
-    if (move?.point) moves.push(move);
-    path = nextPath(path);
-  }
-
-  return {moves, hasSetup: false};
-}
-
-function longestCommonMoveSubsequence(
-  referenceMoves: ReplaceMoveSequenceItem[],
-  currentMoves: ReplaceMoveSequenceItem[]
-): Set<number> {
-  const width = currentMoves.length + 1;
-  const cellCount = (referenceMoves.length + 1) * width;
-  const lengths = new Uint32Array(cellCount);
-  const displacement = new Float64Array(cellCount);
-  const decisions = new Uint8Array(cellCount);
-
-  for (let referenceIndex = referenceMoves.length - 1; referenceIndex >= 0; referenceIndex -= 1) {
-    for (let currentIndex = currentMoves.length - 1; currentIndex >= 0; currentIndex -= 1) {
-      const index = referenceIndex * width + currentIndex;
-      const skipReferenceIndex = index + width;
-      const skipCurrentIndex = index + 1;
-      let bestLength = lengths[skipReferenceIndex];
-      let bestDisplacement = displacement[skipReferenceIndex];
-      let bestDecision = 1;
-
-      if (
-        isBetterMoveAlignment(
-          lengths[skipCurrentIndex],
-          displacement[skipCurrentIndex],
-          2,
-          bestLength,
-          bestDisplacement,
-          bestDecision
-        )
-      ) {
-        bestLength = lengths[skipCurrentIndex];
-        bestDisplacement = displacement[skipCurrentIndex];
-        bestDecision = 2;
-      }
-
-      if (sameMove(referenceMoves[referenceIndex], currentMoves[currentIndex])) {
-        const nextIndex = skipReferenceIndex + 1;
-        const matchLength = lengths[nextIndex] + 1;
-        const matchDisplacement = displacement[nextIndex] + Math.abs(referenceIndex - currentIndex);
-        if (isBetterMoveAlignment(matchLength, matchDisplacement, 3, bestLength, bestDisplacement, bestDecision)) {
-          bestLength = matchLength;
-          bestDisplacement = matchDisplacement;
-          bestDecision = 3;
-        }
-      }
-
-      lengths[index] = bestLength;
-      displacement[index] = bestDisplacement;
-      decisions[index] = bestDecision;
-    }
-  }
-
-  const unchangedCurrentIndexes = new Set<number>();
-  let referenceIndex = 0;
-  let currentIndex = 0;
-  while (referenceIndex < referenceMoves.length && currentIndex < currentMoves.length) {
-    const decision = decisions[referenceIndex * width + currentIndex];
-    if (decision === 3) {
-      unchangedCurrentIndexes.add(currentIndex);
-      referenceIndex += 1;
-      currentIndex += 1;
-    } else if (decision === 2) {
-      currentIndex += 1;
-    } else {
-      referenceIndex += 1;
-    }
-  }
-
-  return unchangedCurrentIndexes;
-}
-
-function isBetterMoveAlignment(
-  length: number,
-  displacement: number,
-  decision: number,
-  bestLength: number,
-  bestDisplacement: number,
-  bestDecision: number
-): boolean {
-  if (length !== bestLength) return length > bestLength;
-  if (displacement !== bestDisplacement) return displacement < bestDisplacement;
-  return decision > bestDecision;
-}
-
-function sameMove(left: ReplaceMoveSequenceItem, right: ReplaceMoveSequenceItem): boolean {
-  return left.color === right.color && left.point === right.point;
 }
 
 function collectContinuationStones(
@@ -629,8 +724,4 @@ function isRedundantSetupNode(document: SgfDocument, path: number[]): boolean {
   }
 
   return deriveBoardPosition(document, path).nextColor === before.nextColor;
-}
-
-function collectNodeIds(node: SgfNode): string[] {
-  return [node.id, ...node.children.flatMap(collectNodeIds)];
 }

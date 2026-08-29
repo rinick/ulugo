@@ -343,12 +343,6 @@ export function SgfTreePanel({
               onClick={replaceControls.onConfirm}
             />
             <TreeActionButton
-              title={withShortcut(t('deleteMove'), shortcutLabels.deleteBranch)}
-              disabled={selectedOperationPath.length === 0}
-              icon={<DeleteOutlined />}
-              onClick={() => onDelete()}
-            />
-            <TreeActionButton
               title={`${t('cancel')} (Esc)`}
               disabled={false}
               icon={<CloseOutlined />}

@@ -49,8 +49,7 @@ export const resources = {
       tygemSavedPassword: '****** ( Saved password )',
       tygemLogin: 'Log in',
       tygemLoginFailed: 'Failed to log in to Tygem.',
-      tygemCredentialsNotSaved:
-        'Logged in, but the password was not saved because secure storage is unavailable.',
+      tygemCredentialsNotSaved: 'Logged in, but the password was not saved because secure storage is unavailable.',
       tygemLoadFailed: 'Failed to load Tygem games.',
       tygemOpenFailed: 'Failed to open the Tygem game.',
       openFromKgs: 'Open from KGS',
@@ -71,8 +70,7 @@ export const resources = {
       pandanetSavedPassword: '****** ( Saved password )',
       pandanetLogin: 'Log in',
       pandanetLoginFailed: 'Failed to log in to Pandanet.',
-      pandanetCredentialsNotSaved:
-        'Logged in, but the password was not saved because secure storage is unavailable.',
+      pandanetCredentialsNotSaved: 'Logged in, but the password was not saved because secure storage is unavailable.',
       pandanetLoadFailed: 'Failed to load Pandanet games.',
       pandanetOpenFailed: 'Failed to open the Pandanet game.',
       boardRecognition: 'Recognize board from image',
@@ -136,10 +134,8 @@ export const resources = {
       tipMarkup: 'When adding markup, double-click to mark all connected stones.',
       tipMarkupText:
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
-      tipReplaceMove:
-        'If you notice a misrecorded move, select that move and use Replace move. Ulugo returns to the previous position so you can correct it without replaying all later moves.',
-      tipReplaceInsert:
-        'In Replace move mode, left-click to replace the next move and right-click to insert a move before it. Ulugo inserts automatically when the next node is a setup move.',
+      tipInsertMove:
+        'Use Insert move to add moves on a temporary branch. Right-click instead to delete a move and select the preceding position.',
       tipBoardRecognition:
         'Ulugo can convert a photo of a Go board into an SGF file. Choose an image when opening a file to start board recognition.',
       tipMinimalPortrait:
@@ -178,7 +174,7 @@ export const resources = {
       autoPlay: 'Auto play',
       placeBlackStone: 'Place black stone',
       placeWhiteStone: 'Place white stone',
-      replaceMove: 'Replace move',
+      insertMove: 'Insert move',
       addLabel: 'Add label',
       addCircle: 'Add circle',
       addSquare: 'Add square',
@@ -292,8 +288,8 @@ export const resources = {
       analysisSettingsLoadFailed: 'Failed to load analysis settings.',
       deleteBranchConfirmTitle: 'Delete this branch?',
       deleteBranchConfirmContent: 'This move has child moves. Deleting it will also delete all child moves.',
-      cancelReplaceConfirmTitle: 'Discard replacement?',
-      cancelReplaceConfirmContent: 'You have placed two or more moves. Cancel and discard the temporary branch?',
+      cancelMoveEditConfirmTitle: 'Discard move edits?',
+      cancelMoveEditConfirmContent: 'Cancel and discard the temporary branch?',
       pruneBranchConfirmTitle: 'Prune parent branches?',
       pruneBranchConfirmContent:
         'This will delete every alternative branch from the parent nodes leading to the selected move. Branches below the selected move will be kept.',
@@ -459,10 +455,7 @@ export const resources = {
       tipShiftJump: '按住Shift点击棋盘上的棋子或后续着手，可以跳转到那一手。',
       tipMarkup: '添加标记时，双击可以将连续的棋子全部加上标记。',
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
-      tipReplaceMove:
-        '在记谱过程中如果发现某一手记错了，选中错误的那一手并使用“替换着手”工具。程序会自动退回上一手，让你纠正错误，无需重摆之后所有的棋。',
-      tipReplaceInsert:
-        '在“替换着手”模式下，左键落子会替换下一手，右键落子会在下一手之前插入一手。如果下一手是盘面设置节点，程序会自动插入。',
+      tipInsertMove: '使用“插入着手”在临时分支中增加着手；右键点击则删除着手，并跳到被删着手的前一步。',
       tipBoardRecognition: 'Ulugo可以将棋盘照片转换为SGF文件。打开文件时选择图片即可开始棋盘识别。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
       tipWebScoreEstimate:
@@ -497,7 +490,7 @@ export const resources = {
       autoPlay: '黑白交替',
       placeBlackStone: '放置黑子',
       placeWhiteStone: '放置白子',
-      replaceMove: '替换着手',
+      insertMove: '插入着手',
       addLabel: '添加标记',
       addCircle: '添加圆形',
       addSquare: '添加方形',
@@ -609,8 +602,8 @@ export const resources = {
       analysisSettingsLoadFailed: '读取分析设置失败。',
       deleteBranchConfirmTitle: '删除这个分支？',
       deleteBranchConfirmContent: '这手棋有后续节点。删除后也会删除所有后续节点。',
-      cancelReplaceConfirmTitle: '放弃替换？',
-      cancelReplaceConfirmContent: '已经落下两手或更多着手。确定取消并删除临时分支吗？',
+      cancelMoveEditConfirmTitle: '放弃着手编辑？',
+      cancelMoveEditConfirmContent: '确定取消并删除临时分支吗？',
       pruneBranchConfirmTitle: '修剪父节点分支？',
       pruneBranchConfirmContent: '这将删除通往所选棋步的所有父节点上的其他分支，并保留所选棋步之后的分支。',
       all: '全部',
@@ -780,10 +773,8 @@ export const resources = {
       tipMarkup: 'マークアップを追加するときは、ダブルクリックで連続した石すべてにマークを付けられます。',
       tipMarkupText:
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
-      tipReplaceMove:
-        '記録ミスに気づいたら、その誤った手を選択して「着手を置換」を使います。自動的に一手前へ戻るので、その後の手をすべて並べ直さずに修正できます。',
-      tipReplaceInsert:
-        '「着手を置換」モードでは、左クリックで次の手を置換し、右クリックでその前に手を挿入します。次のノードがセットアップ手の場合は自動的に挿入されます。',
+      tipInsertMove:
+        '「着手を挿入」で一時分岐に手を追加します。右クリックすると手を削除し、削除した手の直前へ移動します。',
       tipBoardRecognition:
         'Ulugoは碁盤の写真をSGFファイルに変換できます。ファイルを開くときに画像を選択すると、盤面認識が始まります。',
       tipMinimalPortrait:
@@ -822,7 +813,7 @@ export const resources = {
       autoPlay: '交互に着手',
       placeBlackStone: '黒石を置く',
       placeWhiteStone: '白石を置く',
-      replaceMove: '着手を置換',
+      insertMove: '着手を挿入',
       addLabel: 'ラベルを追加',
       addCircle: '丸を追加',
       addSquare: '四角を追加',
@@ -935,8 +926,8 @@ export const resources = {
       analysisSettingsLoadFailed: '解析設定を読み込めませんでした。',
       deleteBranchConfirmTitle: 'この分岐を削除しますか？',
       deleteBranchConfirmContent: 'この着手には子の着手があります。削除すると、すべての子の着手も削除されます。',
-      cancelReplaceConfirmTitle: '置換を破棄しますか？',
-      cancelReplaceConfirmContent: '2手以上置かれています。キャンセルして一時分岐を破棄しますか？',
+      cancelMoveEditConfirmTitle: '着手の編集を破棄しますか？',
+      cancelMoveEditConfirmContent: 'キャンセルして一時分岐を破棄しますか？',
       pruneBranchConfirmTitle: '親ノードの分岐を剪定しますか？',
       pruneBranchConfirmContent:
         '選択した着手へ続く親ノードの別分岐をすべて削除します。選択した着手より後の分岐は保持されます。',
@@ -1040,8 +1031,7 @@ export const resources = {
       pandanetSavedPassword: '****** ( 저장된 비밀번호 )',
       pandanetLogin: '로그인',
       pandanetLoginFailed: 'Pandanet에 로그인하지 못했습니다.',
-      pandanetCredentialsNotSaved:
-        '로그인했지만 안전한 저장소를 사용할 수 없어 비밀번호를 저장하지 않았습니다.',
+      pandanetCredentialsNotSaved: '로그인했지만 안전한 저장소를 사용할 수 없어 비밀번호를 저장하지 않았습니다.',
       pandanetLoadFailed: 'Pandanet 대국 목록을 불러오지 못했습니다.',
       pandanetOpenFailed: 'Pandanet 기보를 열지 못했습니다.',
       boardRecognition: '이미지에서 바둑판 인식',
@@ -1105,10 +1095,8 @@ export const resources = {
       tipMarkup: '표식을 추가할 때 두 번 클릭하면 이어진 돌 전체에 표식을 추가할 수 있습니다.',
       tipMarkupText:
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
-      tipReplaceMove:
-        '잘못 기록된 수를 발견하면 그 수를 선택하고 "수 바꾸기"를 사용하세요. 자동으로 한 수 전으로 돌아가므로 이후의 모든 수를 다시 놓지 않고 수정할 수 있습니다.',
-      tipReplaceInsert:
-        '"수 바꾸기" 모드에서는 왼쪽 클릭으로 다음 수를 바꾸고 오른쪽 클릭으로 그 앞에 한 수를 삽입합니다. 다음 노드가 설정 수이면 자동으로 삽입합니다.',
+      tipInsertMove:
+        '"수 삽입"으로 임시 분기에 수를 추가합니다. 오른쪽 클릭하면 수를 삭제하고 삭제한 수의 직전 위치로 이동합니다.',
       tipBoardRecognition:
         'Ulugo는 바둑판 사진을 SGF 파일로 변환할 수 있습니다. 파일을 열 때 이미지를 선택하면 바둑판 인식이 시작됩니다.',
       tipMinimalPortrait:
@@ -1147,7 +1135,7 @@ export const resources = {
       autoPlay: '교대로 두기',
       placeBlackStone: '흑돌 놓기',
       placeWhiteStone: '백돌 놓기',
-      replaceMove: '수 바꾸기',
+      insertMove: '수 삽입',
       addLabel: '표식 추가',
       addCircle: '원 추가',
       addSquare: '사각형 추가',
@@ -1260,8 +1248,8 @@ export const resources = {
       analysisSettingsLoadFailed: '분석 설정을 불러오지 못했습니다.',
       deleteBranchConfirmTitle: '이 분기를 삭제할까요?',
       deleteBranchConfirmContent: '이 수에는 하위 수가 있습니다. 삭제하면 모든 하위 수도 삭제됩니다.',
-      cancelReplaceConfirmTitle: '수 바꾸기를 폐기할까요?',
-      cancelReplaceConfirmContent: '두 수 이상 두었습니다. 취소하고 임시 분기를 삭제할까요?',
+      cancelMoveEditConfirmTitle: '수 편집을 폐기할까요?',
+      cancelMoveEditConfirmContent: '취소하고 임시 분기를 삭제할까요?',
       pruneBranchConfirmTitle: '상위 노드의 분기를 정리할까요?',
       pruneBranchConfirmContent:
         '선택한 수로 이어지는 상위 노드의 다른 분기를 모두 삭제합니다. 선택한 수 아래의 분기는 유지됩니다.',
@@ -1432,10 +1420,8 @@ export const resources = {
       tipMarkup: 'Lorsque vous ajoutez un marquage, double-cliquez pour marquer toutes les pierres connectees.',
       tipMarkupText:
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
-      tipReplaceMove:
-        'Si vous remarquez un coup mal saisi, selectionnez ce coup et utilisez Remplacer le coup. Ulugo revient automatiquement au coup precedent afin de le corriger sans rejouer tous les coups suivants.',
-      tipReplaceInsert:
-        'En mode Remplacer le coup, un clic gauche remplace le coup suivant et un clic droit insere un coup avant celui-ci. Si le noeud suivant est un coup de mise en place, Ulugo insere automatiquement.',
+      tipInsertMove:
+        'Utilisez Inserer un coup pour ajouter des coups sur une variante temporaire. Un clic droit supprime un coup et selectionne la position precedente.',
       tipBoardRecognition:
         'Ulugo peut convertir une photo d un plateau de go en fichier SGF. Selectionnez une image lors de l ouverture d un fichier pour lancer la reconnaissance du plateau.',
       tipMinimalPortrait:
@@ -1475,7 +1461,7 @@ export const resources = {
       autoPlay: 'Jeu alterne',
       placeBlackStone: 'Placer une pierre noire',
       placeWhiteStone: 'Placer une pierre blanche',
-      replaceMove: 'Remplacer le coup',
+      insertMove: 'Inserer un coup',
       addLabel: 'Ajouter etiquette',
       addCircle: 'Ajouter cercle',
       addSquare: 'Ajouter carre',
@@ -1591,8 +1577,8 @@ export const resources = {
       analysisSettingsLoadFailed: "Impossible de charger les parametres d'analyse.",
       deleteBranchConfirmTitle: 'Supprimer cette branche ?',
       deleteBranchConfirmContent: 'Ce coup a des coups enfants. Le supprimer supprimera aussi tous les coups enfants.',
-      cancelReplaceConfirmTitle: 'Abandonner le remplacement ?',
-      cancelReplaceConfirmContent: 'Vous avez joué au moins deux coups. Annuler et supprimer la variante temporaire ?',
+      cancelMoveEditConfirmTitle: 'Abandonner les modifications ?',
+      cancelMoveEditConfirmContent: 'Annuler et supprimer la variante temporaire ?',
       pruneBranchConfirmTitle: 'Elaguer les branches parentes ?',
       pruneBranchConfirmContent:
         'Toutes les branches alternatives des noeuds parents menant au coup selectionne seront supprimees. Les branches sous le coup selectionne seront conservees.',
@@ -1764,10 +1750,8 @@ export const resources = {
       tipMarkup: 'Beim Hinzufuegen von Markierungen kannst du doppelklicken, um alle verbundenen Steine zu markieren.',
       tipMarkupText:
         'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
-      tipReplaceMove:
-        'Wenn du einen falsch notierten Zug bemerkst, waehle diesen Zug aus und verwende Zug ersetzen. Ulugo geht automatisch einen Zug zurueck, damit du ihn korrigieren kannst, ohne alle folgenden Zuege neu zu setzen.',
-      tipReplaceInsert:
-        'Im Modus Zug ersetzen ersetzt ein Linksklick den naechsten Zug; ein Rechtsklick fuegt davor einen Zug ein. Ist der naechste Knoten ein Einrichtungszug, wird automatisch eingefuegt.',
+      tipInsertMove:
+        'Mit Zug einfuegen fuegst du Zuege in einer temporaeren Variante hinzu. Ein Rechtsklick loescht einen Zug und waehlt die vorherige Position aus.',
       tipBoardRecognition:
         'Ulugo kann ein Foto eines Go-Bretts in eine SGF-Datei umwandeln. Waehle beim Oeffnen einer Datei ein Bild aus, um die Bretterkennung zu starten.',
       tipMinimalPortrait:
@@ -1806,7 +1790,7 @@ export const resources = {
       autoPlay: 'Abwechselnd spielen',
       placeBlackStone: 'Schwarzen Stein setzen',
       placeWhiteStone: 'Weissen Stein setzen',
-      replaceMove: 'Zug ersetzen',
+      insertMove: 'Zug einfuegen',
       addLabel: 'Markierung hinzufuegen',
       addCircle: 'Kreis hinzufuegen',
       addSquare: 'Quadrat hinzufuegen',
@@ -1921,9 +1905,8 @@ export const resources = {
       analysisSettingsLoadFailed: 'Analyseeinstellungen konnten nicht geladen werden.',
       deleteBranchConfirmTitle: 'Diese Variante loeschen?',
       deleteBranchConfirmContent: 'Dieser Zug hat Folgezuge. Beim Loeschen werden auch alle Folgezuge geloescht.',
-      cancelReplaceConfirmTitle: 'Ersetzung verwerfen?',
-      cancelReplaceConfirmContent:
-        'Sie haben mindestens zwei Zuege gespielt. Abbrechen und die temporaere Variante verwerfen?',
+      cancelMoveEditConfirmTitle: 'Zugbearbeitungen verwerfen?',
+      cancelMoveEditConfirmContent: 'Abbrechen und die temporaere Variante verwerfen?',
       pruneBranchConfirmTitle: 'Varianten der Elternknoten beschneiden?',
       pruneBranchConfirmContent:
         'Alle alternativen Varianten der Elternknoten auf dem Weg zum ausgewaehlten Zug werden geloescht. Varianten unterhalb des ausgewaehlten Zugs bleiben erhalten.',
@@ -2092,10 +2075,8 @@ export const resources = {
       tipMarkup: 'При добавлении разметки дважды щелкните, чтобы отметить все соединенные камни.',
       tipMarkupText:
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
-      tipReplaceMove:
-        'Если вы заметили неверно записанный ход, выберите его и используйте «Заменить ход». Ulugo автоматически вернется на ход назад, чтобы вы могли исправить ошибку, не расставляя заново все последующие ходы.',
-      tipReplaceInsert:
-        'В режиме «Заменить ход» щелчок левой кнопкой заменяет следующий ход, а правой — вставляет ход перед ним. Если следующий узел установочный, вставка выполняется автоматически.',
+      tipInsertMove:
+        'Используйте «Вставить ход», чтобы добавить ходы во временную ветку. Щелчок правой кнопкой удаляет ход и выбирает предыдущую позицию.',
       tipBoardRecognition:
         'Ulugo может преобразовать фотографию доски го в файл SGF. Выберите изображение при открытии файла, чтобы запустить распознавание доски.',
       tipMinimalPortrait:
@@ -2134,7 +2115,7 @@ export const resources = {
       autoPlay: 'Чередовать ходы',
       placeBlackStone: 'Поставить черный камень',
       placeWhiteStone: 'Поставить белый камень',
-      replaceMove: 'Заменить ход',
+      insertMove: 'Вставить ход',
       addLabel: 'Добавить метку',
       addCircle: 'Добавить круг',
       addSquare: 'Добавить квадрат',
@@ -2249,8 +2230,8 @@ export const resources = {
       analysisSettingsLoadFailed: 'Не удалось загрузить настройки анализа.',
       deleteBranchConfirmTitle: 'Удалить эту ветку?',
       deleteBranchConfirmContent: 'У этого хода есть дочерние ходы. При удалении они тоже будут удалены.',
-      cancelReplaceConfirmTitle: 'Отбросить замену?',
-      cancelReplaceConfirmContent: 'Сделано два или более ходов. Отменить и удалить временную ветку?',
+      cancelMoveEditConfirmTitle: 'Отбросить изменения ходов?',
+      cancelMoveEditConfirmContent: 'Отменить и удалить временную ветку?',
       pruneBranchConfirmTitle: 'Обрезать ветки родительских узлов?',
       pruneBranchConfirmContent:
         'Все альтернативные ветки родительских узлов на пути к выбранному ходу будут удалены. Ветки после выбранного хода сохранятся.',

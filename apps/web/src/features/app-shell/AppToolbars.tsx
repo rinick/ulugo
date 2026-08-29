@@ -2,18 +2,20 @@ import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
 import {EditorToolbar} from '../toolbar/EditorToolbar';
 import {MarkupToolbar} from '../toolbar/MarkupToolbar';
 import {NavigationToolbar} from '../toolbar/NavigationToolbar';
-import type {EditorTool} from '../toolbar/types';
+import type {EditorTool, MoveEditAction} from '../toolbar/types';
 
 interface AppToolbarsProps {
   tool: EditorTool;
   nextColor: 'B' | 'W';
   canNavigatePrevious: boolean;
   canNavigateNext: boolean;
-  canReplaceMove: boolean;
+  canEditMoves: boolean;
+  moveEditAction: MoveEditAction;
   showMarkup: boolean;
   labelText: string;
   shortcutLabels: Partial<Record<ShortcutActionId, string>>;
   onToolChange: (tool: EditorTool) => void;
+  onMoveEditActionChange: (action: MoveEditAction) => void;
   onLabelTextChange: (value: string) => void;
   onAutoToolClick: () => void;
   onEraseAllMarkup: () => void;
@@ -31,11 +33,13 @@ export function AppToolbars({
   nextColor,
   canNavigatePrevious,
   canNavigateNext,
-  canReplaceMove,
+  canEditMoves,
+  moveEditAction,
   showMarkup,
   labelText,
   shortcutLabels,
   onToolChange,
+  onMoveEditActionChange,
   onLabelTextChange,
   onAutoToolClick,
   onEraseAllMarkup,
@@ -52,9 +56,11 @@ export function AppToolbars({
       <EditorToolbar
         tool={tool}
         nextColor={nextColor}
-        canReplaceMove={canReplaceMove}
+        canEditMoves={canEditMoves}
+        moveEditAction={moveEditAction}
         shortcutLabels={shortcutLabels}
         onToolChange={onToolChange}
+        onMoveEditActionChange={onMoveEditActionChange}
         onAutoToolClick={onAutoToolClick}
         onPass={onPass}
       />

@@ -1,9 +1,30 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
   assignKeyboardShortcut,
   defaultKeyboardShortcuts,
   isReservedKeyboardShortcut,
+  readKeyboardShortcuts,
 } from './keyboardShortcuts';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('move editing keyboard shortcuts', () => {
+  it('assigns 4 to insert move and leaves delete move unassigned by default', () => {
+    expect(defaultKeyboardShortcuts.insertMove).toEqual({key: '4', ctrl: false, alt: false, shift: false});
+    expect(defaultKeyboardShortcuts.deleteMove).toBeNull();
+  });
+
+  it('migrates the old replace move shortcut to insert move', () => {
+    const replaceMove = {key: 'x', ctrl: false, alt: true, shift: false};
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify({replaceMove}),
+    });
+
+    expect(readKeyboardShortcuts().insertMove).toEqual(replaceMove);
+  });
+});
 
 describe('reserved keyboard shortcuts', () => {
   it('reserves Ctrl+V without reserving modified variants', () => {

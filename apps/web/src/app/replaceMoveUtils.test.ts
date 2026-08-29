@@ -4,27 +4,412 @@ import {describe, expect, it} from 'vitest';
 import {
   confirmReplaceMove,
   createReplaceMoveState,
-  deleteReplaceMove,
+  deleteMoveInReplaceBranch,
   replaceMoveStones,
   hasNonEmptyRootSetup,
+  insertMoveInReplaceBranch,
   insertEmptyMoveZeroBeforeRootSetup,
   replaceMoveStateForSelection,
-  replaceNextMoveBranch,
   type ReplaceMoveState,
 } from './replaceMoveUtils';
 
-describe('deleteReplaceMove', () => {
-  it('deletes only the current replacement move and promotes its continuation', () => {
-    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc])');
-    const continuationId = getNodeAtPath(document, [0, 0, 0]).id;
+describe('deleteMoveInReplaceBranch', () => {
+  it('creates a branch without the clicked earlier move and selects its parent', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const result = deleteMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      targetPath: [0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+    })!;
 
-    const result = deleteReplaceMove(document, [0, 0])!;
+    expect(result.path).toEqual([]);
+    expect(getNodeAtPath(result.document, [0]).data).toEqual({W: ['bb']});
+    expect(getNodeAtPath(result.document, [1]).data).toEqual({B: ['aa']});
+    const selectedBranch = replaceMoveStateForSelection(result.document, [0, 0, 0], branchMemory, result.state)!;
+    expect(getNodeAtPath(result.document, selectedBranch.originalPath).data).toEqual({W: ['dd']});
+  });
+
+  it('keeps the equivalent current node selected in delete mode', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const result = deleteMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      targetPath: [0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+      stayAtCurrentPath: true,
+    })!;
+
+    expect(result.path).toEqual([0, 0]);
+    expect(getNodeAtPath(result.document, result.path).data).toEqual({B: ['cc']});
+    expect(result.state.replacementPath).toEqual(result.path);
+  });
+
+  it('moves back one node when the current node is deleted in delete mode', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc])');
+    const result = deleteMoveInReplaceBranch({
+      document,
+      path: [0, 0],
+      targetPath: [0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0], branchMemory),
+      stayAtCurrentPath: true,
+    })!;
 
     expect(result.path).toEqual([0]);
-    expect(serializeSgf(result.document)).toBe('(;SZ[9];B[aa];B[cc])');
-    expect(getNodeAtPath(result.document, [0, 0]).id).not.toBe(continuationId);
+    expect(getNodeAtPath(result.document, result.path).data).toEqual({B: ['aa']});
+  });
+
+  it('keeps the equivalent current node when deleting inside an existing edit branch', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const currentState = replaceMoveStateForSelection(
+      inserted.document,
+      [...inserted.path, 0],
+      branchMemory,
+      inserted.state
+    )!;
+    const result = deleteMoveInReplaceBranch({
+      document: inserted.document,
+      path: currentState.replacementPath,
+      targetPath: inserted.path,
+      branchMemory,
+      state: currentState,
+      stayAtCurrentPath: true,
+    })!;
+
+    expect(result.path).toEqual(inserted.path);
+    expect(getNodeAtPath(result.document, result.path).data).toEqual({W: ['bb']});
+    expect(result.state.replacementPath).toEqual(result.path);
+  });
+
+  it('rebuilds an earlier branch and removes the previous replacement branch', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const replaced = insertMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+    })!;
+    const deleted = deleteMoveInReplaceBranch({
+      document: replaced.document,
+      path: replaced.path,
+      targetPath: [0],
+      branchMemory,
+      state: replaced.state,
+    })!;
+
+    expect(serializeSgf(deleted.document)).toContain('(;W[bb];B[cc];W[ee];W[dd])(;B[aa];W[bb];B[cc];W[dd])');
+    expect(getNodeAtPath(deleted.document, [1, 0, 0]).children).toHaveLength(1);
+  });
+
+  it('rebuilds again when another stone before the deletion branch is removed', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const first = deleteMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+    })!;
+    const second = deleteMoveInReplaceBranch({
+      document: first.document,
+      path: first.path,
+      targetPath: [0],
+      branchMemory,
+      state: first.state,
+    })!;
+
+    expect(serializeSgf(second.document)).toContain('(;W[bb];W[dd])(;B[aa];W[bb];B[cc];W[dd])');
+    expect(second.document.root.children).toHaveLength(2);
+  });
+
+  it('discards the deletion branch when the next move is inserted', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const deleted = deleteMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+    })!;
+    const replaced = insertMoveInReplaceBranch({
+      document: deleted.document,
+      path: deleted.path,
+      point: 'ee',
+      branchMemory,
+      state: deleted.state,
+    })!;
+
+    expect(serializeSgf(replaced.document)).toContain('(;B[ee];W[dd])(;B[cc];W[dd])');
+    expect(getNodeAtPath(replaced.document, [0, 0]).children).toHaveLength(2);
   });
 });
+
+describe('deleteMoveInReplaceBranch', () => {
+  it('starts the branch at the current position before any replacement is created', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const result = deleteMoveInReplaceBranch({
+      document,
+      path: [0],
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+
+    expect(result.path).toEqual([0, 0]);
+    expect(result.state.replacementStartPath).toEqual([0, 0]);
+    expect(serializeSgf(result.document)).toContain(';B[aa](;W[bb];W[dd])(;W[bb];B[cc];W[dd])');
+  });
+
+  it('keeps the current node selected after a future deletion in delete mode', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const result = deleteMoveInReplaceBranch({
+      document,
+      path: [0],
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+      stayAtCurrentPath: true,
+    })!;
+
+    expect(result.path).toEqual([0]);
+    expect(result.state.replacementPath).toEqual([0]);
+  });
+
+  it('keeps the current edit-branch node selected after deleting a future move', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const result = deleteMoveInReplaceBranch({
+      document: inserted.document,
+      path: inserted.path,
+      targetPath: [...inserted.path, 0],
+      branchMemory,
+      state: inserted.state,
+      stayAtCurrentPath: true,
+    })!;
+
+    expect(result.path).toEqual(inserted.path);
+    expect(result.state.replacementPath).toEqual(inserted.path);
+  });
+
+  it('removes a future move without creating another branch at that move', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const replaced = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const deleted = deleteMoveInReplaceBranch({
+      document: replaced.document,
+      path: replaced.path,
+      targetPath: [...replaced.path, 0],
+      branchMemory,
+      state: replaced.state,
+    })!;
+
+    expect(deleted.path).toEqual(replaced.path);
+    expect(serializeSgf(deleted.document)).toContain(';B[aa](;W[ee];B[cc];W[dd])(;W[bb];B[cc];W[dd])');
+    expect(getNodeAtPath(deleted.document, deleted.path).children).toHaveLength(1);
+  });
+
+  it('keeps a deleted future move out of later insertions', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const deleted = deleteMoveInReplaceBranch({
+      document,
+      path: [0],
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const replaced = insertMoveInReplaceBranch({
+      document: deleted.document,
+      path: deleted.path,
+      point: 'ee',
+      branchMemory,
+      state: deleted.state,
+    })!;
+
+    expect(serializeSgf(replaced.document)).toContain(';B[aa](;W[bb];B[ee];W[dd])(;W[bb];B[cc];W[dd])');
+    expect(serializeSgf(replaced.document)).not.toContain(';B[ee];B[cc]');
+  });
+
+  it('inserts before the move after an immediately deleted future move', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const deleted = deleteMoveInReplaceBranch({
+      document,
+      path: [0],
+      targetPath: [0, 0],
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const replaced = insertMoveInReplaceBranch({
+      document: deleted.document,
+      path: deleted.path,
+      point: 'ee',
+      branchMemory,
+      state: deleted.state,
+    })!;
+
+    expect(serializeSgf(replaced.document)).toContain(';B[aa](;W[ee];B[cc];W[dd])(;W[bb];B[cc];W[dd])');
+  });
+});
+
+describe('alternating insert and delete actions', () => {
+  it('keeps one temporary branch when edits move before and within the branch', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const deletedPast = deleteMoveInReplaceBranch({
+      document: inserted.document,
+      path: inserted.path,
+      targetPath: [0],
+      branchMemory,
+      state: inserted.state,
+      stayAtCurrentPath: true,
+    })!;
+    const insertedBefore = insertMoveInReplaceBranch({
+      document: deletedPast.document,
+      path: deletedPast.path,
+      point: 'ff',
+      branchMemory,
+      state: deletedPast.state,
+    })!;
+    const deletedFuture = deleteMoveInReplaceBranch({
+      document: insertedBefore.document,
+      path: insertedBefore.path,
+      targetPath: [0, 0, 0],
+      branchMemory,
+      state: insertedBefore.state,
+      stayAtCurrentPath: true,
+    })!;
+    const insertedAgain = insertMoveInReplaceBranch({
+      document: deletedFuture.document,
+      path: deletedFuture.path,
+      point: 'gg',
+      branchMemory,
+      state: deletedFuture.state,
+    })!;
+
+    expect(countBranchPoints(insertedAgain.document.root)).toBe(1);
+    expect(insertedAgain.document.root.children).toHaveLength(2);
+  });
+});
+
+describe('move edit branch navigation', () => {
+  it('keeps the session only on the remembered branch before an edit branch exists', () => {
+    const document = parseSgf('(;SZ[9](;B[aa];W[bb])(;B[cc];W[dd]))');
+    const branchMemory = new Map<string, number>([['', 0]]);
+    const state = createReplaceMoveState(document, [], branchMemory);
+
+    expect(replaceMoveStateForSelection(document, [0, 0], branchMemory, state)).not.toBeNull();
+    expect(replaceMoveStateForSelection(document, [1], branchMemory, state)).toBeNull();
+  });
+
+  it('keeps the session on the edited branch and its trunk but rejects the original sibling branch', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'dd',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+
+    expect(replaceMoveStateForSelection(inserted.document, [0], branchMemory, inserted.state)).not.toBeNull();
+    expect(replaceMoveStateForSelection(inserted.document, [0, 0, 0], branchMemory, inserted.state)).not.toBeNull();
+    expect(replaceMoveStateForSelection(inserted.document, [0, 1], branchMemory, inserted.state)).toBeNull();
+  });
+
+  it('rebases an insertion made on the trunk and removes the old temporary branch', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0, 0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0], branchMemory),
+    })!;
+    const trunkState = replaceMoveStateForSelection(inserted.document, [], branchMemory, inserted.state)!;
+    const rebased = insertMoveInReplaceBranch({
+      document: inserted.document,
+      path: [],
+      point: 'ff',
+      branchMemory,
+      state: trunkState,
+    })!;
+
+    expect(countBranchPoints(rebased.document.root)).toBe(1);
+    expect(rebased.document.root.children).toHaveLength(2);
+  });
+
+  it('rebases a future trunk deletion and selects the preceding node', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0, 0, 0],
+      point: 'ee',
+      branchMemory,
+      state: createReplaceMoveState(document, [0, 0, 0], branchMemory),
+    })!;
+    const trunkState = replaceMoveStateForSelection(inserted.document, [], branchMemory, inserted.state)!;
+    const deleted = deleteMoveInReplaceBranch({
+      document: inserted.document,
+      path: [],
+      targetPath: [0, 0],
+      branchMemory,
+      state: trunkState,
+    })!;
+
+    expect(deleted.path).toEqual([0]);
+    expect(countBranchPoints(deleted.document.root)).toBe(1);
+  });
+});
+
+function countBranchPoints(node: ReturnType<typeof getNodeAtPath>): number {
+  return (
+    (node.children.length > 1 ? 1 : 0) + node.children.reduce((count, child) => count + countBranchPoints(child), 0)
+  );
+}
 
 describe('insertEmptyMoveZeroBeforeRootSetup', () => {
   it('moves a non-empty root setup to move 1 while preserving existing node ids and positions', () => {
@@ -57,7 +442,7 @@ describe('insertEmptyMoveZeroBeforeRootSetup', () => {
 
   it('allows a move to be inserted before the shifted root setup', () => {
     const document = insertEmptyMoveZeroBeforeRootSetup(parseSgf('(;SZ[9]AB[aa];W[bb])'))!;
-    const result = replaceNextMoveBranch({
+    const result = insertMoveInReplaceBranch({
       document,
       path: [],
       point: 'cc',
@@ -72,157 +457,34 @@ describe('insertEmptyMoveZeroBeforeRootSetup', () => {
   });
 });
 
-describe('replaceNextMoveBranch', () => {
-  it('inserts one move when requested, then returns to replacing', () => {
+describe('insertMoveInReplaceBranch', () => {
+  it('creates one temporary branch and preserves the original continuation', () => {
     const branchMemory = new Map<string, number>();
     const document = parseSgf('(;SZ[9];B[aa];W[bb])');
-    const inserted = replaceNextMoveBranch({
+    const inserted = insertMoveInReplaceBranch({
       document,
       path: [],
       point: 'cc',
       branchMemory,
       state: createReplaceMoveState(document, [], branchMemory),
-      insert: true,
     })!;
 
-    expect(getNodeAtPath(inserted.document, [0]).data).toEqual({B: ['cc']});
-    expect(getNodeAtPath(inserted.document, [0, 0]).data).toEqual({B: ['aa']});
-
-    const replaced = replaceNextMoveBranch({
-      document: inserted.document,
-      path: inserted.path,
-      point: 'dd',
-      branchMemory,
-      state: inserted.state,
-    })!;
-
-    expect(serializeSgf(replaced.document)).toContain(';B[cc];B[dd];W[bb]');
-    expect(replaced.state?.createdNodeIds).toHaveLength(2);
+    expect(serializeSgf(inserted.document)).toContain('(;B[cc];B[aa];W[bb])(;B[aa];W[bb])');
+    expect(countBranchPoints(inserted.document.root)).toBe(1);
   });
 
-  it('inserts automatically when the next reference node is setup', () => {
+  it('inserts before a setup node', () => {
     const document = parseSgf('(;SZ[9];AB[aa];B[bb])');
-    const state = createReplaceMoveState(document, [], new Map());
-    const result = replaceNextMoveBranch({
+    const result = insertMoveInReplaceBranch({
       document,
       path: [],
       point: 'cc',
       branchMemory: new Map(),
-      state,
+      state: createReplaceMoveState(document, [], new Map()),
     })!;
 
-    expect(state.setupPath).toEqual([0]);
-    expect(state.referenceHasSetup).toBe(true);
     expect(getNodeAtPath(result.document, [0]).data).toEqual({B: ['cc']});
     expect(getNodeAtPath(result.document, [0, 0]).data).toEqual({AB: ['aa']});
-  });
-
-  it('keeps the first setup node after moves inserted beyond the replacement range', () => {
-    const branchMemory = new Map<string, number>();
-    let document = parseSgf('(;SZ[9];B[aa];W[bb];AB[cc]AW[dd];B[ee])');
-    let path: number[] = [];
-    let state: ReplaceMoveState | null = {originalPath: [], replacementPath: []};
-
-    for (const point of ['ff', 'gg', 'hh', 'ii']) {
-      const result = replaceNextMoveBranch({document, path, point, branchMemory, state});
-      expect(result).not.toBeNull();
-      ({document, path, state} = result!);
-    }
-
-    expect(serializeSgf(document)).toContain(';B[ff];W[gg];B[hh];W[ii];AB[cc]AW[dd];B[ee]');
-    expect(getNodeAtPath(document, [...path, 0]).data).toMatchObject({AB: ['cc'], AW: ['dd']});
-    expect(state?.setupPath).toBeDefined();
-  });
-
-  it('turns an occupied continuation move into a pass and keeps later moves', () => {
-    const branchMemory = new Map<string, number>();
-    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd])');
-
-    const result = replaceNextMoveBranch({
-      document,
-      path: [],
-      point: 'cc',
-      branchMemory,
-      state: createReplaceMoveState(document, [], branchMemory),
-    })!;
-
-    expect(serializeSgf(result.document)).toContain('(;B[cc];W[bb];B[];W[dd])');
-  });
-
-  it('removes two consecutive continuation moves converted into passes', () => {
-    const branchMemory = new Map<string, number>();
-    const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc];W[dd];B[ee])');
-    const first = replaceNextMoveBranch({
-      document,
-      path: [],
-      point: 'cc',
-      branchMemory,
-      state: createReplaceMoveState(document, [], branchMemory),
-    })!;
-
-    const second = replaceNextMoveBranch({
-      document: first.document,
-      path: first.path,
-      point: 'dd',
-      branchMemory,
-      state: first.state,
-    })!;
-
-    expect(serializeSgf(second.document)).toContain('(;B[cc];W[dd];B[ee])');
-    expect(serializeSgf(second.document)).not.toContain(';B[];W[]');
-  });
-
-  it('exits at the setup boundary by deleting the setup node from the replacement branch', () => {
-    const branchMemory = new Map<string, number>();
-    let document = parseSgf('(;SZ[9];B[aa];AB[bb];W[cc])');
-    const first = replaceNextMoveBranch({
-      document,
-      path: [],
-      point: 'dd',
-      branchMemory,
-      state: {originalPath: [], replacementPath: []},
-    })!;
-    const finished = confirmReplaceMove({
-      document: first.document,
-      path: first.path,
-      branchMemory,
-      state: first.state,
-    });
-
-    expect(finished).not.toBeNull();
-    expect(getNodeAtPath(finished!.document, [...finished!.path, 0]).data).toEqual({W: ['cc']});
-    expect(serializeSgf(finished!.document)).toContain('(;B[dd];W[cc])');
-  });
-
-  it('restores ordinary replacement behavior when navigating back before the setup boundary', () => {
-    const branchMemory = new Map<string, number>();
-    const document = parseSgf('(;SZ[9];B[aa];W[bb];AB[cc])');
-    const first = replaceNextMoveBranch({
-      document,
-      path: [],
-      point: 'dd',
-      branchMemory,
-      state: {originalPath: [], replacementPath: []},
-    })!;
-    const second = replaceNextMoveBranch({
-      document: first.document,
-      path: first.path,
-      point: 'ee',
-      branchMemory,
-      state: first.state,
-    })!;
-    const inserted = replaceNextMoveBranch({
-      document: second.document,
-      path: second.path,
-      point: 'ff',
-      branchMemory,
-      state: second.state,
-    })!;
-
-    const restored = replaceMoveStateForSelection(inserted.document, first.path, branchMemory, inserted.state);
-
-    expect(restored?.setupPath).toBeUndefined();
-    expect(restored?.originalPath).toEqual(first.state?.originalStartPath);
   });
 });
 
@@ -275,7 +537,6 @@ describe('replaceMoveStones', () => {
     const state: ReplaceMoveState = {
       originalPath: [1],
       replacementPath: [0],
-      originalStartPath: [1],
       replacementStartPath: [0],
     };
 
@@ -295,7 +556,6 @@ describe('replaceMoveStones', () => {
     const state: ReplaceMoveState = {
       originalPath: [1],
       replacementPath: [0],
-      originalStartPath: [1],
       replacementStartPath: [0],
     };
 
@@ -313,7 +573,6 @@ describe('replaceMoveStones', () => {
     const state: ReplaceMoveState = {
       originalPath: [1],
       replacementPath: [0],
-      originalStartPath: [1],
       replacementStartPath: [0],
     };
 
@@ -323,10 +582,10 @@ describe('replaceMoveStones', () => {
     expect(stones.extra).toEqual(new Set(['aa']));
   });
 
-  it('does not mark copied continuation stones as missing after a replacement', () => {
+  it('does not mark copied continuation stones as missing after an insertion', () => {
     const branchMemory = new Map<string, number>();
     const document = parseSgf('(;SZ[9];B[aa];W[bb];B[cc])');
-    const replacement = replaceNextMoveBranch({
+    const replacement = insertMoveInReplaceBranch({
       document,
       path: [],
       point: 'dd',
@@ -336,16 +595,16 @@ describe('replaceMoveStones', () => {
 
     const stones = replaceMoveStones(replacement.document, replacement.path, branchMemory, replacement.state);
 
-    expect(Object.fromEntries(stones.past)).toEqual({aa: 'B'});
-    expect(Object.fromEntries(stones.future)).toEqual({bb: 'W', cc: 'B'});
-    expect(stones.missing).toEqual(new Set(['aa']));
+    expect(Object.fromEntries(stones.past)).toEqual({});
+    expect(Object.fromEntries(stones.future)).toEqual({aa: 'B', bb: 'W', cc: 'B'});
+    expect(stones.missing).toEqual(new Set());
     expect(stones.extra).toEqual(new Set(['dd']));
   });
 
-  it('marks a reference continuation stone moved into the current position', () => {
+  it('marks an inserted stone that also appears in the reference continuation', () => {
     const branchMemory = new Map<string, number>();
     const document = parseSgf('(;SZ[9];B[aa];W[bb];B[dd])');
-    const replacement = replaceNextMoveBranch({
+    const replacement = insertMoveInReplaceBranch({
       document,
       path: [],
       point: 'dd',
@@ -355,7 +614,7 @@ describe('replaceMoveStones', () => {
 
     const stones = replaceMoveStones(replacement.document, replacement.path, branchMemory, replacement.state);
 
-    expect(stones.missing).toEqual(new Set(['aa']));
+    expect(stones.missing).toEqual(new Set());
     expect(stones.extra).toEqual(new Set(['dd']));
   });
 
@@ -364,7 +623,6 @@ describe('replaceMoveStones', () => {
     const state: ReplaceMoveState = {
       originalPath: [1],
       replacementPath: [0],
-      originalStartPath: [1],
       replacementStartPath: [0],
     };
 
@@ -376,67 +634,13 @@ describe('replaceMoveStones', () => {
     expect(stones.extra).toEqual(new Set(['dd']));
   });
 
-  it('marks the smallest moved block when shared moves change order', () => {
-    const document = parseSgf('(;SZ[9](;B[ee];W[ff];B[aa];W[bb];B[cc];W[dd])(;B[aa];W[bb];B[cc];W[dd];B[ee];W[ff]))');
-    const state: ReplaceMoveState = {
-      originalPath: [1],
-      replacementPath: [0],
-      originalStartPath: [1],
-      replacementStartPath: [0],
-      referenceNextPath: [1, 0],
-      referenceMoves: [
-        {color: 'B', point: 'aa'},
-        {color: 'W', point: 'bb'},
-        {color: 'B', point: 'cc'},
-        {color: 'W', point: 'dd'},
-        {color: 'B', point: 'ee'},
-        {color: 'W', point: 'ff'},
-      ],
-      referenceHasSetup: false,
-    };
-
-    const stones = replaceMoveStones(document, [0], new Map(), state);
-
-    expect(Object.fromEntries(stones.extraFuture)).toEqual({ff: 'W'});
-    expect(stones.extra).toEqual(new Set(['ee', 'ff']));
-  });
-
-  it('skips move-order comparison when the reference branch reaches setup', () => {
-    const document = parseSgf(
-      '(;SZ[9](;B[ee];W[ff];B[aa];W[bb];B[cc];W[dd])(;B[aa];W[bb];B[cc];W[dd];B[ee];W[ff];AB[gg]))'
-    );
-    const state: ReplaceMoveState = {
-      originalPath: [1],
-      replacementPath: [0],
-      originalStartPath: [1],
-      replacementStartPath: [0],
-      referenceNextPath: [1, 0],
-      referenceMoves: [
-        {color: 'B', point: 'aa'},
-        {color: 'W', point: 'bb'},
-        {color: 'B', point: 'cc'},
-        {color: 'W', point: 'dd'},
-        {color: 'B', point: 'ee'},
-        {color: 'W', point: 'ff'},
-      ],
-      referenceHasSetup: true,
-    };
-
-    const stones = replaceMoveStones(document, [0], new Map(), state);
-
-    expect(Object.fromEntries(stones.extraFuture)).toEqual({});
-    expect(stones.extra).toEqual(new Set());
-  });
-
   it('does not mark a current stone contained in the reference setup position', () => {
     const document = parseSgf('(;SZ[9](;B[cc])(;B[aa];W[cc];AB[cc]))');
     const state: ReplaceMoveState = {
       originalPath: [1],
       replacementPath: [0],
-      originalStartPath: [1],
       replacementStartPath: [0],
       referenceNextPath: [1, 0],
-      referenceHasSetup: true,
     };
 
     const stones = replaceMoveStones(document, [0], new Map(), state);

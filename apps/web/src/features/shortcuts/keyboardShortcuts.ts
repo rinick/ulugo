@@ -19,7 +19,8 @@ export type ShortcutActionId =
   | 'toolAuto'
   | 'toolBlack'
   | 'toolWhite'
-  | 'replaceMove'
+  | 'insertMove'
+  | 'deleteMove'
   | 'addLabel'
   | 'addCircle'
   | 'addSquare'
@@ -95,7 +96,8 @@ export const shortcutActions: ShortcutAction[] = [
   {id: 'toolAuto', labelKey: 'autoPlay', defaultShortcut: shortcut('1')},
   {id: 'toolBlack', labelKey: 'placeBlackStone', defaultShortcut: shortcut('2')},
   {id: 'toolWhite', labelKey: 'placeWhiteStone', defaultShortcut: shortcut('3')},
-  {id: 'replaceMove', labelKey: 'replaceMove', defaultShortcut: shortcut('4')},
+  {id: 'insertMove', labelKey: 'insertMove', defaultShortcut: shortcut('4')},
+  {id: 'deleteMove', labelKey: 'deleteMove', defaultShortcut: null},
   {id: 'addLabel', labelKey: 'addLabel', defaultShortcut: shortcut('5')},
   {id: 'addCircle', labelKey: 'addCircle', defaultShortcut: shortcut('6')},
   {id: 'addSquare', labelKey: 'addSquare', defaultShortcut: shortcut('7')},
@@ -170,7 +172,7 @@ export function readKeyboardShortcuts(): KeyboardShortcutConfig {
     const value = localStorage.getItem(keyboardShortcutsStorageKey);
     if (value == null) return defaultKeyboardShortcuts;
     const stored = JSON.parse(value) as Partial<
-      Record<ShortcutActionId | 'toggleShowTopMoves', KeyboardShortcut | null>
+      Record<ShortcutActionId | 'replaceMove' | 'toggleShowTopMoves', KeyboardShortcut | null>
     >;
     return shortcutActions.reduce(
       (config, action) => ({
@@ -185,10 +187,11 @@ export function readKeyboardShortcuts(): KeyboardShortcutConfig {
 }
 
 function storedShortcutFallback(
-  stored: Partial<Record<ShortcutActionId | 'toggleShowTopMoves', KeyboardShortcut | null>>,
+  stored: Partial<Record<ShortcutActionId | 'replaceMove' | 'toggleShowTopMoves', KeyboardShortcut | null>>,
   actionId: ShortcutActionId
 ): KeyboardShortcut | null | undefined {
   if (actionId === 'toggleReviewEditMode') return stored.toggleShowTopMoves;
+  if (actionId === 'insertMove') return stored.replaceMove;
   return undefined;
 }
 
@@ -261,12 +264,7 @@ export function shortcutLabel(shortcutValue: KeyboardShortcut | null): string {
 }
 
 export function isReservedKeyboardShortcut(shortcutValue: KeyboardShortcut): boolean {
-  return (
-    shortcutValue.key === 'v' &&
-    shortcutValue.ctrl &&
-    !shortcutValue.alt &&
-    !shortcutValue.shift
-  );
+  return shortcutValue.key === 'v' && shortcutValue.ctrl && !shortcutValue.alt && !shortcutValue.shift;
 }
 
 function shortcut(key: string, modifiers: Partial<Omit<KeyboardShortcut, 'key'>> = {}): KeyboardShortcut {
