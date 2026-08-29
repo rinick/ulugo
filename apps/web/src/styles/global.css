@@ -639,6 +639,10 @@ body.mobile-browser .ant-modal-root .ant-modal-mask {
   min-width: 30px;
 }
 
+.edit-tools > .ant-btn .anticon {
+  font-size: 14px;
+}
+
 .label-tool .ant-input {
   width: 40px;
   text-align: center;
@@ -685,8 +689,8 @@ body.mobile-browser .ant-modal-root .ant-modal-mask {
 }
 
 .palm-icon {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   vertical-align: -2px;
   fill: none;
   stroke: currentColor;
