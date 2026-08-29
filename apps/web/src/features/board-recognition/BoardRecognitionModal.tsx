@@ -6,7 +6,7 @@ import {useTranslation} from 'react-i18next';
 import {recognizedCaptureCounts} from '../../app/appEditorUtils';
 import {isElectron, isMobileBrowser} from '../../app/capabilities';
 import type {AppLanguage} from '../../app/localizationUtils';
-import {scanCropGeometry, type NormalizedCrop} from './boardRecognitionImageUtils';
+import {cropPointFromViewport, scanCropGeometry, type NormalizedCrop} from './boardRecognitionImageUtils';
 
 type ScanBoard = number[][];
 type Phase = 'preparing' | 'select' | 'crop' | 'recognizing' | 'error' | 'screenshot' | 'result';
@@ -367,7 +367,11 @@ function CropEditor({
 
   function pointForEvent(event: PointerEvent<HTMLDivElement>): {x: number; y: number} {
     const rect = frameRef.current!.getBoundingClientRect();
-    return {x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height};
+    const rotatedClockwise =
+      document.body.classList.contains('platform-web') &&
+      document.body.classList.contains('minimal') &&
+      window.matchMedia('(orientation: portrait)').matches;
+    return cropPointFromViewport(rect, event.clientX, event.clientY, rotatedClockwise);
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>): void {

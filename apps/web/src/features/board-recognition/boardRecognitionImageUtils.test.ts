@@ -1,5 +1,17 @@
 import {describe, expect, it} from 'vitest';
-import {scanCropGeometry} from './boardRecognitionImageUtils';
+import {cropPointFromViewport, scanCropGeometry} from './boardRecognitionImageUtils';
+
+describe('cropPointFromViewport', () => {
+  const rect = {left: 100, top: 200, width: 300, height: 600};
+
+  it('uses viewport axes when the page is not rotated', () => {
+    expect(cropPointFromViewport(rect, 190, 320, false)).toEqual({x: 0.3, y: 0.2});
+  });
+
+  it('maps viewport axes back after the portrait minimal-mode rotation', () => {
+    expect(cropPointFromViewport(rect, 190, 320, true)).toEqual({x: 0.2, y: 0.7});
+  });
+});
 
 describe('scanCropGeometry', () => {
   it('maps the preview crop to the original image before resizing', () => {

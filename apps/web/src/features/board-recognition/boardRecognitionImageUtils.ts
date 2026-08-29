@@ -14,6 +14,17 @@ export interface ScanCropGeometry {
   outputHeight: number;
 }
 
+export function cropPointFromViewport(
+  rect: {left: number; top: number; width: number; height: number},
+  clientX: number,
+  clientY: number,
+  rotatedClockwise: boolean
+): {x: number; y: number} {
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top) / rect.height;
+  return rotatedClockwise ? {x: y, y: 1 - x} : {x, y};
+}
+
 export function scanCropGeometry(
   imageWidth: number,
   imageHeight: number,
