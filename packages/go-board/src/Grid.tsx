@@ -7,10 +7,11 @@ interface GridProps {
   xs: number[];
   ys: number[];
   hoshis: Vertex[];
+  hoshiRadius: number;
 }
 
 export default function Grid(props: GridProps) {
-  let {width, height, xs, ys, hoshis} = props;
+  let {width, height, xs, ys, hoshis, hoshiRadius} = props;
 
   return useMemo(
     () =>
@@ -78,10 +79,10 @@ export default function Grid(props: GridProps) {
             className: 'ulugo-hoshi',
             cx: i + 0.5,
             cy: j + 0.5,
-            r: 0.08,
+            r: hoshiRadius,
           });
         })
       ),
-    [width, height, xs.length, ys.length, xs[0], ys[0]]
+    [width, height, xs.length, ys.length, xs[0], ys[0], hoshiRadius]
   );
 }

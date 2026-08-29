@@ -678,6 +678,7 @@ export function GoBoard({
         <Board
           className={`ulugo-board-${boardBackground}`}
           vertexSize={vertexSize}
+          hoshiRadius={analysisSettings.mode === 'review' ? 0.08 : undefined}
           showCoordinates={showCoordinates}
           signMap={displaySignMap}
           extraStoneMap={extraStoneBooleanMap}

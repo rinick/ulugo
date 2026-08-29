@@ -512,6 +512,7 @@ body.mobile-browser .ant-modal-root .ant-modal-mask {
 
 .navigation-tools {
   flex: 0 0 auto;
+  background: var(--ant-color-bg-container);
   z-index: 10;
 }
 
@@ -619,7 +620,7 @@ body.mobile-browser .ant-modal-root .ant-modal-mask {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .edit-tools,

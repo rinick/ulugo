@@ -26,6 +26,7 @@ export interface BoardProps extends PublicVertexEventHandlers {
   className?: string;
   style?: CSSProperties;
   vertexSize?: number;
+  hoshiRadius?: number;
   showCoordinates?: boolean;
   signMap?: Map<Sign>;
   extraStoneMap?: Map<boolean>;
@@ -71,6 +72,7 @@ export default class Board extends PureComponent<BoardProps, BoardState> {
 
     let {
       vertexSize = 24,
+      hoshiRadius = 0.125,
       signMap,
       extraStoneMap,
       missingStoneMap,
@@ -138,6 +140,7 @@ export default class Board extends PureComponent<BoardProps, BoardState> {
           xs,
           ys,
           hoshis,
+          hoshiRadius,
         }),
 
         h(
