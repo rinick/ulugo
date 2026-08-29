@@ -64,6 +64,7 @@ import {
 } from '../features/shortcuts/keyboardShortcuts';
 import type {EditorTool, MoveEditAction} from '../features/toolbar/types';
 import {
+  insertMoveStartPath,
   nextLabelText,
   recognizedSetupChanges,
   resolveBoardBackground,
@@ -654,7 +655,6 @@ export function App() {
     const result = confirmReplaceMove({
       document,
       path: operationPath,
-      branchMemory: branchMemoryRef.current,
       state: replaceMoveState,
     });
     moveEditSnapshotRef.current = null;
@@ -830,7 +830,7 @@ export function App() {
     [document, path, treeLayout]
   );
 
-  function handleToolChange(nextTool: EditorTool): void {
+  function handleToolChange(nextTool: EditorTool, moveAction: MoveEditAction = moveEditAction): void {
     if (!showMarkup && isMarkupTool(nextTool)) return;
     if (nextTool === 'replace') {
       if (tool === 'replace') return;
@@ -839,7 +839,7 @@ export function App() {
         path,
         branchMemory: new Map(branchMemoryRef.current),
       };
-      if (operationPath.length === 0) {
+      if (operationPath.length === 0 && hasNonEmptyRootSetup(document)) {
         if (path.length !== 0) {
           moveEditSnapshotRef.current = null;
           return;
@@ -857,9 +857,14 @@ export function App() {
         });
         return;
       }
+      const moveEditPath = moveAction === 'insert' ? insertMoveStartPath(document, operationPath) : operationPath;
+      const cameraSetupPathToRemove = samePath(moveEditPath, operationPath) ? undefined : operationPath;
       setAnalysisModeActive(false);
       setAutoColorOverride(null);
-      setReplaceMoveState(createReplaceMoveState(document, operationPath, branchMemoryRef.current));
+      if (!samePath(moveEditPath, path)) selectPath(moveEditPath);
+      setReplaceMoveState(
+        createReplaceMoveState(document, moveEditPath, branchMemoryRef.current, cameraSetupPathToRemove)
+      );
       setTool('replace');
       return;
     }
@@ -877,7 +882,7 @@ export function App() {
 
   function handleMoveEditActionChange(action: MoveEditAction): void {
     setMoveEditAction(action);
-    if (tool !== 'replace') handleToolChange('replace');
+    if (tool !== 'replace') handleToolChange('replace', action);
   }
 
   function handleAutoToolClick(): void {
@@ -912,7 +917,7 @@ export function App() {
   const canEditMoves =
     tool === 'replace'
       ? replaceMoveState != null && samePath(operationPath, replaceMoveState.replacementPath)
-      : operationPath.length > 0 || (path.length === 0 && hasNonEmptyRootSetup(document));
+      : path.length === 0 || operationPath.length > 0;
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {

@@ -15,6 +15,7 @@ export interface ReplaceMoveState {
   originalPath: number[];
   replacementPath: number[];
   replacementStartPath?: number[];
+  cameraSetupNodeIdToRemove?: string;
   setupPath?: number[];
   referenceNextPath?: number[];
   createdNodeIds?: string[];
@@ -48,13 +49,17 @@ const setupPropertyKeys = ['AB', 'AW', 'AE', 'PL'] as const;
 export function createReplaceMoveState(
   document: SgfDocument,
   path: number[],
-  branchMemory: Map<string, number>
+  branchMemory: Map<string, number>,
+  cameraSetupPathToRemove?: number[]
 ): ReplaceMoveState {
   const nextPath = nextOriginalBranchPath(document, path, branchMemory);
   const setupPath = nextPath != null && isSetupNode(getNodeAtPath(document, nextPath)) ? nextPath : undefined;
+  const cameraSetupNode =
+    cameraSetupPathToRemove == null ? null : getNodeAtPath(document, cameraSetupPathToRemove);
   return {
     originalPath: path,
     replacementPath: path,
+    cameraSetupNodeIdToRemove: cameraSetupNode?.data.ZA?.[0] === 'camera' ? cameraSetupNode.id : undefined,
     setupPath,
     referenceNextPath: nextPath ?? undefined,
     createdNodeIds: [],
@@ -236,6 +241,7 @@ function rebuildMoveEditBranch({
     originalPath: nextOriginalParentPath,
     replacementPath: nextParentPath,
     replacementStartPath,
+    cameraSetupNodeIdToRemove: created.find((entry) => entry.item.key === state.cameraSetupNodeIdToRemove)?.node.id,
     setupPath: nextSetupPath ?? undefined,
     referenceNextPath: nextReferencePath ?? undefined,
     createdNodeIds: created.map((entry) => entry.node.id),
@@ -389,32 +395,21 @@ function moveFromData(data: Record<string, string[]>): {color: SgfColor; point: 
 export function confirmReplaceMove({
   document,
   path,
-  branchMemory,
   state,
 }: {
   document: SgfDocument;
   path: number[];
-  branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
 }): {document: SgfDocument; path: number[]} | null {
   if (state?.replacementStartPath == null || !samePath(path, state.replacementPath)) return null;
+  if (state.cameraSetupNodeIdToRemove == null) return {document, path};
 
-  let setupPath = nextOriginalBranchPath(document, path, branchMemory);
-  if (setupPath != null && isSetupNode(getNodeAtPath(document, setupPath))) {
-    return {document: deleteNodeKeepingChildren(document, setupPath), path};
-  }
-
-  while (setupPath != null) {
-    setupPath = nextOriginalBranchPath(document, setupPath, branchMemory);
-    if (setupPath == null) return {document, path};
-    if (!isSetupNode(getNodeAtPath(document, setupPath))) continue;
-    return {
-      document: isRedundantSetupNode(document, setupPath) ? deleteNodeKeepingChildren(document, setupPath) : document,
-      path,
-    };
-  }
-
-  return {document, path};
+  const setupPath = findNodePath(document, state.cameraSetupNodeIdToRemove);
+  if (setupPath == null || getNodeAtPath(document, setupPath).data.ZA?.[0] !== 'camera') return {document, path};
+  return {
+    document: deleteNodeKeepingChildren(document, setupPath),
+    path: pathAfterDeletingNodeKeepingChildren(document, path, setupPath),
+  };
 }
 
 export function insertEmptyMoveZeroBeforeRootSetup(document: SgfDocument): SgfDocument | null {
@@ -542,7 +537,10 @@ export function replaceMoveStateForSelection(
     ) {
       return null;
     }
-    return createReplaceMoveState(document, path, branchMemory);
+    return {
+      ...createReplaceMoveState(document, path, branchMemory),
+      cameraSetupNodeIdToRemove: state.cameraSetupNodeIdToRemove,
+    };
   }
   if (path.length < state.replacementStartPath.length && pathStartsWith(state.replacementStartPath, path)) {
     const replacementRootReference =
@@ -709,19 +707,29 @@ function deleteNodeKeepingChildren(document: SgfDocument, path: number[]): SgfDo
   return next;
 }
 
-function isRedundantSetupNode(document: SgfDocument, path: number[]): boolean {
-  const node = getNodeAtPath(document, path);
-  const before = deriveBoardPosition(document, path.slice(0, -1));
+function pathAfterDeletingNodeKeepingChildren(
+  document: SgfDocument,
+  selectedPath: number[],
+  deletedPath: number[]
+): number[] {
+  const parentPath = deletedPath.slice(0, -1);
+  if (!samePath(selectedPath.slice(0, parentPath.length), parentPath)) return selectedPath;
+  if (selectedPath.length <= parentPath.length) return selectedPath;
 
-  for (const point of node.data.AE ?? []) {
-    if (before.stones.has(point)) return false;
+  const deletedIndex = deletedPath.at(-1)!;
+  const selectedIndex = selectedPath[parentPath.length];
+  const childCount = getNodeAtPath(document, deletedPath).children.length;
+  if (selectedIndex < deletedIndex) return selectedPath;
+  if (selectedIndex > deletedIndex) {
+    const nextPath = [...selectedPath];
+    nextPath[parentPath.length] += childCount - 1;
+    return nextPath;
   }
-  for (const point of node.data.AB ?? []) {
-    if (before.stones.get(point) !== 'B') return false;
-  }
-  for (const point of node.data.AW ?? []) {
-    if (before.stones.get(point) !== 'W') return false;
-  }
+  if (selectedPath.length === deletedPath.length) return parentPath;
 
-  return deriveBoardPosition(document, path).nextColor === before.nextColor;
+  return [
+    ...parentPath,
+    deletedIndex + selectedPath[deletedPath.length],
+    ...selectedPath.slice(deletedPath.length + 1),
+  ];
 }

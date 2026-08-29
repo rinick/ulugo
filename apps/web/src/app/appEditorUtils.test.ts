@@ -1,6 +1,7 @@
 import {parseSgf} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
 import {
+  insertMoveStartPath,
   recognizedCaptureCounts,
   recognizedSetupChanges,
   scoringOperationPath,
@@ -83,6 +84,22 @@ describe('scoringOperationPath', () => {
 
     expect(scoringOperationPath(document, [])).toEqual([]);
     expect(scoringOperationPath(document, [0])).toEqual([0]);
+  });
+});
+
+describe('insertMoveStartPath', () => {
+  it('starts before a selected camera snapshot', () => {
+    const document = parseSgf('(;SZ[19];B[dd];PL[B]AB[aa]ZA[camera])');
+
+    expect(insertMoveStartPath(document, [0, 0])).toEqual([0]);
+  });
+
+  it('keeps regular nodes and move zero unchanged', () => {
+    const document = parseSgf('(;SZ[19];B[dd];PL[B]AB[aa])');
+
+    expect(insertMoveStartPath(document, [])).toEqual([]);
+    expect(insertMoveStartPath(document, [0])).toEqual([0]);
+    expect(insertMoveStartPath(document, [0, 0])).toEqual([0, 0]);
   });
 });
 

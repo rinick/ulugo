@@ -489,28 +489,48 @@ describe('insertMoveInReplaceBranch', () => {
 });
 
 describe('confirmReplaceMove', () => {
-  it('removes a later setup node when all of its board effects already exist', () => {
+  it('keeps ordinary setup nodes', () => {
     const document = parseSgf('(;SZ[9];B[aa];W[bb];AB[aa]AW[bb];B[cc])');
     const result = confirmReplaceMove({
       document,
       path: [],
-      branchMemory: new Map(),
-      state: {originalPath: [], replacementPath: [], replacementStartPath: []},
-    })!;
-
-    expect(serializeSgf(result.document)).toBe('(;SZ[9];B[aa];W[bb];B[cc])');
-  });
-
-  it('keeps a later setup node when it changes the board', () => {
-    const document = parseSgf('(;SZ[9];B[aa];W[bb];AB[cc];B[dd])');
-    const result = confirmReplaceMove({
-      document,
-      path: [],
-      branchMemory: new Map(),
       state: {originalPath: [], replacementPath: [], replacementStartPath: []},
     })!;
 
     expect(result.document).toBe(document);
+  });
+
+  it('keeps a camera setup when insertion did not start from that selected snapshot', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];AB[bb]ZA[camera];W[cc])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'dd',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory),
+    })!;
+    const result = confirmReplaceMove({document: inserted.document, path: inserted.path, state: inserted.state})!;
+
+    expect(result.document).toBe(inserted.document);
+    expect(getNodeAtPath(result.document, [0, 0, 0]).data.ZA).toEqual(['camera']);
+  });
+
+  it('removes the camera setup when insertion started from that selected snapshot', () => {
+    const branchMemory = new Map<string, number>();
+    const document = parseSgf('(;SZ[9];B[aa];AB[bb]ZA[camera];W[cc])');
+    const inserted = insertMoveInReplaceBranch({
+      document,
+      path: [0],
+      point: 'dd',
+      branchMemory,
+      state: createReplaceMoveState(document, [0], branchMemory, [0, 0]),
+    })!;
+    const result = confirmReplaceMove({document: inserted.document, path: inserted.path, state: inserted.state})!;
+
+    expect(result.path).toEqual(inserted.path);
+    expect(getNodeAtPath(result.document, [0, 0, 0]).data).toEqual({W: ['cc']});
+    expect(getNodeAtPath(result.document, [0, 1]).data.ZA).toEqual(['camera']);
   });
 });
 

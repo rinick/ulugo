@@ -23,6 +23,11 @@ export function scoringOperationPath(document: SgfDocument, path: number[]): num
   return path.slice(0, -1);
 }
 
+export function insertMoveStartPath(document: SgfDocument, path: number[]): number[] {
+  if (path.length === 0 || getNodeAtPath(document, path).data.ZA?.[0] !== 'camera') return path;
+  return path.slice(0, -1);
+}
+
 export function shouldAutoEstimateRecognizedGame(document: SgfDocument): boolean {
   const root = document.root.data;
   const stoneCount = (root.AB?.length ?? 0) + (root.AW?.length ?? 0);
