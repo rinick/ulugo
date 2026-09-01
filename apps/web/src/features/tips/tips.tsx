@@ -45,6 +45,9 @@ function createTips(t: TFunction): ReactElement<TipProps>[] {
     <Tip key="insert-move">
       <p>{t('tipInsertMove')}</p>
     </Tip>,
+    <Tip key="delete-move-double-click">
+      <p>{t('tipDeleteMoveDoubleClick')}</p>
+    </Tip>,
     <Tip key="board-recognition">
       <p>{t('tipBoardRecognition')}</p>
     </Tip>,

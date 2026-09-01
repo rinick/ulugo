@@ -136,6 +136,8 @@ export const resources = {
         'Adding text markup automatically advances the next text, such as A->B or 1->2. Right-clicking to add it does not advance the text.',
       tipInsertMove:
         'Use Insert move to add moves on a temporary branch. Right-click instead to delete a move and select the preceding position.',
+      tipDeleteMoveDoubleClick:
+        'In Delete move mode, double-click a stone to delete it and jump to the preceding position.',
       tipBoardRecognition:
         'Ulugo can convert a photo of a Go board into an SGF file. Choose an image when opening a file to start board recognition.',
       tipMinimalPortrait:
@@ -456,6 +458,7 @@ export const resources = {
       tipMarkup: '添加标记时，双击可以将连续的棋子全部加上标记。',
       tipMarkupText: '添加文字标记会自动改变下一个文字，例如A↦B, 1↦2。但如果用鼠标右键添加则文字不会被改变。',
       tipInsertMove: '使用“插入着手”在临时分支中增加着手；右键点击则删除着手，并跳到被删着手的前一步。',
+      tipDeleteMoveDoubleClick: '使用“删除着手”时，双击棋子可将其删除，并跳到该着手的前一手。',
       tipBoardRecognition: 'Ulugo可以将棋盘照片转换为SGF文件。打开文件时选择图片即可开始棋盘识别。',
       tipMinimalPortrait: '极简模式在竖屏状态会自动旋转90度。在手机平板上记谱时，竖屏能获得更大的显示空间。',
       tipWebScoreEstimate:
@@ -775,6 +778,8 @@ export const resources = {
         '文字マークを追加すると次の文字は自動で進みます。例: A->B、1->2。右クリックで追加した場合は文字は進みません。',
       tipInsertMove:
         '「着手を挿入」で一時分岐に手を追加します。右クリックすると手を削除し、削除した手の直前へ移動します。',
+      tipDeleteMoveDoubleClick:
+        '「着手を削除」の使用中に石をダブルクリックすると、その手を削除して一手前の局面へ移動します。',
       tipBoardRecognition:
         'Ulugoは碁盤の写真をSGFファイルに変換できます。ファイルを開くときに画像を選択すると、盤面認識が始まります。',
       tipMinimalPortrait:
@@ -1097,6 +1102,7 @@ export const resources = {
         '문자 표식을 추가하면 다음 문자가 자동으로 바뀝니다. 예: A->B, 1->2. 마우스 오른쪽 버튼으로 추가하면 문자는 바뀌지 않습니다.',
       tipInsertMove:
         '"수 삽입"으로 임시 분기에 수를 추가합니다. 오른쪽 클릭하면 수를 삭제하고 삭제한 수의 직전 위치로 이동합니다.',
+      tipDeleteMoveDoubleClick: '"수 삭제" 사용 중 돌을 두 번 클릭하면 해당 수를 삭제하고 직전 국면으로 이동합니다.',
       tipBoardRecognition:
         'Ulugo는 바둑판 사진을 SGF 파일로 변환할 수 있습니다. 파일을 열 때 이미지를 선택하면 바둑판 인식이 시작됩니다.',
       tipMinimalPortrait:
@@ -1422,6 +1428,8 @@ export const resources = {
         'Quand vous ajoutez un marquage texte, le texte suivant avance automatiquement, par exemple A->B ou 1->2. Avec un clic droit, le texte ne change pas.',
       tipInsertMove:
         'Utilisez Inserer un coup pour ajouter des coups sur une variante temporaire. Un clic droit supprime un coup et selectionne la position precedente.',
+      tipDeleteMoveDoubleClick:
+        'Avec Supprimer le coup, double-cliquez sur une pierre pour supprimer ce coup et revenir a la position precedente.',
       tipBoardRecognition:
         'Ulugo peut convertir une photo d un plateau de go en fichier SGF. Selectionnez une image lors de l ouverture d un fichier pour lancer la reconnaissance du plateau.',
       tipMinimalPortrait:
@@ -1752,6 +1760,8 @@ export const resources = {
         'Beim Hinzufuegen von Textmarkierungen wird der naechste Text automatisch erhoeht, zum Beispiel A->B oder 1->2. Beim Hinzufuegen mit Rechtsklick wird der Text nicht geaendert.',
       tipInsertMove:
         'Mit Zug einfuegen fuegst du Zuege in einer temporaeren Variante hinzu. Ein Rechtsklick loescht einen Zug und waehlt die vorherige Position aus.',
+      tipDeleteMoveDoubleClick:
+        'Mit Zug loeschen kannst du einen Stein doppelklicken, um den Zug zu loeschen und zur vorherigen Stellung zu springen.',
       tipBoardRecognition:
         'Ulugo kann ein Foto eines Go-Bretts in eine SGF-Datei umwandeln. Waehle beim Oeffnen einer Datei ein Bild aus, um die Bretterkennung zu starten.',
       tipMinimalPortrait:
@@ -2077,6 +2087,8 @@ export const resources = {
         'При добавлении текстовой разметки следующий текст меняется автоматически, например A->B или 1->2. При добавлении правой кнопкой мыши текст не меняется.',
       tipInsertMove:
         'Используйте «Вставить ход», чтобы добавить ходы во временную ветку. Щелчок правой кнопкой удаляет ход и выбирает предыдущую позицию.',
+      tipDeleteMoveDoubleClick:
+        'В режиме «Удалить ход» дважды щелкните камень, чтобы удалить ход и перейти к предыдущей позиции.',
       tipBoardRecognition:
         'Ulugo может преобразовать фотографию доски го в файл SGF. Выберите изображение при открытии файла, чтобы запустить распознавание доски.',
       tipMinimalPortrait:

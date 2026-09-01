@@ -219,6 +219,7 @@ export function App() {
   const recordCameraInputRef = useRef<HTMLInputElement>(null);
   const branchMemoryRef = useRef(new Map<string, number>());
   const moveEditSnapshotRef = useRef<MoveEditSnapshot | null>(null);
+  const deleteDoubleClickRef = useRef<{point: string; path: number[]} | null>(null);
   const labelResetPathKeyRef = useRef(pathKey([]));
   const setupToolPathKeyRef = useRef(pathKey([]));
   const handledAutotuningMessageIdsRef = useRef(new Set<string>());
@@ -645,6 +646,7 @@ export function App() {
 
   function finishMoveEditSession(nextTool: EditorTool = 'auto'): void {
     moveEditSnapshotRef.current = null;
+    deleteDoubleClickRef.current = null;
     setReplaceMoveState(null);
     setTool(nextTool);
     setMoveEditAction('insert');
@@ -881,6 +883,7 @@ export function App() {
   }
 
   function handleMoveEditActionChange(action: MoveEditAction): void {
+    deleteDoubleClickRef.current = null;
     setMoveEditAction(action);
     if (tool !== 'replace') handleToolChange('replace', action);
   }
@@ -1192,6 +1195,13 @@ export function App() {
       return;
     }
 
+    if (options.clickCount > 1 && tool === 'replace' && moveEditAction === 'delete' && !alternateMoveEditAction) {
+      const deletedMove = deleteDoubleClickRef.current;
+      deleteDoubleClickRef.current = null;
+      if (deletedMove?.point === point) selectPath(deletedMove.path);
+      return;
+    }
+
     if (options.clickCount > 1) {
       if (!isMarkupTool(tool) && tool !== 'erase') return;
     }
@@ -1200,6 +1210,7 @@ export function App() {
       const action = alternateMoveEditAction ? (moveEditAction === 'insert' ? 'delete' : 'insert') : moveEditAction;
       if (action === 'delete') {
         const stayAtCurrentPath = !alternateMoveEditAction && moveEditAction === 'delete';
+        if (stayAtCurrentPath) deleteDoubleClickRef.current = null;
         const currentTargetPath = findCurrentStoneMovePath(document, operationPath, point);
         const targetPath =
           currentTargetPath ?? findFutureMovePath(document, operationPath, point, branchMemoryRef.current);
@@ -1214,6 +1225,9 @@ export function App() {
         });
         if (result == null) return;
 
+        if (stayAtCurrentPath && result.pathBeforeDeletedMove != null) {
+          deleteDoubleClickRef.current = {point, path: result.pathBeforeDeletedMove};
+        }
         rememberPath(result.state.replacementStartPath!);
         replaceDocument(result.document, result.path, {replaceMoveState: result.state});
         return;

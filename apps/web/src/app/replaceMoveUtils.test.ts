@@ -63,6 +63,7 @@ describe('deleteMoveInReplaceBranch', () => {
 
     expect(result.path).toEqual([0]);
     expect(getNodeAtPath(result.document, result.path).data).toEqual({B: ['aa']});
+    expect(result.pathBeforeDeletedMove).toEqual([0]);
   });
 
   it('keeps the equivalent current node when deleting inside an existing edit branch', () => {
@@ -193,6 +194,8 @@ describe('deleteMoveInReplaceBranch', () => {
 
     expect(result.path).toEqual([0]);
     expect(result.state.replacementPath).toEqual([0]);
+    expect(result.pathBeforeDeletedMove).toEqual([0, 0]);
+    expect(getNodeAtPath(result.document, result.pathBeforeDeletedMove!).data).toEqual({W: ['bb']});
   });
 
   it('keeps the current edit-branch node selected after deleting a future move', () => {

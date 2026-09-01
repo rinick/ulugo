@@ -22,6 +22,13 @@ export interface ReplaceMoveState {
   referencesByNodeId?: Record<string, ReplaceMoveReference>;
 }
 
+interface MoveEditResult {
+  document: SgfDocument;
+  path: number[];
+  state: ReplaceMoveState;
+  pathBeforeDeletedMove?: number[];
+}
+
 interface ReplaceMoveReference {
   originalPath: number[];
   setupPath?: number[];
@@ -81,7 +88,7 @@ export function insertMoveInReplaceBranch({
   rules?: string;
   branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+}): MoveEditResult | null {
   if (state == null || !samePath(path, state.replacementPath)) return null;
 
   const position = deriveBoardPosition(document, path);
@@ -114,7 +121,7 @@ export function deleteMoveInReplaceBranch({
   branchMemory: Map<string, number>;
   state: ReplaceMoveState | null;
   stayAtCurrentPath?: boolean;
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+}): MoveEditResult | null {
   if (
     state == null ||
     targetPath.length === 0 ||
@@ -148,7 +155,7 @@ function rebuildMoveEditBranch({
   state: ReplaceMoveState;
   rules?: string;
   edit: {type: 'insert'; item: EditedBranchItem} | {type: 'delete'; targetPath: number[]; stayAtCurrentPath: boolean};
-}): {document: SgfDocument; path: number[]; state: ReplaceMoveState} | null {
+}): MoveEditResult | null {
   const existingParentPath = state.replacementStartPath?.slice(0, -1);
   const affectedParentPath =
     edit.type === 'insert'
@@ -168,6 +175,7 @@ function rebuildMoveEditBranch({
     .map((sourcePath) => branchItemFromPath(document, sourcePath, branchMemory, state));
   const currentNodeId = getNodeAtPath(document, path).id;
   let selectedKey: string | null = null;
+  let pathBeforeDeletedMoveKey: string | null = null;
 
   if (edit.type === 'insert') {
     const selectedIndex = samePath(path, branchParentPath) ? -1 : items.findIndex((item) => item.key === currentNodeId);
@@ -178,8 +186,8 @@ function rebuildMoveEditBranch({
     const targetNodeId = getNodeAtPath(document, edit.targetPath).id;
     const targetIndex = items.findIndex((item) => item.key === targetNodeId);
     if (targetIndex < 0) return null;
-    selectedKey =
-      edit.stayAtCurrentPath && currentNodeId !== targetNodeId ? currentNodeId : (items[targetIndex - 1]?.key ?? null);
+    pathBeforeDeletedMoveKey = items[targetIndex - 1]?.key ?? null;
+    selectedKey = edit.stayAtCurrentPath && currentNodeId !== targetNodeId ? currentNodeId : pathBeforeDeletedMoveKey;
     items.splice(targetIndex, 1);
   }
 
@@ -253,7 +261,11 @@ function rebuildMoveEditBranch({
     : replaceMoveStateForSelection(next, selectedPath, branchMemory, baseState);
   if (selectedState == null) return null;
 
-  return {document: next, path: selectedPath, state: selectedState};
+  const pathBeforeDeletedMove =
+    edit.type === 'delete'
+      ? (created.find((entry) => entry.item.key === pathBeforeDeletedMoveKey)?.path ?? nextParentPath)
+      : undefined;
+  return {document: next, path: selectedPath, state: selectedState, pathBeforeDeletedMove};
 }
 
 function collectEditedBranchPaths(
