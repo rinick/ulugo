@@ -23,6 +23,7 @@ describe('katago-core', () => {
     expect(normalizeRules('Japanese')).toBe('japanese');
     expect(normalizeRules('New Zealand')).toBe('new-zealand');
     expect(normalizeRules('')).toBe('japanese');
+    expect(normalizeRules('Mystery')).toBe('japanese');
   });
 
   it('identifies rules whose move values include a one-point area-scoring offset', () => {
@@ -124,6 +125,14 @@ describe('katago-core', () => {
       ['B', 'pass'],
       ['W', 'D16'],
     ]);
+  });
+
+  it('keeps malformed moves after setup as KataGo passes instead of replaying them', () => {
+    const document = parseSgf('(;GM[1]SZ[5];PL[B]AB[ee];B[x])');
+    const query = buildKataGoQuery(document, {id: 'test', path: [0, 0]});
+
+    expect(query.initialStones).toEqual([['B', 'E1']]);
+    expect(query.moves).toEqual([['B', 'pass']]);
   });
 
   it('uses PL as KataGo initial player after setup', () => {

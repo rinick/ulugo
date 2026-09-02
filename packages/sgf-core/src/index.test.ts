@@ -5,8 +5,6 @@ import {
   addMove,
   addScoringNode,
   addSetupNode,
-  addSetupStone,
-  buildTree,
   createNewGame,
   deleteNode,
   eraseAllMarkup,
@@ -23,7 +21,6 @@ import {
   serializeSgf,
   updateComment,
   updateScoringPoints,
-  updateSetupNextColor,
 } from '.';
 
 describe('sgf-core', () => {
@@ -158,132 +155,13 @@ describe('sgf-core', () => {
     expect(formatPoint('tt', 20)).toBe('U1');
   });
 
-  it('shows old out-of-board pass moves as pass in the tree', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19];B[tt])'))[0];
-    expect(tree.children[0]).toMatchObject({point: '', label: 'B1 pass'});
-  });
-
-  it('gives setup nodes their own tree step after moves', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AB[pq];W[pp])'))[0];
-    expect(tree.children[0].moveNumber).toBe(1);
-    expect(tree.children[0].children[0]).toMatchObject({
-      moveNumber: 2,
-      isSetup: true,
-      setupColor: 'B',
-    });
-    expect(tree.children[0].children[0].children[0].moveNumber).toBe(3);
-  });
-
-  it('colors setup nodes opposite to the next player instead of their stones', () => {
-    const whiteToPlay = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AW[pq]PL[W])'))[0].children[0].children[0];
-    const blackToPlay = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AB[pq]PL[B])'))[0].children[0].children[0];
-
-    expect(whiteToPlay.setupColor).toBe('B');
-    expect(blackToPlay.setupColor).toBe('W');
-  });
-
   it.each([
-    ['a handicap', '(;GM[1]SZ[19]HA[2]AB[pd]AW[dp])', 'W', 'B'],
-    ['a black-only root setup', '(;GM[1]SZ[19]AB[pd][dp])', 'W', 'B'],
-    ['an explicit Black player', '(;GM[1]SZ[19]HA[2]AB[pd][dp]PL[B])', 'B', 'W'],
-    ['a mixed root setup', '(;GM[1]SZ[19]AB[pd]AW[dp])', 'B', 'W'],
-  ] as const)('infers the initial player and setup color for %s', (_name, sgf, nextColor, setupColor) => {
-    const document = parseSgf(sgf);
-
-    expect(getInitialNextColor(document)).toBe(nextColor);
-    expect(buildTree(document)[0].setupColor).toBe(setupColor);
-  });
-
-  it('keeps only an empty move-zero setup gray', () => {
-    const emptyRoot = buildTree(parseSgf('(;GM[1]SZ[19]PL[W])'))[0];
-    const occupiedRoot = buildTree(parseSgf('(;GM[1]SZ[19]AB[dd]AW[pp])'))[0];
-    const emptyLaterSetup = buildTree(parseSgf('(;GM[1]SZ[19];B[dd];AE[dd])'))[0].children[0].children[0];
-
-    expect(emptyRoot).toMatchObject({isSetup: true, setupColor: null});
-    expect(occupiedRoot).toMatchObject({isSetup: true, setupColor: 'W'});
-    expect(emptyLaterSetup).toMatchObject({isSetup: true, setupColor: 'B'});
-  });
-
-  it('gives final scoring nodes their own tree step without global result color', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp])'))[0];
-    const scoringNode = tree.children[0].children[0].children[0];
-
-    expect(scoringNode).toMatchObject({
-      moveNumber: 3,
-      isScoring: true,
-      scoreColor: null,
-    });
-  });
-
-  it('uses scoring node result for score node color', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]RE[B+2.5];B[dd];W[tt];TW[pp]TB[dp]RE[W+1.5])'))[0];
-    const scoringNode = tree.children[0].children[0].children[0];
-
-    expect(scoringNode).toMatchObject({
-      isScoring: true,
-      scoreColor: 'W',
-    });
-  });
-
-  it('uses scoring node points for score node color', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RE[B+2.5];B[dd];TW[pp])'))[0];
-    const scoringNode = tree.children[0].children[0];
-
-    expect(scoringNode).toMatchObject({
-      isScoring: true,
-      scoreColor: 'W',
-    });
-  });
-
-  it('uses AGA pass stones for score node color', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[AGA];B[];TB[]TW[])'))[0];
-    const scoringNode = tree.children[0].children[0];
-
-    expect(scoringNode).toMatchObject({
-      isScoring: true,
-      scoreColor: 'W',
-    });
-  });
-
-  it('does not use pass stones for score node color outside AGA rules', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[Japanese];B[];TB[]TW[])'))[0];
-    const scoringNode = tree.children[0].children[0];
-
-    expect(scoringNode).toMatchObject({
-      isScoring: true,
-      scoreColor: null,
-    });
-  });
-
-  it('uses initial capture counts for score node color', () => {
-    const tree = buildTree(parseSgf('(;GM[1]SZ[19]KM[0]RU[Japanese]XBC[1]XWC[0];TB[]TW[])'))[0];
-
-    expect(tree.children[0]).toMatchObject({isScoring: true, scoreColor: 'B'});
-  });
-
-  it('uses captured connected groups for score node color', () => {
-    const document = parseSgf('(;SZ[5]KM[0];W[aa];W[ab];W[ba];W[bb];B[ac];B[bc];B[ca];B[cb];TB[]TW[])');
-    let scoringNode = buildTree(document)[0];
-    for (let index = 0; index < 9; index += 1) scoringNode = scoringNode.children[0];
-
-    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'B'});
-  });
-
-  it('keeps a group with liberties when the move touches it from two sides', () => {
-    const tree = buildTree(parseSgf('(;SZ[5]KM[1.5];W[aa];W[ab];W[ba];B[bb];TB[aa]TW[])'))[0];
-    const scoringNode = tree.children[0].children[0].children[0].children[0].children[0];
-
-    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'B'});
-  });
-
-  it.each(['New Zealand', 'Tromp-Taylor'])('removes suicidal groups under %s rules when scoring the tree', (rules) => {
-    const document = parseSgf(
-      `(;SZ[5]KM[0]RU[${rules}];B[cb];B[bc];W[ca];W[db];W[bb];W[ba];W[ac];W[bd];W[dc];W[cd];B[cc];TB[]TW[])`
-    );
-    let scoringNode = buildTree(document)[0];
-    while (scoringNode.children.length > 0) scoringNode = scoringNode.children[0];
-
-    expect(scoringNode).toMatchObject({isScoring: true, scoreColor: 'W'});
+    ['a handicap', '(;GM[1]SZ[19]HA[2]AB[pd]AW[dp])', 'W'],
+    ['a black-only root setup', '(;GM[1]SZ[19]AB[pd][dp])', 'W'],
+    ['an explicit Black player', '(;GM[1]SZ[19]HA[2]AB[pd][dp]PL[B])', 'B'],
+    ['a mixed root setup', '(;GM[1]SZ[19]AB[pd]AW[dp])', 'B'],
+  ] as const)('infers the initial player for %s', (_name, sgf, nextColor) => {
+    expect(getInitialNextColor(parseSgf(sgf))).toBe(nextColor);
   });
 
   it('adds and updates scoring nodes', () => {
@@ -300,15 +178,8 @@ describe('sgf-core', () => {
       '(;CA[utf-8]AP[zhq][zhq_robot][zhq_robot_level]DT[2026-07-13]PB[烽烟弈客]PW[Steve Z]BR[6 段]WR[5 段]HA[0]RE[W+R]KM[7.5]SZ[19]RU[chinese]TM[1800]TC[3]TT[60]GN[[烽烟弈客\\]vs[Steve Z\\]_20260714064736];B[pd];W[dp];B[cd];W[qp];)'
     );
     const result = addScoringNode(document, [0, 0, 0, 0, 0], [], []);
-    const scoringNode = buildTree(result.document)[0].children[0].children[0].children[0].children[0].children[0]
-      .children[0];
-
     expect(result.path).toEqual([0, 0, 0, 0, 0, 0]);
     expect(serializeSgf(result.document)).toContain(';W[qp];;TB[]TW[])');
-    expect(scoringNode).toMatchObject({
-      isScoring: true,
-      moveNumber: 5,
-    });
   });
 
   it('adds a setup node as the leftmost next branch', () => {
@@ -322,83 +193,8 @@ describe('sgf-core', () => {
   it('marks camera setup nodes with a custom Z property', () => {
     const document = parseSgf('(;GM[1]SZ[19];B[dd])');
     const result = addSetupNode(document, [0], ['aa'], ['bb'], [], 'W', 'camera');
-    const setupNode = buildTree(result.document)[0].children[0].children[0];
 
     expect(serializeSgf(result.document)).toContain(';PL[W]AB[aa]AW[bb]ZA[camera])');
-    expect(setupNode).toMatchObject({isSetup: true, isCameraSetup: true});
-  });
-
-  it('adds setup stones as setup nodes after regular moves', () => {
-    const first = addMove(createNewGame(), [], 'B', 'dd');
-    const result = addSetupStone(first.document, first.path, 'W', 'pp');
-
-    expect(result.path).toEqual([0, 0]);
-    expect(serializeSgf(result.document)).toContain(';B[dd];AW[pp])');
-  });
-
-  it('adds a setup stone where an earlier same-color move was captured', () => {
-    const document = parseSgf('(;SZ[5];B[bb];W[ab];W[ba];W[cb];W[bc])');
-    const result = addSetupStone(document, [0, 0, 0, 0, 0], 'B', 'bb');
-
-    expect(result.placed).toBe(true);
-    expect(serializeSgf(result.document)).toContain(';W[bc];AB[bb])');
-  });
-
-  it('keeps adding setup stones to the current setup leaf', () => {
-    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
-    const second = addSetupStone(first.document, first.path, 'W', 'pp');
-
-    expect(first.path).toEqual([]);
-    expect(second.path).toEqual([]);
-    expect(serializeSgf(second.document)).toContain('AB[dd]AW[pp]');
-  });
-
-  it('reuses an empty setup leaf after toggling its last setup stone off', () => {
-    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
-    const empty = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
-    const second = addSetupStone(empty.document, empty.path, 'W', 'pp');
-
-    expect(second.path).toEqual([]);
-    expect(serializeSgf(second.document)).toContain('AW[pp]');
-  });
-
-  it('uses add-empty when placing the same color on an earlier stone', () => {
-    const first = addMove(createNewGame(), [], 'B', 'dd');
-    const result = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
-
-    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
-  });
-
-  it('keeps an earlier opposite-color move empty when toggling off a setup override', () => {
-    const document = parseSgf('(;GM[1]SZ[19];B[dd];AW[dd])');
-    const result = addSetupStone(document, [0, 0], 'W', 'dd', 'W');
-
-    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
-  });
-
-  it('restores an earlier same-color move when toggling off a setup override', () => {
-    const document = parseSgf('(;GM[1]SZ[19];B[dd];AB[dd])');
-    const result = addSetupStone(document, [0, 0], 'B', 'dd', 'B');
-
-    expect(serializeSgf(result.document)).toContain(';B[dd];)');
-  });
-
-  it('removes add-empty instead of adding same-color setup over an earlier stone', () => {
-    const document = parseSgf('(;GM[1]SZ[19];B[dd];AE[dd])');
-    const result = addSetupStone(document, [0, 0], 'B', 'dd');
-
-    expect(serializeSgf(result.document)).toContain(';B[dd];)');
-  });
-
-  it('saves the player to play on setup nodes', () => {
-    const first = addMove(createNewGame(), [], 'B', 'dd');
-    const setup = addSetupStone(first.document, first.path, 'W', 'pp', null, 'W');
-    const toggled = updateSetupNextColor(setup.document, setup.path, 'B');
-
-    expect(serializeSgf(setup.document)).toContain(';B[dd];PL[W]AW[pp])');
-    expect(serializeSgf(toggled)).toContain(';B[dd];PL[B]AW[pp])');
-    expect(buildTree(setup.document)[0].children[0].children[0].setupColor).toBe('B');
-    expect(buildTree(toggled)[0].children[0].children[0].setupColor).toBe('W');
   });
 
   it('reorders branches', () => {

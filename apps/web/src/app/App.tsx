@@ -4,7 +4,6 @@ import {
   addMove,
   addScoringNode,
   addSetupNode,
-  addSetupStone,
   createNewGame,
   deleteNode,
   eraseAllMarkup,
@@ -12,7 +11,6 @@ import {
   getBoardSize,
   getGameInfo,
   getNodeAtPath,
-  buildTree,
   isScoringNode,
   moveBranch,
   moveBranchToMain,
@@ -29,7 +27,7 @@ import {
 } from '@ulugo/sgf-core';
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
-import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
+import {addSetupStone, deriveBoardPosition, isLocallyLegalMove} from '@ulugo/go-core';
 import type {AnalysisSettings} from '@ulugo/analysis-core';
 import stoneSoundUrl from '../assets/go_stone_light.wav';
 import {AppBoardRegion} from '../features/app-shell/AppBoardRegion';
@@ -44,6 +42,7 @@ import {GameInfoModal} from '../features/game-info/GameInfoModal';
 import {RemoteSgfModal} from '../features/files/RemoteSgfModal';
 import {SettingsModal} from '../features/settings/SettingsModal';
 import {KataGoSettingsModal} from '../features/katago/KataGoSettingsModal';
+import {buildTree} from '../features/sgf-tree/buildTree';
 import {layoutTree} from '../features/sgf-tree/layout';
 import {KeyboardShortcutsModal} from '../features/shortcuts/KeyboardShortcutsModal';
 import {PrintPreview} from '../features/print/PrintPreview';
@@ -1256,7 +1255,7 @@ export function App() {
         return;
       }
 
-      if (!isLegalMove(position, color, point, gameInfo.RU)) return;
+      if (!isLocallyLegalMove(position, color, point, gameInfo.RU)) return;
       const result = addMove(document, operationPath, color, point);
       replaceDocument(result.document, result.path);
       playPlaceStoneSound();
@@ -1353,7 +1352,7 @@ export function App() {
       return;
     }
 
-    if (!isLegalMove(position, position.nextColor, point, gameInfo.RU)) return;
+    if (!isLocallyLegalMove(position, position.nextColor, point, gameInfo.RU)) return;
     const result = addMove(document, operationPath, position.nextColor, point);
     replaceDocument(result.document, result.path, point === '' ? {convertHiddenPassPath: result.path} : {});
     if (point !== '') playPlaceStoneSound();

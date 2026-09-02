@@ -165,6 +165,9 @@ importers:
       '@ulugo/analysis-core':
         specifier: workspace:*
         version: link:../analysis-core
+      '@ulugo/go-core':
+        specifier: workspace:*
+        version: link:../go-core
       '@ulugo/sgf-core':
         specifier: workspace:*
         version: link:../sgf-core

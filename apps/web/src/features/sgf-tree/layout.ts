@@ -1,4 +1,5 @@
-import {formatPoint, type SgfColor, type TreeItem} from '@ulugo/sgf-core';
+import {formatPoint, type SgfColor} from '@ulugo/sgf-core';
+import type {TreeItem} from './buildTree';
 
 export interface TreeCell {
   id: string;

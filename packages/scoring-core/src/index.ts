@@ -1,4 +1,4 @@
-import type {BoardPosition} from '@ulugo/go-core';
+import {ruleProfile, type BoardPosition} from '@ulugo/go-core';
 import {isPointOnBoard, type SgfDocument, type SgfNode, type SgfPoint} from '@ulugo/sgf-core';
 import {analyzeScoringPosition} from './analysis';
 import {scoringPointsForDeadStones} from './territory';
@@ -55,7 +55,7 @@ export function scoringSummaryForNode(document: SgfDocument, node: SgfNode, posi
   const whitePoints = onBoardPointSet(node.data.TW ?? [], position.size);
   const deadWhiteStones = countMarkedStones(blackPoints, position, 'W');
   const deadBlackStones = countMarkedStones(whitePoints, position, 'B');
-  const territoryScoring = usesTerritoryScoring(document.root.data.RU?.[0]);
+  const territoryScoring = ruleProfile(document.root.data.RU?.[0]).scoring === 'territory';
   const blackScore = territoryScoring
     ? blackPoints.size + position.captures.B + deadWhiteStones
     : blackPoints.size + countLiveStones(position, 'B', whitePoints);
@@ -124,15 +124,6 @@ function countLiveStones(position: BoardPosition, color: Stone, deadPoints: Set<
     if (stone === color && !deadPoints.has(point)) count += 1;
   }
   return count;
-}
-
-function usesTerritoryScoring(rules: string | undefined): boolean {
-  const key =
-    rules
-      ?.trim()
-      .toLowerCase()
-      .replace(/[^a-z]/g, '') ?? '';
-  return key === '' || key === 'japanese' || key === 'korean';
 }
 
 function komi(document: SgfDocument): number {

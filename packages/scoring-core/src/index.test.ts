@@ -412,6 +412,14 @@ describe('scoring', () => {
       result: 'B+1',
     });
   });
+
+  it('retains distinct scoring fallbacks for missing and unknown rule names', () => {
+    const position = boardPosition(['B.W', '...', '...'], {B: 2, W: 0});
+    const node = {id: 'node', data: {TB: ['ba']}, children: []};
+
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0])'), node, position).result).toBe('B+3');
+    expect(scoringSummaryForNode(parseSgf('(;GM[1]SZ[3]KM[0]RU[Mystery])'), node, position).result).toBe('B+1');
+  });
 });
 
 function boardPosition(rows: string[], captures: Record<Stone, number> = {B: 0, W: 0}): BoardPosition {

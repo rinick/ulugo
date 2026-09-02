@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ulugo/analysis-core": "workspace:*",
+    "@ulugo/go-core": "workspace:*",
     "@ulugo/sgf-core": "workspace:*"
   },
   "devDependencies": {

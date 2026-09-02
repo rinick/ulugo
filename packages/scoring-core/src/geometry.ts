@@ -1,5 +1,8 @@
+import {collectConnectedGroup, oppositeStone, orthogonalNeighbors} from '@ulugo/go-core';
 import {pointToVertex, type SgfPoint, vertexToPoint} from '@ulugo/sgf-core';
 import type {EmptyRegion, Stone} from './types';
+
+export {oppositeStone, orthogonalNeighbors} from '@ulugo/go-core';
 
 export function collectEstimateStoneGroup(
   start: SgfPoint,
@@ -64,18 +67,6 @@ export function estimateStoneNeighbors(
   return result;
 }
 
-export function orthogonalNeighbors(point: SgfPoint, size: number): SgfPoint[] {
-  const vertex = pointToVertex(point);
-  if (vertex == null) return [];
-  const [x, y] = vertex;
-  const result: SgfPoint[] = [];
-  if (x > 0) result.push(vertexToPoint(x - 1, y));
-  if (x < size - 1) result.push(vertexToPoint(x + 1, y));
-  if (y > 0) result.push(vertexToPoint(x, y - 1));
-  if (y < size - 1) result.push(vertexToPoint(x, y + 1));
-  return result;
-}
-
 export function diagonalNeighbors(point: SgfPoint, size: number): SgfPoint[] {
   const vertex = pointToVertex(point);
   if (vertex == null) return [];
@@ -99,10 +90,6 @@ export function touchesEdge(region: EmptyRegion, size: number): boolean {
     const vertex = pointToVertex(point);
     return vertex != null && (vertex[0] === 0 || vertex[1] === 0 || vertex[0] === size - 1 || vertex[1] === size - 1);
   });
-}
-
-export function oppositeStone(color: Stone): Stone {
-  return color === 'B' ? 'W' : 'B';
 }
 
 export function sortPoints(points: SgfPoint[]): SgfPoint[] {
@@ -159,8 +146,8 @@ function singleCutDiagonalConnection(
   size: number
 ): boolean {
   if (
-    countOrthogonalGroupLiberties(point, color, stones, size) === 1 ||
-    countOrthogonalGroupLiberties(diagonalPoint, color, stones, size) === 1
+    collectConnectedGroup(point, stones, size).liberties === 1 ||
+    collectConnectedGroup(diagonalPoint, stones, size).liberties === 1
   ) {
     return false;
   }
@@ -180,32 +167,4 @@ function singleCutDiagonalConnection(
   const oppositeX = emptyVertex[0] + (emptyVertex[0] - opponentVertex[0]);
   const oppositeY = emptyVertex[1] + (emptyVertex[1] - opponentVertex[1]);
   return isVertexOnBoard(oppositeX, oppositeY, size) && stones.get(vertexToPoint(oppositeX, oppositeY)) === color;
-}
-
-function countOrthogonalGroupLiberties(
-  start: SgfPoint,
-  color: Stone,
-  stones: Map<SgfPoint, Stone>,
-  size: number
-): number {
-  if (stones.get(start) !== color) return 0;
-
-  const seen = new Set<SgfPoint>([start]);
-  const liberties = new Set<SgfPoint>();
-  const queue = [start];
-
-  for (let index = 0; index < queue.length; index += 1) {
-    const point = queue[index];
-    for (const neighbor of orthogonalNeighbors(point, size)) {
-      const neighborColor = stones.get(neighbor);
-      if (neighborColor == null) {
-        liberties.add(neighbor);
-      } else if (neighborColor === color && !seen.has(neighbor)) {
-        seen.add(neighbor);
-        queue.push(neighbor);
-      }
-    }
-  }
-
-  return liberties.size;
 }

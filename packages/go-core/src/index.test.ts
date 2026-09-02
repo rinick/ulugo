@@ -1,8 +1,23 @@
 import {describe, expect, it} from 'vitest';
-import {addLabel, addMarkup, addMove, createNewGame, parseSgf} from '@ulugo/sgf-core';
-import {deriveBoardPosition, isLegalMove} from '.';
+import {
+  addLabel,
+  addMarkup,
+  addMove,
+  createNewGame,
+  parseSgf,
+  serializeSgf,
+  updateSetupNextColor,
+} from '@ulugo/sgf-core';
+import {addSetupStone, deriveBoardPosition, isLocallyLegalMove, ruleProfile} from '.';
 
 describe('go-core', () => {
+  it('normalizes shared rule behavior while retaining unknown-rule fallbacks', () => {
+    expect(ruleProfile('New Zealand')).toMatchObject({key: 'new-zealand', allowSuicide: true});
+    expect(ruleProfile('AGA')).toMatchObject({key: 'aga', creditPassStone: true, scoring: 'area'});
+    expect(ruleProfile('Mystery')).toMatchObject({key: 'unknown', scoring: 'area'});
+    expect(ruleProfile('')).toMatchObject({key: 'unknown', scoring: 'territory'});
+  });
+
   it('derives stones from moves', () => {
     const first = addMove(createNewGame(), [], 'B', 'dd');
     const second = addMove(first.document, first.path, 'W', 'pp');
@@ -133,7 +148,7 @@ describe('go-core', () => {
 
     const position = deriveBoardPosition(result.document, result.path);
 
-    expect(isLegalMove(position, 'B', 'bb', 'Japanese')).toBe(false);
+    expect(isLocallyLegalMove(position, 'B', 'bb', 'Japanese')).toBe(false);
   });
 
   it.each(['New Zealand', 'Tromp-Taylor'])('allows suicide under %s and credits the opponent capture', (rules) => {
@@ -144,7 +159,7 @@ describe('go-core', () => {
     result = addMove(result.document, result.path, 'W', 'cb');
     result = addMove(result.document, result.path, 'W', 'bc');
 
-    expect(isLegalMove(deriveBoardPosition(result.document, result.path), 'B', 'bb', rules)).toBe(true);
+    expect(isLocallyLegalMove(deriveBoardPosition(result.document, result.path), 'B', 'bb', rules)).toBe(true);
 
     result = addMove(result.document, result.path, 'B', 'bb');
     const position = deriveBoardPosition(result.document, result.path);
@@ -174,5 +189,92 @@ describe('go-core', () => {
     expect(position.stones.has('bc')).toBe(false);
     expect(position.stones.has('cc')).toBe(false);
     expect(position.captures.W).toBe(3);
+  });
+
+  it('adds setup stones as setup nodes after regular moves', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const result = addSetupStone(first.document, first.path, 'W', 'pp');
+
+    expect(result.path).toEqual([0, 0]);
+    expect(serializeSgf(result.document)).toContain(';B[dd];AW[pp])');
+  });
+
+  it('adds a setup stone where an earlier same-color move was captured', () => {
+    const document = parseSgf('(;SZ[5];B[bb];W[ab];W[ba];W[cb];W[bc])');
+    const result = addSetupStone(document, [0, 0, 0, 0, 0], 'B', 'bb');
+
+    expect(result.placed).toBe(true);
+    expect(serializeSgf(result.document)).toContain(';W[bc];AB[bb])');
+  });
+
+  it('keeps adding setup stones to the current setup leaf', () => {
+    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
+    const second = addSetupStone(first.document, first.path, 'W', 'pp');
+
+    expect(first.path).toEqual([]);
+    expect(second.path).toEqual([]);
+    expect(serializeSgf(second.document)).toContain('AB[dd]AW[pp]');
+  });
+
+  it('reuses an empty setup leaf after toggling its last setup stone off', () => {
+    const first = addSetupStone(createNewGame(), [], 'B', 'dd');
+    const empty = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
+    const second = addSetupStone(empty.document, empty.path, 'W', 'pp');
+
+    expect(second.path).toEqual([]);
+    expect(serializeSgf(second.document)).toContain('AW[pp]');
+  });
+
+  it('uses add-empty when placing the same color on an earlier stone', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const result = addSetupStone(first.document, first.path, 'B', 'dd', 'B');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
+  });
+
+  it('keeps an earlier opposite-color move empty when toggling off a setup override', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AW[dd])');
+    const result = addSetupStone(document, [0, 0], 'W', 'dd', 'W');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];AE[dd])');
+  });
+
+  it('restores an earlier same-color move when toggling off a setup override', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AB[dd])');
+    const result = addSetupStone(document, [0, 0], 'B', 'dd', 'B');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];)');
+  });
+
+  it('removes add-empty instead of adding same-color setup over an earlier stone', () => {
+    const document = parseSgf('(;GM[1]SZ[19];B[dd];AE[dd])');
+    const result = addSetupStone(document, [0, 0], 'B', 'dd');
+
+    expect(serializeSgf(result.document)).toContain(';B[dd];)');
+  });
+
+  it('saves the player to play on setup nodes', () => {
+    const first = addMove(createNewGame(), [], 'B', 'dd');
+    const setup = addSetupStone(first.document, first.path, 'W', 'pp', null, 'W');
+    const toggled = updateSetupNextColor(setup.document, setup.path, 'B');
+
+    expect(serializeSgf(setup.document)).toContain(';B[dd];PL[W]AW[pp])');
+    expect(serializeSgf(toggled)).toContain(';B[dd];PL[B]AW[pp])');
+    expect(deriveBoardPosition(setup.document, setup.path).nextColor).toBe('W');
+    expect(deriveBoardPosition(toggled, setup.path).nextColor).toBe('B');
+  });
+
+  it('replays malformed records without applying turn, occupancy, or ko validation', () => {
+    const document = parseSgf('(;SZ[5]AW[aa];B[aa];B[bb];W[ab];B[aa])');
+    const position = deriveBoardPosition(document, [0, 0, 0, 0]);
+
+    expect(position.stones.get('aa')).toBe('B');
+    expect(position.stones.get('bb')).toBe('B');
+    expect(position.nextColor).toBe('W');
+  });
+
+  it('does not count malformed coordinates as AGA pass stones', () => {
+    const position = deriveBoardPosition(parseSgf('(;SZ[5]RU[AGA];B[x])'), [0]);
+    expect(position.captures).toEqual({B: 0, W: 0});
   });
 });

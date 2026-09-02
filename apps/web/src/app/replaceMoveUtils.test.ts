@@ -1,6 +1,7 @@
 import {deriveBoardPosition} from '@ulugo/go-core';
-import {buildTree, getNodeAtPath, parseSgf, serializeSgf} from '@ulugo/sgf-core';
+import {getNodeAtPath, parseSgf, serializeSgf} from '@ulugo/sgf-core';
 import {describe, expect, it} from 'vitest';
+import {buildTree} from '../features/sgf-tree/buildTree';
 import {
   confirmReplaceMove,
   createReplaceMoveState,

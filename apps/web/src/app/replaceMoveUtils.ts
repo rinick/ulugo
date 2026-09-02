@@ -1,4 +1,4 @@
-import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
+import {deriveBoardPosition, isLocallyLegalMove} from '@ulugo/go-core';
 import {
   cloneDocument,
   createNode,
@@ -61,8 +61,7 @@ export function createReplaceMoveState(
 ): ReplaceMoveState {
   const nextPath = nextOriginalBranchPath(document, path, branchMemory);
   const setupPath = nextPath != null && isSetupNode(getNodeAtPath(document, nextPath)) ? nextPath : undefined;
-  const cameraSetupNode =
-    cameraSetupPathToRemove == null ? null : getNodeAtPath(document, cameraSetupPathToRemove);
+  const cameraSetupNode = cameraSetupPathToRemove == null ? null : getNodeAtPath(document, cameraSetupPathToRemove);
   return {
     originalPath: path,
     replacementPath: path,
@@ -92,7 +91,7 @@ export function insertMoveInReplaceBranch({
   if (state == null || !samePath(path, state.replacementPath)) return null;
 
   const position = deriveBoardPosition(document, path);
-  if (!isLegalMove(position, position.nextColor, point, rules)) return null;
+  if (!isLocallyLegalMove(position, position.nextColor, point, rules)) return null;
 
   return rebuildMoveEditBranch({
     document,
@@ -351,7 +350,7 @@ function createEditedBranch(
     if (move?.point) {
       const currentParentPath = created.at(-1)?.path ?? parentPath;
       const position = deriveBoardPosition(document, currentParentPath);
-      if (!isLegalMove(position, move.color, move.point, rules)) {
+      if (!isLocallyLegalMove(position, move.color, move.point, rules)) {
         if (!position.stones.has(move.point)) break;
         data = {...data, [move.color]: ['']};
         convertedPass = true;

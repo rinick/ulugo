@@ -1,5 +1,5 @@
 import {Board, type Marker, type Vertex} from '@ulugo/go-board';
-import {isLegalMove, type BoardPosition} from '@ulugo/go-core';
+import {isLocallyLegalMove, type BoardPosition} from '@ulugo/go-core';
 import {usesAreaValueOffset} from '@ulugo/katago-core';
 import {
   getNodeAtPath,
@@ -466,7 +466,7 @@ export function GoBoard({
 
     const candidate =
       source.position.stones.has(point) ||
-      (source.requiresLegalMove && !isLegalMove(source.position, source.color, point, source.rules))
+      (source.requiresLegalMove && !isLocallyLegalMove(source.position, source.color, point, source.rules))
         ? null
         : {point, color: source.color};
     source.cache.set(point, candidate);

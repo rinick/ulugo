@@ -1,13 +1,12 @@
 import type {SgfColor, SgfDocument, SgfPoint} from '@ulugo/sgf-core';
+import {applySgfNode, createReplayState, ruleProfile, type RuleProfile} from '@ulugo/go-core';
 import {
   getBoardSize,
   getGameInfo,
   getInitialNextColor,
   getLine,
-  isPointOnBoard,
   normalizeMovePoint,
   pointToVertex,
-  vertexToPoint,
 } from '@ulugo/sgf-core';
 
 const gtpLetters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
@@ -116,8 +115,9 @@ export interface KataGoConsoleMessage {
 export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOptions): KataGoAnalysisQuery {
   const boardSize = getBoardSize(document);
   const gameInfo = getGameInfo(document);
-  const rules = normalizeRules(gameInfo.RU);
-  const history = buildKataGoHistory(document, options.path, allowsSuicideRules(rules));
+  const profile = ruleProfile(gameInfo.RU);
+  const rules = profile.key === 'unknown' ? 'japanese' : profile.key;
+  const history = buildKataGoHistory(document, options.path, profile);
   const moves = [...history.moves];
   if (options.nextMove != null) {
     moves.push([options.nextMove.color, sgfPointToGtp(options.nextMove.point, boardSize)]);
@@ -145,7 +145,7 @@ export function buildKataGoQuery(document: SgfDocument, options: KataGoQueryOpti
 function buildKataGoHistory(
   document: SgfDocument,
   path: number[],
-  allowSuicide: boolean
+  profile: RuleProfile
 ): {initialPlayer: SgfColor; initialStones: Array<[SgfColor, string]>; moves: Array<[SgfColor, string]>} {
   const boardSize = getBoardSize(document);
   const line = getLine(document, path);
@@ -167,30 +167,10 @@ function buildKataGoHistory(
     };
   }
 
-  const stones = new Map<string, SgfColor>();
-  let nextColor: SgfColor = getInitialNextColor(document);
-  for (const node of line.slice(0, setupIndex + 1)) {
-    for (const point of node.data.AE ?? []) stones.delete(point);
-    for (const point of node.data.AB ?? []) {
-      if (isPointOnBoard(point, boardSize)) stones.set(point, 'B');
-    }
-    for (const point of node.data.AW ?? []) {
-      if (isPointOnBoard(point, boardSize)) stones.set(point, 'W');
-    }
+  const state = createReplayState(document);
+  for (const node of line.slice(0, setupIndex + 1)) applySgfNode(state, node, boardSize, profile);
 
-    const color = node.data.B != null ? 'B' : node.data.W != null ? 'W' : null;
-    if (color == null) {
-      nextColor = setupNextColor(node) ?? nextColor;
-      continue;
-    }
-    const point = normalizeMovePoint(node.data[color]?.[0] ?? '', boardSize);
-    nextColor = color === 'B' ? 'W' : 'B';
-    if (point === '' || !isPointOnBoard(point, boardSize)) continue;
-    stones.set(point, color);
-    applyCaptures(point, color, stones, boardSize, allowSuicide);
-  }
-
-  const initialStones = [...stones.entries()].map(([point, color]): [SgfColor, string] => [
+  const initialStones = [...state.stones.entries()].map(([point, color]): [SgfColor, string] => [
     color,
     sgfPointToGtp(point, boardSize),
   ]);
@@ -199,81 +179,11 @@ function buildKataGoHistory(
     return color == null ? [] : [[color, sgfPointToGtp(node.data[color]?.[0] ?? '', boardSize)]];
   });
 
-  return {initialPlayer: nextColor, initialStones, moves};
+  return {initialPlayer: state.nextColor, initialStones, moves};
 }
 
 function hasSetupProperties(node: {data: Record<string, string[]>}): boolean {
   return ['AB', 'AW', 'AE', 'PL'].some((key) => (node.data[key] ?? []).length > 0);
-}
-
-function setupNextColor(node: {data: Record<string, string[]>}): SgfColor | null {
-  const value = node.data.PL?.[0];
-  return value === 'B' || value === 'W' ? value : null;
-}
-
-function applyCaptures(
-  point: string,
-  color: SgfColor,
-  stones: Map<string, SgfColor>,
-  size: number,
-  allowSuicide: boolean
-): void {
-  const opponent = color === 'B' ? 'W' : 'B';
-  const checkedOpponentPoints = new Set<string>();
-  for (const neighbor of neighbors(point, size)) {
-    if (stones.get(neighbor) !== opponent || checkedOpponentPoints.has(neighbor)) continue;
-    const group = collectGroup(neighbor, stones, size);
-    for (const groupPoint of group.points) checkedOpponentPoints.add(groupPoint);
-    if (group.liberties === 0) {
-      for (const capturedPoint of group.points) stones.delete(capturedPoint);
-    }
-  }
-
-  if (!allowSuicide) return;
-  const ownGroup = collectGroup(point, stones, size);
-  if (ownGroup.liberties === 0) {
-    for (const capturedPoint of ownGroup.points) stones.delete(capturedPoint);
-  }
-}
-
-function collectGroup(
-  start: string,
-  stones: Map<string, SgfColor>,
-  size: number
-): {points: string[]; liberties: number} {
-  const color = stones.get(start);
-  if (color == null) return {points: [], liberties: 0};
-
-  const seen = new Set<string>([start]);
-  const liberties = new Set<string>();
-  const queue = [start];
-
-  for (let index = 0; index < queue.length; index += 1) {
-    const point = queue[index];
-    for (const neighbor of neighbors(point, size)) {
-      const stone = stones.get(neighbor);
-      if (stone == null) {
-        liberties.add(neighbor);
-      } else if (stone === color && !seen.has(neighbor)) {
-        seen.add(neighbor);
-        queue.push(neighbor);
-      }
-    }
-  }
-
-  return {points: [...seen], liberties: liberties.size};
-}
-
-function neighbors(point: string, size: number): string[] {
-  const vertex = pointToVertex(point);
-  if (vertex == null) return [];
-  const [x, y] = vertex;
-  const points: string[] = [];
-  if (x > 0) points.push(vertexToPoint(x - 1, y));
-  if (x + 1 < size) points.push(vertexToPoint(x + 1, y));
-  if (y > 0) points.push(vertexToPoint(x, y - 1));
-  if (y + 1 < size) points.push(vertexToPoint(x, y + 1));
-  return points;
 }
 
 export function normalizeKomi(value: unknown): number {
@@ -290,30 +200,10 @@ export function normalizeKomi(value: unknown): number {
 }
 
 export function normalizeRules(value: unknown): string {
-  if (typeof value !== 'string' || value.trim() === '') return 'japanese';
-
-  const key = value
-    .trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, '-');
-  const aliases: Record<string, string> = {
-    'aga': 'aga',
-    'chinese': 'chinese',
-    'japanese': 'japanese',
-    'korean': 'korean',
-    'new-zealand': 'new-zealand',
-    'stone-scoring': 'stone-scoring',
-    'tromp-taylor': 'tromp-taylor',
-  };
-
-  return aliases[key] ?? 'japanese';
+  const key = ruleProfile(value).key;
+  return key === 'unknown' ? 'japanese' : key;
 }
 
 export function usesAreaValueOffset(rules: unknown): boolean {
   return ['chinese', 'aga', 'new-zealand', 'tromp-taylor', 'stone-scoring'].includes(normalizeRules(rules));
-}
-
-function allowsSuicideRules(value: unknown): boolean {
-  const rules = normalizeRules(value);
-  return rules === 'new-zealand' || rules === 'tromp-taylor';
 }
