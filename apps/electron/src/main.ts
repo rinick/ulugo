@@ -41,47 +41,6 @@ interface KataGoSettings {
   wideRootNoise: number;
 }
 
-interface AnalysisSettings {
-  mode: AnalysisMode;
-  moveDisplay: AnalysisMoveDisplay;
-  stoneOverlay: 'dot' | 'number' | 'none';
-  maxMoves: 1 | 5 | 20 | 'all';
-  minVisits: number;
-  showMarkup: boolean;
-  showNextMove: boolean;
-  showTopMoves: boolean;
-  showExpectedTerritory: boolean;
-  showHotZone: boolean;
-  showScore: boolean;
-  showPointLoss: boolean;
-  showWinrate: boolean;
-  showIntensity: boolean;
-  showComments: boolean;
-  intensityDisplayLimit: number;
-  boardBackground: 'auto' | 'golden' | 'natural' | 'flat';
-  autoAnalyze: boolean;
-  autoIncrementMarkupText: boolean;
-  modeSettings: Record<AnalysisMode, AnalysisModeSettings>;
-}
-
-type AnalysisMode = 'review' | 'edit' | 'minimal';
-type AnalysisDisplayMode = 'scoreChange' | 'winRateChange' | 'score' | 'value' | 'visits';
-type AnalysisMoveDisplay = [AnalysisDisplayMode] | [AnalysisDisplayMode, AnalysisDisplayMode];
-
-interface AnalysisModeSettings {
-  stoneOverlay: 'dot' | 'number' | 'none';
-  showMarkup: boolean;
-  showNextMove: boolean;
-  showTopMoves: boolean;
-  showExpectedTerritory: boolean;
-  showHotZone: boolean;
-  showScore: boolean;
-  showPointLoss: boolean;
-  showWinrate: boolean;
-  showIntensity: boolean;
-  showComments: boolean;
-}
-
 const defaultKataGoSettings: KataGoSettings = {
   executablePath: '',
   modelPath: '',
@@ -90,69 +49,6 @@ const defaultKataGoSettings: KataGoSettings = {
   maxVisits: 800,
   fastVisits: 20,
   wideRootNoise: 0.04,
-};
-
-const defaultAnalysisSettings: AnalysisSettings = {
-  mode: 'edit',
-  moveDisplay: ['scoreChange'],
-  stoneOverlay: 'none',
-  maxMoves: 5,
-  minVisits: 20,
-  showMarkup: true,
-  showNextMove: false,
-  showTopMoves: false,
-  showExpectedTerritory: false,
-  showHotZone: false,
-  showScore: false,
-  showPointLoss: false,
-  showWinrate: false,
-  showIntensity: false,
-  showComments: true,
-  intensityDisplayLimit: 25,
-  boardBackground: 'auto',
-  autoAnalyze: true,
-  autoIncrementMarkupText: true,
-  modeSettings: {
-    review: {
-      stoneOverlay: 'dot',
-      showMarkup: true,
-      showNextMove: true,
-      showTopMoves: true,
-      showExpectedTerritory: true,
-      showHotZone: false,
-      showScore: true,
-      showPointLoss: false,
-      showWinrate: true,
-      showIntensity: false,
-      showComments: false,
-    },
-    edit: {
-      stoneOverlay: 'none',
-      showMarkup: true,
-      showNextMove: false,
-      showTopMoves: false,
-      showExpectedTerritory: false,
-      showHotZone: false,
-      showScore: false,
-      showPointLoss: false,
-      showWinrate: false,
-      showIntensity: false,
-      showComments: true,
-    },
-    minimal: {
-      stoneOverlay: 'none',
-      showMarkup: false,
-      showNextMove: false,
-      showTopMoves: false,
-      showExpectedTerritory: false,
-      showHotZone: false,
-      showScore: false,
-      showPointLoss: false,
-      showWinrate: false,
-      showIntensity: false,
-      showComments: false,
-    },
-  },
 };
 
 interface KataGoAnalysisQuery {
@@ -251,7 +147,10 @@ interface KgsClient {
 
 interface PandanetClient {
   readonly username: string;
-  listGames(queryUsername?: string, page?: number): Promise<{games: RemoteProtocolGameSummary[]; nextPage: number | null}>;
+  listGames(
+    queryUsername?: string,
+    page?: number
+  ): Promise<{games: RemoteProtocolGameSummary[]; nextPage: number | null}>;
   downloadGame(gameId: string): Promise<string>;
 }
 
@@ -757,8 +656,8 @@ function registerIpc(): void {
     );
   });
   ipcMain.handle('ulugo:analysis:get-settings', async () => readAnalysisSettings());
-  ipcMain.handle('ulugo:analysis:save-settings', async (_event, settings: AnalysisSettings) =>
-    writeJson('analysis-settings.json', normalizeAnalysisSettings(settings))
+  ipcMain.handle('ulugo:analysis:save-settings', async (_event, settings: unknown) =>
+    writeJson('analysis-settings.json', settings)
   );
 }
 
@@ -773,7 +672,8 @@ async function resolveRemoteLogin(
     password?: unknown;
     useSavedPassword?: unknown;
   };
-  if (typeof username !== 'string' || username.trim() === '') throw new Error(`${displayName} username cannot be empty.`);
+  if (typeof username !== 'string' || username.trim() === '')
+    throw new Error(`${displayName} username cannot be empty.`);
   const normalizedUsername = username.trim();
   if (typeof password === 'string' && password !== '') {
     return {username: normalizedUsername, password, saveCredentials: true};
@@ -1124,95 +1024,8 @@ async function showMacKataGoHomebrewDialog(sender: WebContents): Promise<void> {
   else await dialog.showMessageBox(window, options);
 }
 
-async function readAnalysisSettings(): Promise<AnalysisSettings> {
-  return normalizeAnalysisSettings(await readJson('analysis-settings.json', defaultAnalysisSettings));
-}
-
-function normalizeAnalysisSettings(
-  settings: Partial<AnalysisSettings> & {
-    moveDisplay?: unknown;
-    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    maxIntensity?: unknown;
-  }
-): AnalysisSettings {
-  const {topMoveDisplay, maxIntensity: legacyMaxIntensity, ...storedSettings} = settings;
-  const stoneOverlay = settings.stoneOverlay ?? topMoveDisplay ?? defaultAnalysisSettings.stoneOverlay;
-  const legacyMinimalMode = ['z', 'e', 'n'].join('');
-  const storedMode = settings.mode as string | undefined;
-  let mode: AnalysisMode = 'review';
-  if (storedMode === 'edit' || storedMode === 'minimal') mode = storedMode;
-  else if (storedMode === legacyMinimalMode) mode = 'minimal';
-  const activeModeSettings = normalizeAnalysisModeSettings(
-    {
-      stoneOverlay: stoneOverlay === 'markup' ? 'none' : stoneOverlay,
-      showMarkup: mode === 'minimal' ? false : settings.showMarkup,
-      showNextMove: settings.showNextMove,
-      showTopMoves: settings.showTopMoves,
-      showExpectedTerritory: settings.showExpectedTerritory,
-      showHotZone: settings.showHotZone,
-      showScore: settings.showScore,
-      showPointLoss: settings.showPointLoss,
-      showWinrate: settings.showWinrate,
-      showIntensity: settings.showIntensity,
-      showComments: settings.showComments,
-    },
-    defaultAnalysisSettings.modeSettings[mode]
-  );
-  const modeSettings = {
-    review: normalizeAnalysisModeSettings(settings.modeSettings?.review, defaultAnalysisSettings.modeSettings.review),
-    edit: normalizeAnalysisModeSettings(settings.modeSettings?.edit, defaultAnalysisSettings.modeSettings.edit),
-    minimal: normalizeAnalysisModeSettings(
-      settings.modeSettings?.minimal ??
-        (settings.modeSettings as Partial<Record<string, AnalysisModeSettings>> | undefined)?.[legacyMinimalMode],
-      defaultAnalysisSettings.modeSettings.minimal
-    ),
-    [mode]: activeModeSettings,
-  };
-  return {
-    ...defaultAnalysisSettings,
-    ...storedSettings,
-    moveDisplay: normalizeMoveDisplay(settings.moveDisplay),
-    intensityDisplayLimit: normalizeIntensityDisplayLimit(settings.intensityDisplayLimit ?? legacyMaxIntensity),
-    mode,
-    ...activeModeSettings,
-    modeSettings,
-  };
-}
-
-function normalizeMoveDisplay(value: unknown): AnalysisMoveDisplay {
-  const values = Array.isArray(value) ? value : [value];
-  const normalized = values.flatMap((item): AnalysisDisplayMode[] => {
-    if (item === 'score') return Array.isArray(value) ? ['score'] : ['scoreChange'];
-    if (item === 'winrate') return ['winRateChange'];
-    if (item === 'absScore') return ['value'];
-    if (item === 'scoreChange' || item === 'winRateChange' || item === 'visits' || item === 'value') return [item];
-    return [];
-  });
-  const unique = [...new Set(normalized)].slice(0, 2);
-  return (unique.length === 0 ? ['scoreChange'] : unique) as AnalysisMoveDisplay;
-}
-
-function normalizeIntensityDisplayLimit(value: unknown): number {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return defaultAnalysisSettings.intensityDisplayLimit;
-  return Math.max(1, Math.round(numberValue));
-}
-
-function normalizeAnalysisModeSettings(
-  settings: Partial<AnalysisModeSettings> | undefined,
-  defaults: AnalysisModeSettings
-): AnalysisModeSettings {
-  const stoneOverlay = settings?.stoneOverlay;
-  return {
-    ...defaults,
-    ...settings,
-    showIntensity: settings?.showIntensity ?? defaults.showIntensity,
-    stoneOverlay:
-      stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
-        ? stoneOverlay
-        : defaults.stoneOverlay,
-  };
+async function readAnalysisSettings(): Promise<unknown> {
+  return readJson('analysis-settings.json', {});
 }
 
 async function readJson<T>(name: string, fallback: T): Promise<T> {

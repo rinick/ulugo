@@ -112,7 +112,7 @@ export interface UlugoElectronApi {
     onConsoleMessage: (callback: (message: KataGoConsoleMessage) => void) => () => void;
   };
   analysis: {
-    getSettings: () => Promise<AnalysisSettings>;
+    getSettings: () => Promise<unknown>;
     saveSettings: (settings: AnalysisSettings) => Promise<AnalysisSettings>;
   };
 }

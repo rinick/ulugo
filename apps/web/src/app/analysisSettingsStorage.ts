@@ -28,6 +28,13 @@ const modeSettingKeys = [
   'showComments',
 ] as const;
 
+type StoredAnalysisSettings = Partial<AnalysisSettings> & {
+  moveDisplay?: unknown;
+  stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
+  topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
+  maxIntensity?: unknown;
+};
+
 export function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
   const defaults: AnalysisSettings = enabled
     ? defaultAnalysisSettings
@@ -36,10 +43,7 @@ export function readStoredAnalysisSettings(enabled: boolean): AnalysisSettings {
   try {
     const value = localStorage.getItem(analysisSettingsStorageKey);
     if (value == null) return normalizeAnalysisSettings(defaults, enabled);
-    const stored = JSON.parse(value) as Partial<AnalysisSettings> & {
-      stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
-      topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    };
+    const stored = JSON.parse(value) as StoredAnalysisSettings;
     return normalizeAnalysisSettings({...defaults, ...stored}, enabled);
   } catch {
     return normalizeAnalysisSettings(defaults, enabled);
@@ -54,18 +58,12 @@ export function writeStoredAnalysisSettings(settings: AnalysisSettings): void {
   }
 }
 
-export function normalizeAnalysisSettings(
-  settings: Partial<AnalysisSettings> & {
-    moveDisplay?: unknown;
-    stoneOverlay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    topMoveDisplay?: AnalysisSettings['stoneOverlay'] | 'markup';
-    maxIntensity?: unknown;
-  },
-  enabled: boolean
-): AnalysisSettings {
+export function normalizeAnalysisSettings(value: unknown, enabled: boolean): AnalysisSettings {
+  const settings =
+    typeof value === 'object' && value != null ? (value as StoredAnalysisSettings) : ({} as StoredAnalysisSettings);
   const {maxIntensity: legacyMaxIntensity, ...storedSettings} = settings;
   const storedModeValue = settings.mode as string | undefined;
-  let storedMode: AnalysisMode = 'review';
+  let storedMode: AnalysisMode = storedModeValue == null ? defaultAnalysisSettings.mode : 'review';
   if (storedModeValue === 'edit' || storedModeValue === 'minimal') storedMode = storedModeValue;
   else if (storedModeValue === legacyMinimalMode) storedMode = 'minimal';
   const mode: AnalysisMode = enabled || storedMode === 'minimal' ? storedMode : 'edit';
@@ -193,11 +191,13 @@ function normalizeModeSettings(
   settings: Partial<AnalysisModeSettings> | undefined,
   defaults: AnalysisModeSettings
 ): AnalysisModeSettings {
-  const stoneOverlay = settings?.stoneOverlay;
+  const definedSettings = Object.fromEntries(
+    Object.entries(settings ?? {}).filter(([, value]) => value !== undefined)
+  ) as Partial<AnalysisModeSettings>;
+  const stoneOverlay = definedSettings.stoneOverlay;
   return {
     ...defaults,
-    ...settings,
-    showIntensity: settings?.showIntensity ?? defaults.showIntensity,
+    ...definedSettings,
     stoneOverlay:
       stoneOverlay === 'dot' || stoneOverlay === 'number' || stoneOverlay === 'none'
         ? stoneOverlay

@@ -1041,12 +1041,6 @@ body.minimal .app-content > .right-region .capture-summary {
   line-height: 1.25;
 }
 
-.desktop-download-callout-accent {
-  flex: 0 0 auto;
-  color: var(--ant-color-text-secondary);
-  font-size: 15px;
-}
-
 .desktop-release-panel {
   display: flex;
   flex-direction: column;
@@ -1670,26 +1664,6 @@ body.minimal .app-content > .right-region .capture-summary {
   justify-content: space-between;
   width: 100%;
   margin-bottom: 12px;
-}
-
-.path-field {
-  width: 100%;
-}
-
-.katago-download-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.katago-download-control {
-  width: 100%;
-}
-
-.katago-download-control .ant-select {
-  min-width: 0;
-  flex: 1 1 auto;
 }
 
 .katago-download-progress {

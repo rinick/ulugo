@@ -7,7 +7,6 @@ import {
   addSetupNode,
   addSetupStone,
   buildTree,
-  countMoves,
   createNewGame,
   deleteNode,
   eraseAllMarkup,
@@ -21,7 +20,6 @@ import {
   parseGib,
   parseSgf,
   pruneBranch,
-  replaceMove,
   serializeSgf,
   updateComment,
   updateScoringPoints,
@@ -158,10 +156,6 @@ describe('sgf-core', () => {
   it('formats old out-of-board pass moves as pass', () => {
     expect(formatPoint('tt', 19)).toBe('pass');
     expect(formatPoint('tt', 20)).toBe('U1');
-  });
-
-  it('counts moves across variations', () => {
-    expect(countMoves(parseSgf('(;GM[1]SZ[19];B[dd](;W[pp])(;W[dp];B[pq]))'))).toBe(4);
   });
 
   it('shows old out-of-board pass moves as pass in the tree', () => {
@@ -416,13 +410,6 @@ describe('sgf-core', () => {
     const main = moveBranchToMain(document, [0, 1]);
     expect(main.path).toEqual([0, 0]);
     expect(serializeSgf(main.document)).toBe('(;GM[1]SZ[19];B[aa](;W[cc])(;W[bb]))');
-  });
-
-  it('replaces a move and merges matching branches', () => {
-    const document = parseSgf('(;GM[1]SZ[19];B[aa](;W[bb];B[dd])(;W[cc];B[ee]))');
-    const result = replaceMove(document, [0, 1], 'bb');
-    expect(result.path).toEqual([0, 0]);
-    expect(serializeSgf(result.document)).toBe('(;GM[1]SZ[19];B[aa];W[bb](;B[dd])(;B[ee]))');
   });
 
   it('deletes a node and its children', () => {

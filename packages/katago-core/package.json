@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@ulugo/analysis-core": "workspace:*",
-    "@ulugo/sgf-analysis-tree": "workspace:*",
     "@ulugo/sgf-core": "workspace:*"
   },
   "devDependencies": {

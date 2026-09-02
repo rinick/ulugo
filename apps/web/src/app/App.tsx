@@ -27,7 +27,6 @@ import {
   type SgfColor,
   type SgfDocument,
 } from '@ulugo/sgf-core';
-import type {BoardSize} from '@ulugo/ui-shared';
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import {deriveBoardPosition, isLegalMove} from '@ulugo/go-core';
@@ -35,7 +34,7 @@ import type {AnalysisSettings} from '@ulugo/analysis-core';
 import stoneSoundUrl from '../assets/go_stone_light.wav';
 import {AppBoardRegion} from '../features/app-shell/AppBoardRegion';
 import {AppLeftPanel} from '../features/app-shell/AppLeftPanel';
-import {AppMenuBar} from '../features/app-shell/AppMenuBar';
+import {AppMenuBar, type BoardSize} from '../features/app-shell/AppMenuBar';
 import {MinimalControl} from '../features/app-shell/MinimalControl';
 import {AppRightPanel} from '../features/app-shell/AppRightPanel';
 import {AppStatusModals} from '../features/app-shell/AppStatusModals';

@@ -3,6 +3,7 @@ import {Button, Form, InputNumber, Modal, Radio, Select, Slider, Switch, message
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {defaultAnalysisSettings, type AnalysisSettings} from '@ulugo/analysis-core';
+import {normalizeAnalysisSettings} from '../../app/analysisSettingsStorage';
 import type {AppLanguage} from '../../app/localizationUtils';
 import {openExternalUrl} from '../../app/openExternalUrl';
 import {LanguageSelect} from '../../components/LanguageSelect';
@@ -77,7 +78,7 @@ export function SettingsModal({
       .getSettings()
       .then((settings) => {
         if (!active) return;
-        const next = {...defaultAnalysisSettings, ...settings};
+        const next = normalizeAnalysisSettings(settings, true);
         form.setFieldsValue(next);
         setMinVisitsDraft(next.minVisits);
         onAnalysisSettingsChange(next);

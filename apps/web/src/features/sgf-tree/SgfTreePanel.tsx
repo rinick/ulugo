@@ -396,7 +396,6 @@ function isTreeStoneVisible(panel: HTMLDivElement, row: number): boolean {
 function scrollTreeStoneIntoView(panel: HTMLDivElement, row: number): void {
   const {stoneTop, stoneBottom} = treeStoneBounds(row);
   const visibleTop = panel.scrollTop;
-  const visibleBottom = visibleTop + panel.clientHeight;
 
   if (isTreeStoneVisible(panel, row)) return;
 

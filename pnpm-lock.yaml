@@ -72,15 +72,9 @@ importers:
       '@ulugo/scoring-core':
         specifier: workspace:*
         version: link:../../packages/scoring-core
-      '@ulugo/sgf-analysis-tree':
-        specifier: workspace:*
-        version: link:../../packages/sgf-analysis-tree
       '@ulugo/sgf-core':
         specifier: workspace:*
         version: link:../../packages/sgf-core
-      '@ulugo/ui-shared':
-        specifier: workspace:*
-        version: link:../../packages/ui-shared
       antd:
         specifier: ^6.1.0
         version: 6.4.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -171,9 +165,6 @@ importers:
       '@ulugo/analysis-core':
         specifier: workspace:*
         version: link:../analysis-core
-      '@ulugo/sgf-analysis-tree':
-        specifier: workspace:*
-        version: link:../sgf-analysis-tree
       '@ulugo/sgf-core':
         specifier: workspace:*
         version: link:../sgf-core
@@ -198,26 +189,11 @@ importers:
         specifier: ^4.0.14
         version: 4.1.7(@types/node@24.12.4)(vite@7.3.3(@types/node@24.12.4)(jiti@2.7.0)(terser@5.48.0))
 
-  packages/sgf-analysis-tree:
-    dependencies:
-      '@ulugo/sgf-core':
-        specifier: workspace:*
-        version: link:../sgf-core
-    devDependencies:
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.14
-        version: 4.1.7(@types/node@24.12.4)(vite@7.3.3(@types/node@24.12.4)(jiti@2.7.0)(terser@5.48.0))
-
   packages/sgf-core:
     devDependencies:
       vitest:
         specifier: ^4.0.14
         version: 4.1.7(@types/node@24.12.4)(vite@7.3.3(@types/node@24.12.4)(jiti@2.7.0)(terser@5.48.0))
-
-  packages/ui-shared: {}
 
 packages:
 

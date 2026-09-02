@@ -509,18 +509,6 @@ export function updateScoringPoints(
   });
 }
 
-export function countMoves(document: SgfDocument): number {
-  let count = 0;
-
-  function walk(node: SgfNode): void {
-    if (node.data.B != null || node.data.W != null) count += 1;
-    for (const child of node.children) walk(child);
-  }
-
-  walk(document.root);
-  return count;
-}
-
 export function moveBranchToMain(document: SgfDocument, path: number[]): {document: SgfDocument; path: number[]} {
   if (path.length === 0) return {document, path};
 
@@ -585,39 +573,6 @@ export function pruneBranch(document: SgfDocument, path: number[]): {document: S
   }
 
   return {document: next, path: path.map(() => 0)};
-}
-
-export function replaceMove(
-  document: SgfDocument,
-  path: number[],
-  point: SgfPoint
-): {document: SgfDocument; path: number[]} {
-  if (path.length === 0) return {document, path};
-
-  const current = getNodeAtPath(document, path);
-  const color: SgfColor | null = current.data.B != null ? 'B' : current.data.W != null ? 'W' : null;
-  if (color == null) return {document, path};
-
-  const next = cloneDocument(document);
-  const parentPath = path.slice(0, -1);
-  const parent = getNodeAtPath(next, parentPath);
-  const index = path[path.length - 1];
-  const node = parent.children[index];
-  const existingIndex = parent.children.findIndex((child, childIndex) => {
-    if (childIndex === index) return false;
-    return child.data[color]?.[0] === point;
-  });
-
-  if (existingIndex >= 0) {
-    const existing = parent.children[existingIndex];
-    existing.children.push(...node.children);
-    parent.children.splice(index, 1);
-    const adjustedIndex = existingIndex > index ? existingIndex - 1 : existingIndex;
-    return {document: next, path: [...parentPath, adjustedIndex]};
-  }
-
-  setProperty(node, color, [point]);
-  return {document: next, path};
 }
 
 export function addSetupStone(
@@ -709,14 +664,6 @@ export function updateSetupNextColor(document: SgfDocument, path: number[], colo
   return updateNode(document, path, (node) => setProperty(node, 'PL', [color]));
 }
 
-export function erasePoint(document: SgfDocument, path: number[], point: SgfPoint): SgfDocument {
-  return updateNode(document, path, (node) => {
-    removePointFromProperties(node, ['AB', 'AW', 'B', 'W', 'CR', 'SQ', 'TR', 'MA', 'SL'], point);
-    removeLabel(node, point);
-    addPointValue(node, 'AE', point);
-  });
-}
-
 export function eraseMarkup(document: SgfDocument, path: number[], point: SgfPoint): SgfDocument {
   return updateNode(document, path, (node) => {
     removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);
@@ -766,10 +713,6 @@ export function getInitialNextColor(document: SgfDocument): SgfColor {
 
 export function isScoringNode(node: SgfNode): boolean {
   return node.data.B == null && node.data.W == null && (node.data.TB != null || node.data.TW != null);
-}
-
-export function resultWinnerColor(document: SgfDocument): SgfColor | null {
-  return resultValueWinnerColor(document.root.data.RE?.[0]);
 }
 
 function resultValueWinnerColor(value: string | undefined): SgfColor | null {

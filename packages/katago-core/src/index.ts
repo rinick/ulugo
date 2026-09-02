@@ -1,4 +1,4 @@
-import type {SgfColor, SgfDocument} from '@ulugo/sgf-core';
+import type {SgfColor, SgfDocument, SgfPoint} from '@ulugo/sgf-core';
 import {
   getBoardSize,
   getGameInfo,
@@ -9,7 +9,8 @@ import {
   pointToVertex,
   vertexToPoint,
 } from '@ulugo/sgf-core';
-import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
+
+const gtpLetters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
 
 export interface KataGoSettings {
   executablePath: string;
@@ -62,6 +63,15 @@ export const defaultKataGoSettings: KataGoSettings = {
   fastVisits: 20,
   wideRootNoise: 0.04,
 };
+
+export function sgfPointToGtp(point: SgfPoint, boardSize: number): string {
+  const normalizedPoint = normalizeMovePoint(point, boardSize);
+  if (normalizedPoint === '') return 'pass';
+  const vertex = pointToVertex(normalizedPoint);
+  if (vertex == null) return 'pass';
+  const [x, y] = vertex;
+  return `${gtpLetters[x] ?? 'A'}${boardSize - y}`;
+}
 
 export type KataGoDownloadKind = 'katago' | 'model';
 

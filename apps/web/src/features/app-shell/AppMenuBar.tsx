@@ -9,10 +9,13 @@ import {
   ToolOutlined,
 } from '@ant-design/icons';
 import {Button, Dropdown, Space, type MenuProps} from 'antd';
-import {boardSizes, type BoardSize} from '@ulugo/ui-shared';
 import {useTranslation} from 'react-i18next';
 import type {AppLanguage} from '../../app/localizationUtils';
 import {LanguageDropdown} from '../../components/LanguageSelect';
+
+export type BoardSize = 9 | 13 | 19;
+
+const boardSizes: BoardSize[] = [19, 13, 9];
 
 interface AppMenuBarProps {
   showAiConfig: boolean;

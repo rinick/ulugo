@@ -95,7 +95,7 @@ let pickerPromise: Promise<void> | null = null;
 export async function openSgfFromGoogleDrive(platform: 'web' | 'electron'): Promise<GoogleDriveOpenResult | null> {
   if (platform === 'electron') return window.ulugo?.googleDrive.openSgf() ?? null;
 
-  const token = await authorizeGoogleDrive(platform);
+  const token = await authorizeGoogleDrive();
   const folderId = await ensureGoogleDriveFolder(token);
   await loadPicker();
   const file = await pickGoogleDriveFile(token, folderId);
@@ -130,13 +130,13 @@ export async function saveSgfToGoogleDrive({
     return result;
   }
 
-  const token = await authorizeGoogleDrive(platform);
+  const token = await authorizeGoogleDrive();
   if (fileId != null) return updateGoogleDriveFile(token, fileId, content, fileName);
   const folderId = await ensureGoogleDriveFolder(token);
   return createGoogleDriveFile(token, folderId, content, fileName);
 }
 
-async function authorizeGoogleDrive(platform: 'web' | 'electron'): Promise<string> {
+async function authorizeGoogleDrive(): Promise<string> {
   if (accessToken != null && accessTokenExpiresAt > Date.now() + 60000) return accessToken;
 
   await loadGoogleIdentityServices();

@@ -15,7 +15,7 @@
 - `packages/sgf-core` owns SGF document parsing, editing, and serialization behavior.
 - `packages/go-core` owns Go board position derivation and rules-related board state.
 - `packages/go-board` is the local React TypeScript board rendering package.
-- `packages/analysis-core`, `packages/katago-core`, and `packages/sgf-analysis-tree` hold shared analysis, KataGo settings/types, and tree helpers.
+- `packages/analysis-core` and `packages/katago-core` hold shared analysis and KataGo settings/types.
 
 ## UI Conventions
 

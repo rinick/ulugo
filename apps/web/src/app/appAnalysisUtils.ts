@@ -1,5 +1,5 @@
 import type {AnalysisChartPoint, KataGoAnalysisResult, KataGoMoveInfo} from '@ulugo/analysis-core';
-import {usesAreaValueOffset} from '@ulugo/katago-core';
+import {sgfPointToGtp, usesAreaValueOffset} from '@ulugo/katago-core';
 import {
   getBoardSize,
   getInitialNextColor,
@@ -10,7 +10,6 @@ import {
   type SgfDocument,
   type SgfNode,
 } from '@ulugo/sgf-core';
-import {sgfPointToGtp} from '@ulugo/sgf-analysis-tree';
 import {nodeKey} from './sgfPathUtils';
 
 export interface CachedAnalysis {

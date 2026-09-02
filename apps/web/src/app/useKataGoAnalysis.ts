@@ -381,7 +381,7 @@ export function useKataGoAnalysis({
   );
 
   const saveAnalysisSettings = useCallback(
-    (settings: AnalysisSettings): void => {
+    (settings: unknown): void => {
       const next = normalizeAnalysisSettings(settings, enabled);
       writeStoredAnalysisSettings(next);
       setAnalysisSettings(next);

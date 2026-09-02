@@ -34,12 +34,6 @@ export function effectiveGroupColor(group: StoneGroup, criticalOwner?: Stone): S
   return group.color;
 }
 
-export function stableEffectiveGroupColor(group: StoneGroup): Stone | null {
-  const blackScenario = effectiveGroupColor(group, 'B');
-  const whiteScenario = effectiveGroupColor(group, 'W');
-  return blackScenario === whiteScenario ? blackScenario : null;
-}
-
 export function regionBorderColors(region: EmptyRegion, groups: StoneGroup[], criticalOwner?: Stone): Set<Stone> {
   const colors = new Set<Stone>();
   for (const id of region.borderGroupIds) {

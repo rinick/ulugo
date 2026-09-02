@@ -19,10 +19,8 @@
     "paths": {
       "@ulugo/sgf-core": ["packages/sgf-core/src"],
       "@ulugo/go-core": ["packages/go-core/src"],
-      "@ulugo/ui-shared": ["packages/ui-shared/src"],
       "@ulugo/analysis-core": ["packages/analysis-core/src"],
       "@ulugo/scoring-core": ["packages/scoring-core/src"],
-      "@ulugo/sgf-analysis-tree": ["packages/sgf-analysis-tree/src"],
       "@ulugo/katago-core": ["packages/katago-core/src"]
     }
   }
