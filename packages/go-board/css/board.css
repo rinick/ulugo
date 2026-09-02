@@ -14,6 +14,7 @@
   position: relative;
   border: var(--ulugo-board-border-width) solid var(--ulugo-board-border-color);
   color: var(--ulugo-board-foreground-color);
+  touch-action: manipulation;
 }
 .ulugo-board:not(.ulugo-coordinates) {
   padding: 0.25em;

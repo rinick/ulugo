@@ -1,5 +1,5 @@
 import {createElement as h, memo, useCallback} from 'react';
-import type {CSSProperties, MouseEvent, TouchEvent} from 'react';
+import type {CSSProperties, MouseEvent, PointerEvent} from 'react';
 import classnames from 'classnames';
 
 import {vertexEvents, type Vertex as VertexPoint} from './helper';
@@ -7,7 +7,7 @@ import Marker, {type Marker as MarkerData} from './Marker';
 
 type Sign = 0 | -1 | 1;
 type VertexMouseHandler = (evt: MouseEvent<HTMLDivElement>, vertex: VertexPoint) => void;
-type VertexTouchHandler = (evt: TouchEvent<HTMLDivElement>, vertex: VertexPoint) => void;
+type VertexPointerHandler = (evt: PointerEvent<HTMLDivElement>, vertex: VertexPoint) => void;
 
 export interface AnalysisOverlay {
   strength: number;
@@ -30,13 +30,12 @@ export interface HotZone {
 
 export interface VertexEventHandlers {
   onClick?: VertexMouseHandler;
-  onMouseDown?: VertexMouseHandler;
   onMouseMove?: VertexMouseHandler;
   onMouseEnter?: VertexMouseHandler;
   onMouseLeave?: VertexMouseHandler;
-  onTouchStart?: VertexTouchHandler;
-  onTouchEnd?: VertexTouchHandler;
-  onTouchCancel?: VertexTouchHandler;
+  onPointerDown?: VertexPointerHandler;
+  onPointerUp?: VertexPointerHandler;
+  onPointerCancel?: VertexPointerHandler;
 }
 
 export interface VertexProps extends VertexEventHandlers {
@@ -88,10 +87,6 @@ function Vertex(props: VertexProps) {
     (event: MouseEvent<HTMLDivElement>) => props.onClick?.(event, position),
     [...position, props.onClick]
   );
-  const handleMouseDown = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => props.onMouseDown?.(event, position),
-    [...position, props.onMouseDown]
-  );
   const handleMouseMove = useCallback(
     (event: MouseEvent<HTMLDivElement>) => props.onMouseMove?.(event, position),
     [...position, props.onMouseMove]
@@ -104,17 +99,17 @@ function Vertex(props: VertexProps) {
     (event: MouseEvent<HTMLDivElement>) => props.onMouseLeave?.(event, position),
     [...position, props.onMouseLeave]
   );
-  const handleTouchStart = useCallback(
-    (event: TouchEvent<HTMLDivElement>) => props.onTouchStart?.(event, position),
-    [...position, props.onTouchStart]
+  const handlePointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => props.onPointerDown?.(event, position),
+    [...position, props.onPointerDown]
   );
-  const handleTouchEnd = useCallback(
-    (event: TouchEvent<HTMLDivElement>) => props.onTouchEnd?.(event, position),
-    [...position, props.onTouchEnd]
+  const handlePointerUp = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => props.onPointerUp?.(event, position),
+    [...position, props.onPointerUp]
   );
-  const handleTouchCancel = useCallback(
-    (event: TouchEvent<HTMLDivElement>) => props.onTouchCancel?.(event, position),
-    [...position, props.onTouchCancel]
+  const handlePointerCancel = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => props.onPointerCancel?.(event, position),
+    [...position, props.onPointerCancel]
   );
 
   let ownershipOpacity = Math.abs(ownership);
@@ -160,13 +155,12 @@ function Vertex(props: VertexProps) {
       },
       {
         onClick: handleClick,
-        onMouseDown: handleMouseDown,
         onMouseMove: handleMouseMove,
         onMouseEnter: handleMouseEnter,
         onMouseLeave: handleMouseLeave,
-        onTouchStart: handleTouchStart,
-        onTouchEnd: handleTouchEnd,
-        onTouchCancel: handleTouchCancel,
+        onPointerDown: handlePointerDown,
+        onPointerUp: handlePointerUp,
+        onPointerCancel: handlePointerCancel,
       }
     ),
     h('div', {
