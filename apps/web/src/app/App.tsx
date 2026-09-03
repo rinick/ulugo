@@ -111,6 +111,7 @@ import {createLocalConsoleMessage} from './katagoConsoleUtils';
 
 const {Header, Content} = Layout;
 const lastSgfStorageKey = 'ulugo.lastSgf';
+const electronRemoteSgfSourceIds = ['fox', 'tygem', 'kgs', 'pandanet'] as const;
 const BoardRecognitionModal = lazy(() => import('../features/board-recognition/BoardRecognitionModal'));
 
 interface StartupState {
@@ -200,10 +201,9 @@ export function App() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [remoteSgfSourceId, setRemoteSgfSourceId] = useState<string | null>(null);
-  const [foxAvailable, setFoxAvailable] = useState(false);
-  const [kgsAvailable, setKgsAvailable] = useState(false);
-  const [pandanetAvailable, setPandanetAvailable] = useState(false);
-  const [tygemAvailable, setTygemAvailable] = useState(false);
+  const [availableElectronRemoteSources, setAvailableElectronRemoteSources] = useState(
+    () => new Set<(typeof electronRemoteSgfSourceIds)[number]>()
+  );
   const [recognitionImage, setRecognitionImage] = useState<File | null>(null);
   const [recognitionSetupMode, setRecognitionSetupMode] = useState(false);
   const [mobileHeaderRightOpen, setMobileHeaderRightOpen] = useState(false);
@@ -425,46 +425,25 @@ export function App() {
 
   useEffect(() => {
     let active = true;
-    if (!isElectron || window.ulugo == null) return;
-    void window.ulugo.fox
-      .isAvailable()
-      .then((available) => {
-        if (active) setFoxAvailable(available);
-      })
-      .catch(() => {
-        if (active) setFoxAvailable(false);
-      });
-    void window.ulugo.tygem
-      .isAvailable()
-      .then((available) => {
-        if (active) setTygemAvailable(available);
-      })
-      .catch(() => {
-        if (active) setTygemAvailable(false);
-      });
-    void window.ulugo.kgs
-      .isAvailable()
-      .then((available) => {
-        if (active) setKgsAvailable(available);
-      })
-      .catch(() => {
-        if (active) setKgsAvailable(false);
-      });
-    void window.ulugo.pandanet
-      .isAvailable()
-      .then((available) => {
-        if (active) setPandanetAvailable(available);
-      })
-      .catch(() => {
-        if (active) setPandanetAvailable(false);
-      });
+    const api = window.ulugo;
+    if (!isElectron || api == null) return;
+    for (const sourceId of electronRemoteSgfSourceIds) {
+      void api[sourceId]
+        .isAvailable()
+        .catch(() => false)
+        .then((available) => {
+          if (active && available) {
+            setAvailableElectronRemoteSources((current) => new Set(current).add(sourceId));
+          }
+        });
+    }
     return () => {
       active = false;
     };
   }, []);
 
   const remoteSgfSources: RemoteSgfSourceConfig[] = [
-    ...(foxAvailable && window.ulugo != null
+    ...(availableElectronRemoteSources.has('fox') && window.ulugo != null
       ? [
           {
             id: 'fox',
@@ -478,7 +457,7 @@ export function App() {
           },
         ]
       : []),
-    ...(tygemAvailable && window.ulugo != null
+    ...(availableElectronRemoteSources.has('tygem') && window.ulugo != null
       ? [
           {
             id: 'tygem',
@@ -500,7 +479,7 @@ export function App() {
           },
         ]
       : []),
-    ...(kgsAvailable && window.ulugo != null
+    ...(availableElectronRemoteSources.has('kgs') && window.ulugo != null
       ? [
           {
             id: 'kgs',
@@ -522,7 +501,7 @@ export function App() {
           },
         ]
       : []),
-    ...(pandanetAvailable && window.ulugo != null
+    ...(availableElectronRemoteSources.has('pandanet') && window.ulugo != null
       ? [
           {
             id: 'pandanet',

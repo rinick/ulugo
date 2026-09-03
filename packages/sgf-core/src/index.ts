@@ -1,6 +1,7 @@
 export type SgfColor = 'B' | 'W';
 export type SgfPoint = string;
 export type MarkupKind = 'CR' | 'SQ' | 'TR' | 'MA' | 'SL';
+export type PointMarkup = {kind: 'LB'; label: string} | {kind: MarkupKind};
 
 export interface SgfNode {
   id: string;
@@ -431,11 +432,7 @@ export function addMove(
   color: SgfColor,
   point: SgfPoint
 ): {document: SgfDocument; path: number[]} {
-  const next = cloneDocument(document);
-  const parent = getNodeAtPath(next, path);
-  const child = createNode({[color]: [point]});
-  parent.children.push(child);
-  return {document: next, path: [...path, parent.children.length - 1]};
+  return insertChildNode(document, path, {[color]: [point]}, 'last');
 }
 
 export function addScoringNode(
@@ -444,12 +441,7 @@ export function addScoringNode(
   blackPoints: SgfPoint[],
   whitePoints: SgfPoint[]
 ): {document: SgfDocument; path: number[]} {
-  const data = scoringNodeData(blackPoints, whitePoints);
-  const next = cloneDocument(document);
-  const parent = getNodeAtPath(next, path);
-  const child = createNode(data);
-  parent.children.push(child);
-  return {document: next, path: [...path, parent.children.length - 1]};
+  return insertChildNode(document, path, scoringNodeData(blackPoints, whitePoints), 'last');
 }
 
 export function addSetupNode(
@@ -467,10 +459,7 @@ export function addSetupNode(
   if (empty.length > 0) data.AE = empty;
   if (source === 'camera') data.ZA = ['camera'];
 
-  const next = cloneDocument(document);
-  const parent = getNodeAtPath(next, path);
-  parent.children.unshift(createNode(data));
-  return {document: next, path: [...path, 0]};
+  return insertChildNode(document, path, data, 'first');
 }
 
 export function updateScoringPoints(
@@ -555,9 +544,25 @@ export function updateSetupNextColor(document: SgfDocument, path: number[], colo
 }
 
 export function eraseMarkup(document: SgfDocument, path: number[], point: SgfPoint): SgfDocument {
+  return replacePointMarkup(document, path, [point], null);
+}
+
+export function replacePointMarkup(
+  document: SgfDocument,
+  path: number[],
+  points: SgfPoint[],
+  markup: PointMarkup | null
+): SgfDocument {
   return updateNode(document, path, (node) => {
-    removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);
-    removeLabel(node, point);
+    for (const point of points) {
+      removePointFromProperties(node, ['CR', 'SQ', 'TR', 'MA', 'SL'], point);
+      removeLabel(node, point);
+    }
+    if (markup != null) {
+      for (const point of points) {
+        addPointValue(node, markup.kind, markup.kind === 'LB' ? `${point}:${markup.label}` : point);
+      }
+    }
   });
 }
 
@@ -637,6 +642,19 @@ function updateNode(document: SgfDocument, path: number[], update: (node: SgfNod
   const next = cloneDocument(document);
   update(getNodeAtPath(next, path));
   return next;
+}
+
+function insertChildNode(
+  document: SgfDocument,
+  path: number[],
+  data: Record<string, string[]>,
+  position: 'first' | 'last'
+): {document: SgfDocument; path: number[]} {
+  const next = cloneDocument(document);
+  const parent = getNodeAtPath(next, path);
+  const index = position === 'first' ? 0 : parent.children.length;
+  parent.children.splice(index, 0, createNode(data));
+  return {document: next, path: [...path, index]};
 }
 
 function setProperty(node: SgfNode, key: string, values: string[]): void {

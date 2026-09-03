@@ -18,6 +18,7 @@ import {
   parseGib,
   parseSgf,
   pruneBranch,
+  replacePointMarkup,
   serializeSgf,
   updateComment,
   updateScoringPoints,
@@ -140,6 +141,14 @@ describe('sgf-core', () => {
     document = eraseAllMarkup(document, result.path);
 
     expect(serializeSgf(document)).toContain(';B[dd])');
+  });
+
+  it('replaces markup on several points in one immutable edit', () => {
+    const document = parseSgf('(;SZ[5]CR[aa][bb]LB[cc:X]SQ[dd])');
+    const updated = replacePointMarkup(document, [], ['aa', 'cc'], {kind: 'LB', label: 'Z'});
+
+    expect(serializeSgf(document)).toBe('(;SZ[5]CR[aa][bb]LB[cc:X]SQ[dd])');
+    expect(serializeSgf(updated)).toBe('(;SZ[5]CR[bb]SQ[dd]LB[aa:Z][cc:Z])');
   });
 
   it('formats display coordinates without I', () => {

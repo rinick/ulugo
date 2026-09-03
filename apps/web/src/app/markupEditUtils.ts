@@ -1,11 +1,8 @@
+import {collectConnectedGroup, orthogonalNeighbors} from '@ulugo/go-core';
 import {
-  addLabel,
-  addMarkup,
-  eraseMarkup,
   getNodeAtPath,
-  pointToVertex,
-  vertexToPoint,
-  type MarkupKind,
+  replacePointMarkup,
+  type PointMarkup,
   type SgfColor,
   type SgfDocument,
   type SgfNode,
@@ -14,7 +11,8 @@ import type {EditorTool} from '../features/toolbar/types';
 import {pathKey} from './sgfPathUtils';
 import {toolToMarkup} from './sgfEditUtils';
 
-export type PointMarkup = {kind: 'LB'; label: string} | {kind: MarkupKind};
+export type {PointMarkup};
+
 export type MarkupAction = {
   pathKey: string;
   point: string;
@@ -205,17 +203,7 @@ function connectedStonePoints(
   stones: Map<string, SgfColor>,
   boardSize: number
 ): string[] {
-  const result: string[] = [];
-  const seen = new Set<string>();
-  const queue = [start];
-  for (let index = 0; index < queue.length; index += 1) {
-    const point = queue[index];
-    if (seen.has(point) || stones.get(point) !== color) continue;
-    seen.add(point);
-    result.push(point);
-    queue.push(...neighborPoints(point, boardSize));
-  }
-  return result;
+  return stones.get(start) === color ? collectConnectedGroup(start, stones, boardSize).points : [];
 }
 
 function connectedMatchingMarkupAroundErasedPoint(
@@ -226,7 +214,7 @@ function connectedMatchingMarkupAroundErasedPoint(
 ): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
-  for (const neighbor of neighborPoints(point, boardSize)) {
+  for (const neighbor of orthogonalNeighbors(point, boardSize)) {
     if (seen.has(neighbor) || !samePointMarkup(pointMarkup(node, neighbor), markup)) continue;
     for (const connected of connectedMarkupPoints(node, neighbor, markup, boardSize)) {
       if (seen.has(connected)) continue;
@@ -246,35 +234,15 @@ function connectedMarkupPoints(node: SgfNode, start: string, markup: PointMarkup
     if (seen.has(point) || !samePointMarkup(pointMarkup(node, point), markup)) continue;
     seen.add(point);
     result.push(point);
-    queue.push(...neighborPoints(point, boardSize));
+    queue.push(...orthogonalNeighbors(point, boardSize));
   }
   return result;
 }
 
-function neighborPoints(point: string, boardSize: number): string[] {
-  const vertex = pointToVertex(point);
-  if (vertex == null) return [];
-  const [x, y] = vertex;
-  return [
-    [x - 1, y],
-    [x + 1, y],
-    [x, y - 1],
-    [x, y + 1],
-  ].flatMap(([nx, ny]) => (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize ? [vertexToPoint(nx, ny)] : []));
-}
-
 function eraseMarkupPoints(document: SgfDocument, path: number[], points: string[]): SgfDocument {
-  return points.reduce((current, point) => eraseMarkup(current, path, point), document);
+  return replacePointMarkup(document, path, points, null);
 }
 
 function drawMarkupPoints(document: SgfDocument, path: number[], points: string[], markup: PointMarkup): SgfDocument {
-  return markup.kind === 'LB'
-    ? points.reduce(
-        (current, point) => addLabel(current, path, point, markup.label),
-        eraseMarkupPoints(document, path, points)
-      )
-    : points.reduce(
-        (current, point) => addMarkup(current, path, markup.kind, point),
-        eraseMarkupPoints(document, path, points)
-      );
+  return replacePointMarkup(document, path, points, markup);
 }
