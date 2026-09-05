@@ -1,5 +1,6 @@
 _i_*
 node_modules
+/flyer/
 
 build
 /packages/**/*.js
