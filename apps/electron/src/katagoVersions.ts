@@ -76,8 +76,9 @@ export async function refreshKataGoVersionCatalog(
   return catalog;
 }
 
-export function isBs50KataGoBuild(value: string): boolean {
-  return value.toLowerCase().includes('bs50');
+export function isLargeBoardKataGoBuild(value: string): boolean {
+  const lower = value.toLowerCase();
+  return lower.includes('bs29') || lower.includes('bs50');
 }
 
 async function fetchLatestKataGoBuilds(
@@ -85,29 +86,46 @@ async function fetchLatestKataGoBuilds(
   onProgress?: KataGoCatalogProgress
 ): Promise<KataGoAvailableAsset[]> {
   onProgress?.('Checking latest KataGo builds from GitHub.');
-  const response = await fetch('https://api.github.com/repos/lightvector/KataGo/releases/latest', {
+  const response = await fetch('https://api.github.com/repos/lightvector/KataGo/releases?per_page=30', {
     headers: {'User-Agent': 'Ulugo'},
   });
   if (!response.ok) throw new Error(`Failed to refresh KataGo builds: ${response.status} ${response.statusText}`);
-  const release = (await response.json()) as {
+  const releases = (await response.json()) as Array<{
+    tag_name: string;
+    draft: boolean;
+    prerelease: boolean;
     assets?: Array<{name?: string; browser_download_url?: string}>;
-  };
+  }>;
   const platformKey = platform === 'win32' ? 'windows-x64' : platform === 'linux' ? 'linux-x64' : 'macos';
 
-  const assets = (release.assets ?? [])
-    .filter(
-      (asset) => asset.name?.endsWith('.zip') && asset.name.includes(platformKey) && !isBs50KataGoBuild(asset.name)
-    )
-    .map((asset) => {
+  const builds = new Map<string, KataGoAvailableAsset>();
+  const stableReleases = releases
+    .filter((release) => !release.draft && !release.prerelease)
+    .sort((a, b) => b.tag_name.localeCompare(a.tag_name, 'en', {numeric: true}));
+  for (const release of stableReleases) {
+    for (const asset of release.assets ?? []) {
       const name = asset.name ?? '';
-      return {
+      const prefix = `katago-${release.tag_name}-`;
+      if (
+        !name.startsWith(prefix) ||
+        !name.endsWith('.zip') ||
+        !name.includes(platformKey) ||
+        isLargeBoardKataGoBuild(name) ||
+        !asset.browser_download_url
+      )
+        continue;
+      // Keep CUDA/cuDNN, TensorRT and other build variants distinct across releases.
+      const variant = name.slice(prefix.length);
+      if (builds.has(variant)) continue;
+      builds.set(variant, {
         id: name.replace(/\.zip$/i, ''),
         label: buildNameFromFileName(name),
         notes: buildNotesFromFileName(name),
-        url: asset.browser_download_url ?? '',
-      };
-    })
-    .filter((asset) => asset.url !== '');
+        url: asset.browser_download_url,
+      });
+    }
+  }
+  const assets = [...builds.values()];
   onProgress?.(`Found ${assets.length} KataGo build option${assets.length === 1 ? '' : 's'} for this platform.`);
   return assets;
 }
@@ -231,7 +249,7 @@ function normalizeCatalog(value: Partial<KataGoAssetCatalog>): KataGoAssetCatalo
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : new Date(0).toISOString(),
     katago: normalizeAvailableAssets(value.katago)
       .map(normalizeKataGoBuildOption)
-      .filter((asset) => !isBs50KataGoBuild(kataGoBuildFileName(asset))),
+      .filter((asset) => !isLargeBoardKataGoBuild(kataGoBuildFileName(asset))),
     models: normalizeAvailableAssets(value.models).filter((asset) => !legacyModelOptionIds.has(asset.id)),
   };
 }

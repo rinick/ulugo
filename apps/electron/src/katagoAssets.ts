@@ -3,7 +3,7 @@ import extract from 'extract-zip';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
-  isBs50KataGoBuild,
+  isLargeBoardKataGoBuild,
   readKataGoVersionCatalog,
   refreshKataGoVersionCatalog,
   type KataGoAssetCatalog,
@@ -200,7 +200,7 @@ async function mergeAvailableAndInstalledAssets(
 ): Promise<KataGoAsset[]> {
   const directory = kind === 'katago' ? katagoInstallDirectory() : modelInstallDirectory();
   const files = (await listFiles(directory)).filter(
-    (file) => isInstalledAssetCandidate(kind, file) && (kind !== 'katago' || !isBs50KataGoBuild(file))
+    (file) => isInstalledAssetCandidate(kind, file) && (kind !== 'katago' || !isLargeBoardKataGoBuild(file))
   );
   const byId = new Map<string, KataGoAsset>();
 
