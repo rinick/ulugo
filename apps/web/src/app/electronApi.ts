@@ -70,6 +70,7 @@ export interface ElectronGoogleDriveSaveResult {
 
 export interface UlugoElectronApi {
   platform: 'electron';
+  version?: string;
   openExternal: (url: string) => Promise<void>;
   readClipboard: () => Promise<ElectronClipboardResult>;
   importFile: () => Promise<ElectronImportResult | ElectronImageImportResult | null>;

@@ -2,6 +2,7 @@ import {contextBridge, ipcRenderer, webUtils} from 'electron';
 
 contextBridge.exposeInMainWorld('ulugo', {
   platform: 'electron',
+  version: process.argv.find((argument) => argument.startsWith('--ulugo-version='))?.split('=')[1],
   openExternal: (url: string) => ipcRenderer.invoke('ulugo:open-external', url),
   readClipboard: () => ipcRenderer.invoke('ulugo:read-clipboard'),
   importFile: () => ipcRenderer.invoke('ulugo:import-file'),

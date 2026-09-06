@@ -212,6 +212,7 @@ async function createWindow(): Promise<void> {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--ulugo-version=${require('../package.json').version}`],
     },
   });
   mainWindow = window;

@@ -115,6 +115,12 @@ textarea,
   color: var(--ant-color-text-heading);
 }
 
+.app-version {
+  margin-left: 6px;
+  font-size: 10px;
+  opacity: 0.5;
+}
+
 .app-menu-buttons {
   justify-content: flex-end;
 }

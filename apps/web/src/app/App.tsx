@@ -1498,7 +1498,12 @@ export function App() {
           <Header className="app-header">
             <div className="app-header-main">
               <section className="app-header-left">
-                <div className="app-title">{appTitle}</div>
+                <div className="app-title">
+                  {appTitle}
+                  {isElectron && window.ulugo?.version && (
+                    <span className="app-version">{window.ulugo.version}</span>
+                  )}
+                </div>
                 <AppToolbars
                   tool={tool}
                   nextColor={nextAutoColor}
