@@ -747,6 +747,9 @@ export function App() {
 
   function handleModeChange(mode: AnalysisSettings['mode']): void {
     if (mode === analysisSettings.mode) return;
+    if (mode === 'minimal' && isMobileBrowser && !isElectron && !window.document.fullscreenElement) {
+      void window.document.documentElement.requestFullscreen?.().catch(() => undefined);
+    }
     updateAnalysisSettings({mode});
     if (!capabilities.katago) return;
     if (mode !== 'review') {
