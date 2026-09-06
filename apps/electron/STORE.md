@@ -6,9 +6,9 @@ The Store configuration automatically includes the versions pinned in
 `store-katago.json`:
 
 - KataGo v1.18.1 OpenCL, Windows x64, standard board-size build.
-- `kata1-zhizi-b28c512nbt-muonfd2.bin.gz`.
+- `kata1-b18c384nbt-s9996604416-d4316597426.bin.gz`.
 
-These versions match the OpenCL version and selected model in the development
+These versions match the OpenCL version and installed standard b18 model in the development
 cache on 2026-09-05. The Windows archive checksum comes from the official KataGo
 release; the model checksum comes from that cached model. Building does not
 switch to newer releases automatically.
@@ -24,7 +24,7 @@ another cache root. Expected paths relative to that root are:
 
 ```text
 katago/katago-v1.18.1-opencl-windows-x64/katago-v1.18.1-opencl-windows-x64.zip
-models/kata1-zhizi-b28c512nbt-muonfd2.bin.gz
+models/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz
 ```
 
 For offline packaging, place these two files directly in

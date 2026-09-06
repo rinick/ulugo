@@ -7,9 +7,9 @@
     "sha256": "1710db1903ab921aa6837a9599c8474f8a59f057650217c5d9bc125ee393a9ff"
   },
   "model": {
-    "id": "kata1:kata1-zhizi-b28c512nbt-muonfd2",
-    "label": "kata1-zhizi-b28c512nbt-muonfd2.bin.gz",
-    "url": "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-zhizi-b28c512nbt-muonfd2.bin.gz",
-    "sha256": "b37f9a56a9b105159a196f9ba72c5328776fb5cf30014495e4d8ac8a5b07654b"
+    "id": "kata1:kata1-b18c384nbt-s9996604416-d4316597426",
+    "label": "kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
+    "url": "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
+    "sha256": "9d7a6afed8ff5b74894727e156f04f0cd36060a24824892008fbb6e0cba51f1d"
   }
 }
