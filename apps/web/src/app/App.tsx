@@ -1624,6 +1624,7 @@ export function App() {
               document={document}
               treeLayout={treeLayout}
               path={path}
+              branchLeafPath={analysisChartPaths.at(-1) ?? path}
               blackPlayerName={blackPlayerName}
               whitePlayerName={whitePlayerName}
               capturedBlackStones={position.captures.W}

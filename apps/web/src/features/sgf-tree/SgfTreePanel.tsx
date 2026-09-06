@@ -14,7 +14,6 @@ import type {MenuProps} from 'antd';
 import {samePath, type SgfDocument} from '@ulugo/sgf-core';
 import {
   useCallback,
-  useEffect,
   useLayoutEffect,
   memo,
   useMemo,
@@ -45,6 +44,7 @@ interface SgfTreePanelProps {
   document: SgfDocument;
   layout: TreeLayout;
   selectedPath: number[];
+  branchLeafPath: number[];
   onSelectPath: (path: number[]) => void;
   onMoveToMain: (path?: number[]) => void;
   onRecordWithCamera?: () => void;
@@ -67,6 +67,7 @@ export function SgfTreePanel({
   document,
   layout,
   selectedPath,
+  branchLeafPath,
   onSelectPath,
   onMoveToMain,
   onRecordWithCamera,
@@ -83,16 +84,13 @@ export function SgfTreePanel({
 }: SgfTreePanelProps) {
   const {t} = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const suppressScrollSelectRef = useRef(false);
-  const selectedFromScrollRef = useRef(false);
-  const releaseSuppressScrollSelectRef = useRef<number | null>(null);
+  const selectedFromScrollRef = useRef<string | null>(null);
   const lastScrollTopRef = useRef(0);
   const contextPathRef = useRef<number[] | null>(null);
   const [contextPath, setContextPath] = useState<number[] | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const cellById = useMemo(() => new Map(layout.cells.map((cell) => [cell.id, cell])), [layout]);
   const cellsByRow = useMemo(() => groupCells(layout.cells, (cell) => cell.row), [layout]);
-  const cellsByColumn = useMemo(() => groupCells(layout.cells, (cell) => cell.column), [layout]);
   const selectedCell = useMemo(
     () => layout.cells.find((cell) => samePath(cell.path, selectedPath)) ?? null,
     [layout, selectedPath]
@@ -107,41 +105,16 @@ export function SgfTreePanel({
     [contextPath, layout]
   );
 
-  useEffect(() => {
-    if (selectedFromScrollRef.current) {
-      selectedFromScrollRef.current = false;
-      return;
-    }
-
+  useLayoutEffect(() => {
+    const selectedFromScroll = selectedFromScrollRef.current === selectedCell?.id;
+    selectedFromScrollRef.current = null;
     const panel = scrollRef.current;
     if (panel == null || selectedCell == null) return;
 
-    const node = panel.querySelector<HTMLElement>(`[data-tree-node-id="${selectedCell.id}"]`);
-    if (node == null) return;
-
-    if (!isTreeStoneVisible(panel, selectedCell.row)) {
-      suppressScrollSelectRef.current = true;
-      scrollTreeStoneIntoView(panel, selectedCell.row);
-      lastScrollTopRef.current = panel.scrollTop;
-      if (releaseSuppressScrollSelectRef.current != null) {
-        window.clearTimeout(releaseSuppressScrollSelectRef.current);
-      }
-      releaseSuppressScrollSelectRef.current = window.setTimeout(() => {
-        suppressScrollSelectRef.current = false;
-        releaseSuppressScrollSelectRef.current = null;
-      }, 120);
-    }
-
-    scrollTreeNodeHorizontallyIntoView(panel, node);
+    if (!selectedFromScroll) scrollTreeStoneIntoView(panel, selectedCell);
+    // Ignore the scroll event from revealing the selection, without suppressing subsequent user scrolling.
+    lastScrollTopRef.current = panel.scrollTop;
   }, [selectedCell]);
-
-  useEffect(() => {
-    return () => {
-      if (releaseSuppressScrollSelectRef.current != null) {
-        window.clearTimeout(releaseSuppressScrollSelectRef.current);
-      }
-    };
-  }, []);
 
   const handleScroll = useCallback(() => {
     const panel = scrollRef.current;
@@ -150,24 +123,21 @@ export function SgfTreePanel({
     const scrollTop = panel.scrollTop;
     if (scrollTop === lastScrollTopRef.current) return;
     lastScrollTopRef.current = scrollTop;
-    if (suppressScrollSelectRef.current) return;
-
     if (selectedCell == null) return;
 
-    const branchCells = cellsByColumn.get(selectedCell.column) ?? emptyTreeCells;
-    if (isTreeStoneVisible(panel, selectedCell.row)) return;
+    if (isTreeStoneVerticallyVisible(panel, selectedCell.row)) return;
 
-    const nextCell = closestVisibleCell(panel, branchCells, selectedCell.row);
+    const nextCell = closestVisibleCell(panel, layout.cells, selectedCell.row, branchLeafPath);
 
     if (nextCell != null && nextCell.id !== selectedCell.id) {
-      selectedFromScrollRef.current = true;
+      selectedFromScrollRef.current = nextCell.id;
       onSelectPath(nextCell.path);
     }
-  }, [cellsByColumn, onSelectPath, selectedCell]);
+  }, [branchLeafPath, layout, onSelectPath, selectedCell]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
-      if (event.deltaY === 0) return;
+      if (event.deltaY === 0 || event.shiftKey) return;
 
       const panel = scrollRef.current;
       if (panel == null) return;
@@ -385,7 +355,7 @@ function withShortcut(title: string, shortcut: string | undefined): string {
   return shortcut == null || shortcut === '' ? title : `${title} (${shortcut})`;
 }
 
-function isTreeStoneVisible(panel: HTMLDivElement, row: number): boolean {
+function isTreeStoneVerticallyVisible(panel: HTMLDivElement, row: number): boolean {
   const {stoneTop, stoneBottom} = treeStoneBounds(row);
   const visibleTop = panel.scrollTop;
   const visibleBottom = visibleTop + panel.clientHeight;
@@ -393,15 +363,19 @@ function isTreeStoneVisible(panel: HTMLDivElement, row: number): boolean {
   return stoneTop >= visibleTop && stoneBottom <= visibleBottom;
 }
 
-function scrollTreeStoneIntoView(panel: HTMLDivElement, row: number): void {
-  const {stoneTop, stoneBottom} = treeStoneBounds(row);
+export function scrollTreeStoneIntoView(panel: HTMLDivElement, cell: Pick<TreeCell, 'row' | 'column'>): void {
+  const {stoneTop, stoneBottom} = treeStoneBounds(cell.row);
+  const stoneCenter = gutterWidth + cell.column * treeColumnStep + treeColumnStep / 2;
   const visibleTop = panel.scrollTop;
 
-  if (isTreeStoneVisible(panel, row)) return;
+  if (stoneTop < visibleTop) {
+    panel.scrollTop = stoneTop;
+  } else if (stoneBottom > visibleTop + panel.clientHeight) {
+    panel.scrollTop = stoneBottom - panel.clientHeight;
+  }
 
-  const maxScroll = Math.max(0, panel.scrollHeight - panel.clientHeight);
-  const nextScrollTop = stoneTop < visibleTop ? stoneTop : stoneBottom - panel.clientHeight;
-  panel.scrollTop = Math.max(0, Math.min(maxScroll, nextScrollTop));
+  const maxScrollLeft = Math.max(0, panel.scrollWidth - panel.clientWidth);
+  panel.scrollLeft = Math.max(0, Math.min(maxScrollLeft, stoneCenter - panel.clientWidth / 2));
 }
 
 function treeStoneBounds(row: number): {stoneTop: number; stoneBottom: number} {
@@ -409,25 +383,18 @@ function treeStoneBounds(row: number): {stoneTop: number; stoneBottom: number} {
   return {stoneTop, stoneBottom: stoneTop + moveTreeNodeSize};
 }
 
-function scrollTreeNodeHorizontallyIntoView(panel: HTMLDivElement, node: HTMLElement): void {
-  const nodeLeft = node.offsetLeft;
-  const nodeRight = nodeLeft + node.offsetWidth;
-  const visibleLeft = panel.scrollLeft;
-  const visibleRight = visibleLeft + panel.clientWidth;
-
-  if (nodeLeft < visibleLeft) {
-    panel.scrollLeft = nodeLeft;
-  } else if (nodeRight > visibleRight) {
-    panel.scrollLeft = nodeRight - panel.clientWidth;
-  }
-}
-
-function closestVisibleCell(panel: HTMLDivElement, cells: TreeCell[], row: number): TreeCell | null {
+export function closestVisibleCell(
+  panel: HTMLDivElement,
+  cells: TreeCell[],
+  row: number,
+  branchLeafPath: number[]
+): TreeCell | null {
   let closestCell: TreeCell | null = null;
   let closestDistance = Infinity;
 
   for (const cell of cells) {
-    if (!isTreeStoneVisible(panel, cell.row)) continue;
+    if (!samePath(cell.path, branchLeafPath.slice(0, cell.path.length))) continue;
+    if (!isTreeStoneVerticallyVisible(panel, cell.row)) continue;
 
     const distance = Math.abs(cell.row - row);
     if (distance < closestDistance) {

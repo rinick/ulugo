@@ -10,6 +10,7 @@ interface AppRightPanelProps {
   document: SgfDocument;
   treeLayout: TreeLayout;
   path: number[];
+  branchLeafPath: number[];
   blackPlayerName: string;
   whitePlayerName: string;
   capturedBlackStones: number;
@@ -51,6 +52,7 @@ export function AppRightPanel({
   document,
   treeLayout,
   path,
+  branchLeafPath,
   blackPlayerName,
   whitePlayerName,
   capturedBlackStones,
@@ -126,6 +128,7 @@ export function AppRightPanel({
         document={document}
         layout={treeLayout}
         selectedPath={path}
+        branchLeafPath={branchLeafPath}
         onSelectPath={onSelectPath}
         onMoveToMain={onMoveToMain}
         onRecordWithCamera={onRecordWithCamera}
