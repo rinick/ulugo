@@ -21,6 +21,7 @@ import {
   fileExists,
   findDefaultKataGoConfig,
   findInstalledAssetPath,
+  installBundledKataGoAssets,
   listKataGoAssets,
   readKataGoAssetCatalog,
   refreshKataGoAssetCatalog,
@@ -920,6 +921,18 @@ async function setupFirstRunKataGo(sender: WebContents): Promise<void> {
 
   try {
     sendKataGoConsole(sender, 'ulugo', 'info', 'Setting up KataGo for first use.');
+    const previous = await readKataGoSettings();
+    const bundled = await installBundledKataGoAssets(previous, (message) => {
+      sendKataGoConsole(sender, 'ulugo', 'info', message);
+    });
+    if (bundled != null) {
+      const next = await normalizeKataGoSettings({...previous, ...bundled});
+      await writeKataGoSettings(next);
+      restartKataGoEngineIfSettingsChanged(previous, next);
+      await writeJson(firstRunSetupFileName, {complete: true});
+      sendKataGoConsole(sender, 'ulugo', 'info', 'First-use KataGo setup complete using bundled assets.');
+      return;
+    }
     if (process.platform === 'darwin') await setupFirstRunMacKataGo(sender);
 
     const catalog = await refreshKataGoAssetCatalog(process.platform, (message) => {

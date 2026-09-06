@@ -78,6 +78,58 @@ export async function listKataGoAssets(catalog: KataGoAssetCatalog): Promise<{
   return {katago, models};
 }
 
+export async function installBundledKataGoAssets(
+  current: {executablePath: string; modelPath: string},
+  onProgress: (message: string) => void
+): Promise<{executablePath: string; modelPath: string} | null> {
+  if (!app.isPackaged || process.platform !== 'win32') return null;
+  const bundleDirectory = path.join(process.resourcesPath, 'bundled-katago');
+  if (!(await fileExists(bundleDirectory))) return null;
+  const manifest = JSON.parse(await fs.readFile(path.join(bundleDirectory, 'manifest.json'), 'utf8')) as {
+    katago: KataGoAvailableAsset;
+    model: KataGoAvailableAsset;
+  };
+  await ensureUlugoAssetDirectories();
+  let {executablePath, modelPath} = current;
+
+  if (executablePath === '') {
+    onProgress(`Installing bundled ${manifest.katago.label}.`);
+    const directory = path.join(katagoInstallDirectory(), sanitizeFileName(manifest.katago.id));
+    // Stage outside the asset inventory so interrupted extraction cannot look installed.
+    const staging = await fs.mkdtemp(path.join(ulugoDataDirectory(), 'bundled-katago-'));
+    try {
+      const archive = path.join(bundleDirectory, path.basename(new URL(manifest.katago.url).pathname));
+      await extract(archive, {dir: staging});
+      const executable = await findFirstFile(staging, (file) => path.basename(file).toLowerCase() === 'katago.exe');
+      if (executable == null) throw new Error('Bundled KataGo archive does not contain katago.exe.');
+      await ensureKataGoConfig(path.dirname(executable));
+      await writeInstallMetadata(path.dirname(executable), manifest.katago);
+      // A separate directory avoids overwriting remnants of a failed manual download.
+      const installedDirectory = (await fileExists(directory))
+        ? path.join(katagoInstallDirectory(), `${manifest.katago.id}-${path.basename(staging)}`)
+        : directory;
+      await fs.rename(staging, installedDirectory);
+      executablePath = path.join(installedDirectory, path.relative(staging, executable));
+    } finally {
+      await fs.rm(staging, {recursive: true, force: true});
+    }
+  }
+
+  if (modelPath === '') {
+    onProgress(`Installing bundled ${manifest.model.label}.`);
+    const fileName = path.basename(new URL(manifest.model.url).pathname);
+    modelPath = path.join(modelInstallDirectory(), fileName);
+    const partial = `${modelPath}.part`;
+    try {
+      await fs.copyFile(path.join(bundleDirectory, fileName), partial);
+      await fs.rename(partial, modelPath);
+    } finally {
+      await fs.rm(partial, {force: true});
+    }
+  }
+  return {executablePath, modelPath};
+}
+
 export async function downloadKataGoAsset(
   option: KataGoAvailableAsset,
   kind: KataGoAssetKind,

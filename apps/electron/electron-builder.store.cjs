@@ -1,8 +1,19 @@
 const {build} = require('./package.json');
 const identity = require('./store-identity.json');
+const bundledKataGo = require('./store-katago.json');
 
 module.exports = {
   ...build,
+  beforePack: require('./scripts/prepare-store-katago.cjs'),
+  extraResources: [
+    ...build.extraResources,
+    {
+      from: 'resources/store-katago',
+      to: 'bundled-katago',
+      filter: Object.values(bundledKataGo).map((asset) => new URL(asset.url).pathname.split('/').pop()),
+    },
+    {from: 'store-katago.json', to: 'bundled-katago/manifest.json'},
+  ],
   directories: {
     ...build.directories,
     buildResources: 'resources',

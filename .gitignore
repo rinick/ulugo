@@ -15,4 +15,5 @@ build
 /apps/web/dist
 /apps/electron/dist
 /apps/electron/analysis_logs
+/apps/electron/resources/store-katago
 /gnugo/gnugo*

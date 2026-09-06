@@ -1,0 +1,15 @@
+{
+  "katago": {
+    "id": "katago-v1.18.1-opencl-windows-x64",
+    "label": "katago-v1.18.1-opencl-windows-x64",
+    "notes": "katagoOpenCL",
+    "url": "https://github.com/lightvector/KataGo/releases/download/v1.18.1/katago-v1.18.1-opencl-windows-x64.zip",
+    "sha256": "1710db1903ab921aa6837a9599c8474f8a59f057650217c5d9bc125ee393a9ff"
+  },
+  "model": {
+    "id": "kata1:kata1-zhizi-b28c512nbt-muonfd2",
+    "label": "kata1-zhizi-b28c512nbt-muonfd2.bin.gz",
+    "url": "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-zhizi-b28c512nbt-muonfd2.bin.gz",
+    "sha256": "b37f9a56a9b105159a196f9ba72c5328776fb5cf30014495e4d8ac8a5b07654b"
+  }
+}
