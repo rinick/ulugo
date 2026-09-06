@@ -1981,6 +1981,22 @@ button.ant-btn.left-panel-toggle {
   z-index: 10;
 }
 
+.ant-modal-root .minimal-new-game-confirm {
+  top: 0;
+  width: 416px !important;
+  max-width: calc(100% - 32px);
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0 auto;
+}
+
+.ant-modal-root .minimal-new-game-confirm .ant-modal-container {
+  height: auto;
+  min-height: 0;
+  max-height: calc(var(--ulugo-viewport-height, 100dvh) - 24px);
+}
+
 @media (orientation: portrait) {
   body.platform-web.minimal {
     --ulugo-viewport-height: 100dvw;

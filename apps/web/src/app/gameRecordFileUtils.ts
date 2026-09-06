@@ -1,4 +1,13 @@
-import {getGameInfo, parseGib, parseSgf, updateGameInfo, type SgfDocument} from '@ulugo/sgf-core';
+import {getGameInfo, parseGib, parseSgf, updateGameInfo, type SgfDocument, type SgfNode} from '@ulugo/sgf-core';
+
+export function maximumMoveCount(document: SgfDocument): number {
+  function count(node: SgfNode): number {
+    const current = node.data.B != null || node.data.W != null ? 1 : 0;
+    return current + Math.max(0, ...node.children.map(count));
+  }
+
+  return count(document.root);
+}
 
 export function parseGameRecord(text: string, fileName: string): SgfDocument {
   return isGibFile(fileName) ? parseGib(text) : parseSgf(text);

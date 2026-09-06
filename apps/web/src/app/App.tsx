@@ -32,7 +32,7 @@ import type {AnalysisSettings} from '@ulugo/analysis-core';
 import stoneSoundUrl from '../assets/go_stone_light.wav';
 import {AppBoardRegion} from '../features/app-shell/AppBoardRegion';
 import {AppLeftPanel} from '../features/app-shell/AppLeftPanel';
-import {AppMenuBar, type BoardSize} from '../features/app-shell/AppMenuBar';
+import {AppMenuBar} from '../features/app-shell/AppMenuBar';
 import {MinimalControl} from '../features/app-shell/MinimalControl';
 import {AppRightPanel} from '../features/app-shell/AppRightPanel';
 import {AppStatusModals} from '../features/app-shell/AppStatusModals';
@@ -105,6 +105,7 @@ import {
 } from './replaceMoveUtils';
 import {readOpenLastSgfOnStartupPreference, useAppPreferences} from './useAppPreferences';
 import {useGameRecordFiles} from './useGameRecordFiles';
+import {maximumMoveCount} from './gameRecordFileUtils';
 import {useKataGoAnalysis} from './useKataGoAnalysis';
 import {applyMarkupEdit, isMarkupTool, nodeHasMarkup, type MarkupAction} from './markupEditUtils';
 import {createLocalConsoleMessage} from './katagoConsoleUtils';
@@ -161,6 +162,7 @@ function useStableBranchPaths(
 
 export function App() {
   const {t, i18n} = useTranslation();
+  const [modal, modalContextHolder] = Modal.useModal();
   const [startupState] = useState(readStartupState);
   const [document, setDocument] = useState<SgfDocument>(startupState.document);
   const [path, setPath] = useState<number[]>(startupState.path);
@@ -737,12 +739,31 @@ export function App() {
     void audio.play().catch(() => undefined);
   }
 
-  async function handleNew(size: BoardSize = 19): Promise<void> {
+  async function handleNew(size = 19): Promise<void> {
     if (!(await gameRecordFiles.archiveUnsavedGame())) return;
     branchMemoryRef.current.clear();
     gameRecordFiles.clearCurrentFile(true);
     setAnalysisModeActive(false);
     replaceDocument(createNewGame(size), [], {clearAnalysisCache: true, resetSelectionMoved: true});
+  }
+
+  function handleMinimalNew(): void {
+    if (maximumMoveCount(document) <= 10) {
+      void handleNew(boardSize);
+      return;
+    }
+
+    modal.confirm({
+      centered: true,
+      className: 'minimal-new-game-confirm',
+      title: t('newGame'),
+      content: t('newGameConfirmContent'),
+      okText: t('newGame'),
+      cancelText: t('cancel'),
+      okButtonProps: {danger: true},
+      autoFocusButton: 'cancel',
+      onOk: () => handleNew(boardSize),
+    });
   }
 
   function handleModeChange(mode: AnalysisSettings['mode']): void {
@@ -1470,6 +1491,7 @@ export function App() {
 
   return (
     <ConfigProvider locale={antdLocale} componentSize="small" theme={appTheme}>
+      {modalContextHolder}
       <AppStatusModals
         googleDrivePending={gameRecordFiles.googleDrivePending}
         kataGoAutotuningOpen={kataGoAutotuningOpen}
@@ -1495,6 +1517,7 @@ export function App() {
             onShowMoveNumberChange={(show) => updateAnalysisSettings({stoneOverlay: show ? 'number' : 'none'})}
             onShowNextMoveChange={(show) => updateAnalysisSettings({showNextMove: show})}
             onShowCoordinatesChange={setMinimalShowCoordinates}
+            onNew={handleMinimalNew}
             onQuit={() => handleModeChange('edit')}
           />
         ) : (

@@ -1,4 +1,4 @@
-import {CloseOutlined, EyeOutlined} from '@ant-design/icons';
+import {CloseOutlined, EyeOutlined, FileAddOutlined} from '@ant-design/icons';
 import {Button, Checkbox, Dropdown} from 'antd';
 import type {MenuProps} from 'antd';
 import {useState} from 'react';
@@ -16,6 +16,7 @@ interface MinimalControlProps {
   onShowMoveNumberChange: (show: boolean) => void;
   onShowNextMoveChange: (show: boolean) => void;
   onShowCoordinatesChange: (show: boolean) => void;
+  onNew: () => void;
   onQuit: () => void;
 }
 
@@ -31,6 +32,7 @@ export function MinimalControl({
   onShowMoveNumberChange,
   onShowNextMoveChange,
   onShowCoordinatesChange,
+  onNew,
   onQuit,
 }: MinimalControlProps) {
   const {t} = useTranslation();
@@ -42,6 +44,7 @@ export function MinimalControl({
     checkboxItem('nextMove', t('nextMove'), showNextMove),
     checkboxItem('coordinates', t('showCoordinates'), showCoordinates),
     {type: 'divider'},
+    {key: 'new', icon: <FileAddOutlined />, label: t('newGame')},
     {key: 'quit', icon: <CloseOutlined />, label: t('quitMinimalMode')},
   ];
 
@@ -63,6 +66,10 @@ export function MinimalControl({
           if (key === 'moveNumber') onShowMoveNumberChange(!showMoveNumber);
           if (key === 'nextMove') onShowNextMoveChange(!showNextMove);
           if (key === 'coordinates') onShowCoordinatesChange(!showCoordinates);
+          if (key === 'new') {
+            setOpen(false);
+            onNew();
+          }
           if (key === 'quit') {
             setOpen(false);
             onQuit();

@@ -1,12 +1,18 @@
 import {message} from 'antd';
-import {serializeSgf, type SgfDocument, type SgfNode} from '@ulugo/sgf-core';
+import {serializeSgf, type SgfDocument} from '@ulugo/sgf-core';
 import {useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type RefObject} from 'react';
 import {useTranslation} from 'react-i18next';
 import {promptSaveFileName} from '../features/files/promptSaveFileName';
 import {promptSgfText} from '../features/files/promptSgfText';
 import {currentSgfFileName, hasDraggedFiles, normalizeSgfFileName, type CurrentFileMetadata} from './appFileUtils';
 import {capabilities, isElectron} from './capabilities';
-import {isGameRecordFile, parseGameRecord, readGameRecordFile, withImportedGameName} from './gameRecordFileUtils';
+import {
+  isGameRecordFile,
+  maximumMoveCount,
+  parseGameRecord,
+  readGameRecordFile,
+  withImportedGameName,
+} from './gameRecordFileUtils';
 import {openSgfFromGoogleDrive, saveSgfToGoogleDrive} from './googleDrive';
 import type {ElectronImageImportResult, ElectronImportResult, ElectronRecentFile} from './electronApi';
 
@@ -425,15 +431,6 @@ function isImageFile(file: File): boolean {
 function electronFilePath(file: File): string | undefined {
   const path = window.ulugo?.getPathForFile(file) ?? (file as File & {path?: unknown}).path;
   return typeof path === 'string' && path !== '' ? path : undefined;
-}
-
-function maximumMoveCount(document: SgfDocument): number {
-  function count(node: SgfNode): number {
-    const current = node.data.B != null || node.data.W != null ? 1 : 0;
-    return current + Math.max(0, ...node.children.map(count));
-  }
-
-  return count(document.root);
 }
 
 async function writeTextToClipboard(text: string): Promise<void> {
