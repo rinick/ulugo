@@ -320,6 +320,7 @@ export function RemoteSgfModal({
             scroll={{y: '100%'}}
             columns={columns}
             dataSource={items}
+            locale={loading || loadingMore ? {emptyText: t('loading')} : undefined}
             onScroll={handleTableScroll}
             rowSelection={{
               type: 'radio',
