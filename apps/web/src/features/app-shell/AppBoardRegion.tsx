@@ -37,7 +37,7 @@ interface AppBoardRegionProps {
   onBoardClick: (point: string, options: BoardVertexClickOptions) => void;
   onBoardRightClick: (point: string, options: BoardVertexClickOptions) => void;
   onPreviousMove: () => void;
-  onNextMove: () => void;
+  onNextMove: (preferMainBranch: boolean) => void;
   onAnalysisClick: (event: MouseEvent<HTMLElement>) => void;
   onToggleLeftPanel: () => void;
 }
@@ -86,9 +86,15 @@ export function AppBoardRegion({
   return (
     <main
       className="board-region"
-      onWheel={(event) => {
-        if (event.deltaY > 0) onNextMove();
-        if (event.deltaY < 0) onPreviousMove();
+      ref={(element) => {
+        if (element == null) return;
+        function handleWheel(event: WheelEvent): void {
+          if (event.ctrlKey && event.deltaY !== 0) event.preventDefault();
+          if (event.deltaY > 0) onNextMove(event.ctrlKey);
+          if (event.deltaY < 0) onPreviousMove();
+        }
+        element.addEventListener('wheel', handleWheel, {passive: false});
+        return () => element.removeEventListener('wheel', handleWheel);
       }}
     >
       <GoBoard

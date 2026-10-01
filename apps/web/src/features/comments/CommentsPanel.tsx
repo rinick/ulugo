@@ -1,7 +1,7 @@
 import {Button, Empty, Input, Space} from 'antd';
 import type {TextAreaRef} from 'antd/es/input/TextArea';
 import {useEffect, useMemo, useRef, useState} from 'react';
-import type {MouseEvent, WheelEvent} from 'react';
+import type {MouseEvent} from 'react';
 import {useTranslation} from 'react-i18next';
 import type {AnalysisChartPoint, AnalysisSettings} from '@ulugo/analysis-core';
 
@@ -23,7 +23,7 @@ interface CommentsPanelProps {
   chartSummary?: AnalysisChartSummary | null;
   onDisplayChange: (values: Partial<AnalysisSettings>) => void;
   onPreviousMove?: () => void;
-  onNextMove?: () => void;
+  onNextMove?: (preferMainBranch: boolean) => void;
   onSelectChartMove?: (moveNumber: number) => void;
 }
 
@@ -235,7 +235,7 @@ function AnalysisChart({
   selectedMoveNumber: number | null;
   summary: AnalysisChartSummary | null;
   onPreviousMove?: () => void;
-  onNextMove?: () => void;
+  onNextMove?: (preferMainBranch: boolean) => void;
   onSelectMove?: (moveNumber: number) => void;
 }) {
   const [hoverMoveNumber, setHoverMoveNumber] = useState<number | null>(null);
@@ -329,9 +329,9 @@ function AnalysisChart({
     );
   }
 
-  function handleWheel(event: WheelEvent<SVGSVGElement>): void {
+  function handleWheel(event: WheelEvent): void {
     event.preventDefault();
-    if (event.deltaY > 0) onNextMove?.();
+    if (event.deltaY > 0) onNextMove?.(event.ctrlKey);
     if (event.deltaY < 0) onPreviousMove?.();
   }
 
@@ -347,7 +347,11 @@ function AnalysisChart({
           setHoverMoveNumber(null);
           setHoverChartX(null);
         }}
-        onWheel={handleWheel}
+        ref={(element) => {
+          if (element == null) return;
+          element.addEventListener('wheel', handleWheel, {passive: false});
+          return () => element.removeEventListener('wheel', handleWheel);
+        }}
       >
         {intensityAreaPath === '' ? null : <path className="analysis-chart-intensity" d={intensityAreaPath} />}
         <line

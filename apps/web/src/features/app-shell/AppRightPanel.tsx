@@ -31,7 +31,7 @@ interface AppRightPanelProps {
   onCommentChange: (value: string) => void;
   onAnalysisSettingsChange: (values: Partial<AnalysisSettings>) => void;
   onPreviousMove: () => void;
-  onNextMove: () => void;
+  onNextMove: (preferMainBranch: boolean) => void;
   onSelectChartMove: (moveNumber: number) => void;
   onSelectPath: (path: number[]) => void;
   onMoveToMain: (path?: number[]) => void;

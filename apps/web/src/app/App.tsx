@@ -1646,7 +1646,7 @@ export function App() {
             onBoardClick={handleBoardClick}
             onBoardRightClick={handleBoardRightClick}
             onPreviousMove={() => navigatePrevious()}
-            onNextMove={() => navigateNext()}
+            onNextMove={(preferMainBranch) => (preferMainBranch ? navigateFirstChild() : navigateNext())}
             onAnalysisClick={handleAnalysisButtonClick}
             onToggleLeftPanel={() => setLeftPanelOpen((open) => !open)}
           />
@@ -1693,7 +1693,7 @@ export function App() {
               onCommentChange={handleCommentChange}
               onAnalysisSettingsChange={updateAnalysisSettings}
               onPreviousMove={() => navigatePrevious()}
-              onNextMove={() => navigateNext()}
+              onNextMove={(preferMainBranch) => (preferMainBranch ? navigateFirstChild() : navigateNext())}
               onSelectChartMove={(moveNumber) => {
                 const nextPath = analysisChartPaths[moveNumber];
                 if (nextPath == null) return;

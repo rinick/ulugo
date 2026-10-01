@@ -12,17 +12,7 @@ import {
 import {Button, Dropdown, Space} from 'antd';
 import type {MenuProps} from 'antd';
 import {samePath, type SgfDocument} from '@ulugo/sgf-core';
-import {
-  useCallback,
-  useLayoutEffect,
-  memo,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-  type WheelEvent,
-} from 'react';
+import {useCallback, useLayoutEffect, memo, useMemo, useRef, useState, type MouseEvent, type ReactNode} from 'react';
 import {useTranslation} from 'react-i18next';
 import {scoringOperationPath} from '../../app/appEditorUtils';
 import type {ShortcutActionId} from '../shortcuts/keyboardShortcuts';
@@ -55,7 +45,7 @@ interface SgfTreePanelProps {
   onEstimateScore: (path: number[]) => void;
   estimateScoreEnabled: boolean;
   onPreviousMove: () => void;
-  onNextMove: () => void;
+  onNextMove: (preferMainBranch: boolean) => void;
   shortcutLabels?: Partial<Record<ShortcutActionId, string>>;
   replaceControls?: {
     onConfirm: () => void;
@@ -136,7 +126,7 @@ export function SgfTreePanel({
   }, [branchLeafPath, layout, onSelectPath, selectedCell]);
 
   const handleWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
+    (event: WheelEvent) => {
       if (event.deltaY === 0 || event.shiftKey) return;
 
       const panel = scrollRef.current;
@@ -146,12 +136,12 @@ export function SgfTreePanel({
       const atTop = panel.scrollTop <= 0;
       const atBottom = panel.scrollTop >= maxScroll - 1;
 
-      if (event.deltaY < 0 && atTop) {
+      if (event.deltaY < 0 && (atTop || event.ctrlKey)) {
         event.preventDefault();
         onPreviousMove();
-      } else if (event.deltaY > 0 && atBottom) {
+      } else if (event.deltaY > 0 && (atBottom || event.ctrlKey)) {
         event.preventDefault();
-        onNextMove();
+        onNextMove(event.ctrlKey);
       }
     },
     [onNextMove, onPreviousMove]
@@ -321,7 +311,19 @@ export function SgfTreePanel({
           </Space.Compact>
         )}
       </div>
-      <div className="tree-scroll" ref={scrollRef} onScroll={handleScroll} onWheel={handleWheel}>
+      <div
+        className="tree-scroll"
+        ref={(element) => {
+          scrollRef.current = element;
+          if (element == null) return;
+          element.addEventListener('wheel', handleWheel, {passive: false});
+          return () => {
+            element.removeEventListener('wheel', handleWheel);
+            scrollRef.current = null;
+          };
+        }}
+        onScroll={handleScroll}
+      >
         <Dropdown
           trigger={['contextMenu']}
           open={contextMenuOpen}
