@@ -8,7 +8,11 @@ import {
   serializeSgf,
   updateSetupNextColor,
 } from '@ulugo/sgf-core';
-import {addSetupStone, deriveBoardPosition, isLocallyLegalMove, ruleProfile} from '.';
+import {addSetupStone, deriveBoardPosition, isLegalMove, isLocallyLegalMove, ruleProfile} from '.';
+
+const koSetup = 'SZ[5]AB[ab][ba][bc]AW[bb][ca][cc][db]PL[B]';
+const rulesWithKo = ['Japanese', 'Chinese', 'Korean', 'AGA', 'New Zealand', 'Tromp-Taylor', 'Stone Scoring', ''];
+const rulesWithSuperko = ['AGA', 'New Zealand', 'Tromp-Taylor'];
 
 describe('go-core', () => {
   it('normalizes shared rule behavior while retaining unknown-rule fallbacks', () => {
@@ -150,6 +154,93 @@ describe('go-core', () => {
 
     expect(isLocallyLegalMove(position, 'B', 'bb', 'Japanese')).toBe(false);
   });
+
+  it.each(rulesWithKo)('rejects immediate ko recapture under %s rules', (rules) => {
+    const position = deriveBoardPosition(parseSgf(`(;${koSetup}RU[${rules}];B[cb])`), [0]);
+
+    expect(isLocallyLegalMove(position, 'W', 'bb', rules)).toBe(true);
+    expect(isLegalMove(position, 'W', 'bb', rules)).toBe(false);
+    expect(isLegalMove(position, 'W', '', rules)).toBe(true);
+    expect(isLegalMove(position, 'W', 'cb', rules)).toBe(false);
+    expect(isLegalMove(position, 'W', 'ff', rules)).toBe(false);
+  });
+
+  it('does not lift a ko ban when traversing annotation nodes', () => {
+    const position = deriveBoardPosition(parseSgf(`(;${koSetup};B[cb];C[Comment];TR[cb])`), [0, 0, 0]);
+
+    expect(isLegalMove(position, 'W', 'bb', 'Japanese')).toBe(false);
+  });
+
+  it.each(rulesWithKo)('allows ko recapture after a threat and response under %s rules', (rules) => {
+    const document = parseSgf(`(;${koSetup}RU[${rules}];B[cb];W[ee];B[de])`);
+
+    expect(isLegalMove(deriveBoardPosition(document, [0, 0, 0]), 'W', 'bb', rules)).toBe(true);
+  });
+
+  it('lifts simple ko after passes', () => {
+    const position = deriveBoardPosition(parseSgf(`(;${koSetup};B[cb];W[];B[])`), [0, 0, 0]);
+
+    expect(isLegalMove(position, 'W', 'bb', 'Japanese')).toBe(true);
+  });
+
+  it.each(rulesWithSuperko)('keeps the superko ban after passes under %s rules', (rules) => {
+    const document = parseSgf(`(;${koSetup}RU[${rules}];B[cb];W[];B[])`);
+    const position = deriveBoardPosition(document, [0, 0, 0]);
+
+    expect(isLegalMove(position, 'W', 'bb', rules)).toBe(false);
+    expect(isLegalMove(position, 'W', '', rules)).toBe(true);
+  });
+
+  it.each(['Japanese', 'Chinese', ...rulesWithSuperko])('checks a triple-ko cycle under %s rules', (rules) => {
+    const document = parseSgf(
+      `(;SZ[13]RU[${rules}]PL[B]AB[ab][ba][bc][ff][ge][gg][hf][ib][ja][jc]` +
+        'AW[bb][ca][cc][db][ef][fe][fg][jb][ka][kc][lb];B[cb];W[gf];B[kb];W[bb];B[ff])'
+    );
+    const position = deriveBoardPosition(document, [0, 0, 0, 0, 0]);
+    const repeated = addMove(document, [0, 0, 0, 0, 0], 'W', 'jb');
+
+    expect(deriveBoardPosition(repeated.document, repeated.path).stones).toEqual(
+      deriveBoardPosition(document, []).stones
+    );
+    expect(isLocallyLegalMove(position, 'W', 'jb', rules)).toBe(true);
+    expect(isLegalMove(position, 'W', 'jb', rules)).toBe(!rulesWithSuperko.includes(rules));
+  });
+
+  it.each(rulesWithKo)('allows snapback instead of mistaking it for ko under %s rules', (rules) => {
+    const document = parseSgf(`(;SZ[5]RU[${rules}]AB[ba][bb]AW[aa][ca][cb][ac][bc]PL[B];B[ab])`);
+
+    expect(isLegalMove(deriveBoardPosition(document, [0]), 'W', 'aa', rules)).toBe(true);
+  });
+
+  it.each(rulesWithSuperko)('uses only the current branch history under %s rules', (rules) => {
+    const document = parseSgf(`(;SZ[5]RU[${rules}](;B[aa];W[bb];B[cc])(;B[cc];W[bb]))`);
+
+    expect(isLegalMove(deriveBoardPosition(document, [1, 0]), 'B', 'aa', rules)).toBe(true);
+  });
+
+  it.each(rulesWithSuperko)('starts a new repetition history after setup edits under %s rules', (rules) => {
+    const document = parseSgf(`(;${koSetup}RU[${rules}];B[cb];AE[cb]AW[bb]PL[B])`);
+
+    expect(isLegalMove(deriveBoardPosition(document, [0, 0]), 'B', 'cb', rules)).toBe(true);
+  });
+
+  it('includes the next player when checking situational superko', () => {
+    const setup = 'SZ[5]PL[B]AW[ab][ba][cb][ac][cc][bd]';
+    const nzPosition = deriveBoardPosition(parseSgf(`(;${setup}RU[New Zealand];B[bb];W[])`), [0, 0]);
+    const ttPosition = deriveBoardPosition(parseSgf(`(;${setup}RU[Tromp-Taylor];B[bb];W[])`), [0, 0]);
+
+    expect(isLegalMove(nzPosition, 'B', 'bc', 'New Zealand')).toBe(true);
+    expect(isLegalMove(ttPosition, 'B', 'bc', 'Tromp-Taylor')).toBe(false);
+  });
+
+  it.each(['New Zealand', 'Tromp-Taylor'])(
+    'rejects a suicide that leaves the board unchanged under %s rules',
+    (rules) => {
+      const position = deriveBoardPosition(parseSgf(`(;SZ[5]RU[${rules}]PL[B]AW[ab][ba][cb][bc])`), []);
+
+      expect(isLegalMove(position, 'B', 'bb', rules)).toBe(false);
+    }
+  );
 
   it.each(['New Zealand', 'Tromp-Taylor'])('allows suicide under %s and credits the opponent capture', (rules) => {
     let document = createNewGame(5);

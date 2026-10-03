@@ -439,5 +439,6 @@ function boardPosition(rows: string[], captures: Record<Stone, number> = {B: 0, 
     nextColor: 'B',
     lastMove: null,
     moveNumber: 0,
+    history: [],
   };
 }

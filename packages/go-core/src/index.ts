@@ -31,6 +31,7 @@ export type NormalizedRules =
 
 export interface RuleProfile {
   key: NormalizedRules;
+  koRule: 'simple' | 'positional' | 'situational';
   allowSuicide: boolean;
   creditPassStone: boolean;
   scoring: 'territory' | 'area';
@@ -76,12 +77,14 @@ export interface BoardPosition {
   nextColor: Stone;
   lastMove: SgfPoint | null;
   moveNumber: number;
+  history: {boardKey: string; nextColor: Stone}[];
 }
 
 export function deriveBoardPosition(document: SgfDocument, path: number[]): BoardPosition {
   const size = getBoardSize(document);
   const moveNumbers = new Map<SgfPoint, number>();
   const state = createReplayState(document);
+  const history = [{boardKey: '', nextColor: state.nextColor}];
   const line = getLine(document, path);
   let moveNumber = 0;
   let lastMove: SgfPoint | null = null;
@@ -89,6 +92,10 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
 
   for (const node of line) {
     const transition = applySgfNode(state, node, size, profile, (point) => moveNumbers.delete(point));
+    if (hasSetupProperties(node)) history.length = 0;
+    if (history.length === 0 || transition.moveColor != null) {
+      history.push({boardKey: boardKey(state.stones), nextColor: state.nextColor});
+    }
     if (transition.moveColor == null) continue;
 
     moveNumber += 1;
@@ -127,16 +134,48 @@ export function deriveBoardPosition(document: SgfDocument, path: number[]): Boar
     nextColor: state.nextColor,
     lastMove,
     moveNumber,
+    history,
   };
 }
 
 export function isLocallyLegalMove(position: BoardPosition, color: Stone, point: SgfPoint, rules?: string): boolean {
   if (point === '') return true;
-  const vertex = pointToVertex(point);
-  if (vertex == null || vertex[0] >= position.size || vertex[1] >= position.size) return false;
-  if (position.stones.has(point)) return false;
+  return simulateMove(position, color, point, ruleProfile(rules)) != null;
+}
 
+export function isLegalMove(position: BoardPosition, color: Stone, point: SgfPoint, rules?: string): boolean {
+  if (point === '') return true;
   const profile = ruleProfile(rules);
+  const state = simulateMove(position, color, point, profile);
+  if (state == null) return false;
+
+  const key = boardKey(state.stones);
+  if (key === boardKey(position.stones)) return false;
+  if (profile.koRule === 'simple') return key !== position.history.at(-2)?.boardKey;
+
+  return !position.history.some(
+    (previous) =>
+      previous.boardKey === key && (profile.koRule === 'positional' || previous.nextColor === oppositeStone(color))
+  );
+}
+
+function boardKey(stones: ReadonlyMap<SgfPoint, Stone>): string {
+  return [...stones]
+    .map(([point, color]) => point + color)
+    .sort()
+    .join('');
+}
+
+function simulateMove(
+  position: BoardPosition,
+  color: Stone,
+  point: SgfPoint,
+  profile: RuleProfile
+): ReplayState | null {
+  const vertex = pointToVertex(point);
+  if (vertex == null || vertex[0] >= position.size || vertex[1] >= position.size) return null;
+  if (position.stones.has(point)) return null;
+
   const state: ReplayState = {
     stones: new Map(position.stones),
     captures: {B: 0, W: 0},
@@ -144,7 +183,7 @@ export function isLocallyLegalMove(position: BoardPosition, color: Stone, point:
   };
   state.stones.set(point, color);
   applyCaptures(state, point, color, position.size, profile.allowSuicide);
-  return profile.allowSuicide || collectConnectedGroup(point, state.stones, position.size).liberties > 0;
+  return profile.allowSuicide || collectConnectedGroup(point, state.stones, position.size).liberties > 0 ? state : null;
 }
 
 export function createReplayState(document: SgfDocument): ReplayState {
@@ -331,6 +370,7 @@ export function ruleProfile(value: unknown): RuleProfile {
   const compact = raw.replace(/[^a-z]/g, '');
   return {
     key,
+    koRule: key === 'tromp-taylor' ? 'positional' : key === 'aga' || key === 'new-zealand' ? 'situational' : 'simple',
     allowSuicide: dashed === 'new-zealand' || dashed === 'tromp-taylor',
     creditPassStone: raw === 'aga',
     scoring: compact === '' || compact === 'japanese' || compact === 'korean' ? 'territory' : 'area',
